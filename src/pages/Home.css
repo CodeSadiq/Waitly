@@ -1,3 +1,35 @@
+.home-layout {
+  display: grid;
+  grid-template-columns: 320px 1fr 360px;
+  height: calc(100vh - 64px);
+  background: #f3f4f6;
+}
+
+.home-left {
+  background: #ffffff;
+  border-right: 1px solid #e5e7eb;
+  padding: 16px;
+  overflow-y: auto;
+}
+
+.home-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #9ca3af;
+  font-size: 14px;
+}
+
+.home-right {
+  background: #ffffff;
+  border-left: 1px solid #e5e7eb;
+  padding: 16px;
+  overflow-y: auto;
+}
+
+
+
+
 /* Place List */
 .place-search {
   width: 100%;
@@ -134,3 +166,5 @@
   font-size: 15px;
   cursor: pointer;
 }
+
+
