@@ -1,46 +1,89 @@
-import { usePlace } from "../context/PlaceContext";
-import { mockPlaces } from "../utils/mockData";
+import { useState } from "react";
+import PlaceList from "../components/PlaceList";
+import MapView from "../components/MapView";
+import PlaceDetails from "./PlaceDetails";
+import JoinQueueModal from "../components/JoinQueueModal";
+import "./Home.css";
 
-function Home() {
-  const { setSelectedPlace } = usePlace();
+const PLACES = [
+  {
+    id: 1,
+    name: "SBI Bank",
+    category: "Bank",
+    distance: "0.5 km",
+    address: "Connaught Place, Delhi",
+    rating: 4.2,
+    waits: {
+      cash: 40,
+      loan: 25,
+      document: 10,
+      account: 15,
+    },
+    bestTime: "After 3:30 PM",
+  },
+  {
+    id: 2,
+    name: "City Hospital OPD",
+    category: "Hospital",
+    distance: "1.2 km",
+    address: "Karol Bagh, Delhi",
+    rating: 4.0,
+    waits: {
+      registration: 20,
+      doctor: 35,
+    },
+    bestTime: "After 4:00 PM",
+  },
+  {
+    id: 3,
+    name: "RTO Office",
+    category: "Government Office",
+    distance: "2.1 km",
+    address: "Dwarka, Delhi",
+    rating: 3.8,
+    waits: {
+      license: 45,
+      documents: 30,
+    },
+    bestTime: "After 2:00 PM",
+  },
+];
+
+export default function Home() {
+  const [selectedPlace, setSelectedPlace] = useState(null);
+  const [showQueueModal, setShowQueueModal] = useState(false);
 
   return (
-    <>
-      <h3 style={{ marginBottom: "16px", color: "var(--text-main)" }}>
-        Locations
-      </h3>
+    <div className="home-layout">
+      {/* LEFT PANEL */}
+      <aside className="home-left">
+        <PlaceList
+          places={PLACES}
+          selectedPlace={selectedPlace}
+          onSelect={setSelectedPlace}
+        />
+      </aside>
 
-      {mockPlaces.map((place) => (
-        <div
-          key={place.id}
-          onClick={() => {
-            setSelectedPlace(place);
-          }}
-          style={styles.card}
-        >
-          <h4 style={{ margin: 0 }}>{place.name}</h4>
-          <p style={styles.muted}>{place.type}</p>
-          <span style={styles.muted}>{place.distance} km away</span>
-        </div>
-      ))}
-    </>
+      {/* CENTER PANEL */}
+      <main className="home-center">
+        <MapView />
+      </main>
+
+      {/* RIGHT PANEL */}
+      <aside className="home-right">
+        <PlaceDetails
+          place={selectedPlace}
+          onJoinQueue={() => setShowQueueModal(true)}
+        />
+      </aside>
+
+      {/* JOIN QUEUE MODAL */}
+      {showQueueModal && selectedPlace && (
+        <JoinQueueModal
+          place={selectedPlace}
+          onClose={() => setShowQueueModal(false)}
+        />
+      )}
+    </div>
   );
 }
-
-const styles = {
-  card: {
-    background: "var(--bg-card)",
-    padding: "14px",
-    borderRadius: "var(--radius-md)",
-    border: "1px solid var(--border)",
-    boxShadow: "var(--shadow-sm)",
-    marginBottom: "12px",
-    cursor: "pointer"
-  },
-  muted: {
-    color: "var(--text-muted)",
-    fontSize: "14px"
-  }
-};
-
-export default Home;

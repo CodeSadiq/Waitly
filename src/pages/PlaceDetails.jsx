@@ -1,71 +1,48 @@
-import { useNavigate } from "react-router-dom";
-import { useEffect } from "react";
-import { usePlace } from "../context/PlaceContext";
-import useWaitTimes from "../hooks/useWaitTimes";
-
-function PlaceDetails() {
-  const navigate = useNavigate();
-  const { selectedPlace, waitEntries, setWaitEntries } = usePlace();
-  const sectionWaits = useWaitTimes(waitEntries);
-
-  useEffect(() => {
-    if (selectedPlace && waitEntries.length === 0) {
-      setWaitEntries([
-        { section: "Cash Counter", wait: 40 },
-        { section: "Loan Desk", wait: 25 },
-        { section: "Document Desk", wait: 10 },
-        { section: "Account Opening", wait: 15 }
-      ]);
-    }
-  }, [selectedPlace]);
-
-  if (!selectedPlace) {
-    return <p style={{ color: "var(--text-muted)" }}>Select a place</p>;
+export default function PlaceDetails({ place, onJoinQueue }) {
+  if (!place) {
+    return (
+      <div className="place-details-empty">
+        <p>Select a place to view details</p>
+      </div>
+    );
   }
 
   return (
-    <>
-      <h3>{selectedPlace.name}</h3>
-      <p style={{ color: "var(--text-muted)" }}>{selectedPlace.type}</p>
+    <div className="place-details">
+      {/* Header */}
+      <div className="place-details-header">
+        <h2>{place.name}</h2>
+        <span className="rating">⭐ {place.rating}</span>
+      </div>
 
-      <h4 style={{ marginTop: "24px" }}>Live Wait Times</h4>
+      {/* Address */}
+      <p className="place-address">{place.address}</p>
 
-      {sectionWaits.map((item) => (
-        <div key={item.section} style={styles.waitCard}>
-          <span>{item.section}</span>
-          <strong>{item.wait} min</strong>
-        </div>
-      ))}
+      {/* Live Wait Times */}
+      <h4 className="section-heading">Live Wait Times</h4>
 
-      <button style={styles.primary} onClick={() => navigate("/join")}>
+      <div className="wait-times">
+        {Object.entries(place.waits).map(([key, value]) => (
+          <div key={key} className="wait-row">
+            <span className="wait-label">
+              {key.charAt(0).toUpperCase() + key.slice(1)}
+            </span>
+            <strong className="wait-value">{value} min</strong>
+          </div>
+        ))}
+      </div>
+
+      {/* Best Time */}
+      <div className="best-time">
+        Best time to visit
+        <br />
+        <strong>{place.bestTime}</strong>
+      </div>
+
+      {/* Action */}
+      <button className="join-queue-btn" onClick={onJoinQueue}>
         Join Virtual Queue
       </button>
-    </>
+    </div>
   );
 }
-
-const styles = {
-  waitCard: {
-    background: "var(--bg-card)",
-    border: "1px solid var(--border)",
-    borderRadius: "var(--radius-md)",
-    padding: "12px",
-    marginTop: "12px",
-    display: "flex",
-    justifyContent: "space-between",
-    boxShadow: "var(--shadow-sm)"
-  },
-  primary: {
-    marginTop: "24px",
-    width: "100%",
-    background: "var(--primary)",
-    color: "#fff",
-    border: "none",
-    padding: "14px",
-    borderRadius: "var(--radius-md)",
-    fontWeight: "600",
-    cursor: "pointer"
-  }
-};
-
-export default PlaceDetails;

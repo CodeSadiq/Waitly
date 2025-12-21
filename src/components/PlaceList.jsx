@@ -1,50 +1,58 @@
 import { useState } from "react";
-import { placesData } from "../utils/PlacesData";
 
-export default function PlaceList({ onSelect }) {
+export default function PlaceList({ places, selectedPlace, onSelect }) {
   const [search, setSearch] = useState("");
-  const [activeId, setActiveId] = useState(null);
 
-  const filteredPlaces = placesData.filter((p) =>
-    p.name.toLowerCase().includes(search.toLowerCase())
+  const filteredPlaces = places.filter((place) =>
+    place.name.toLowerCase().includes(search.toLowerCase())
   );
 
   return (
     <div className="place-list">
+      {/* Search */}
       <input
-        className="search-input"
-        placeholder="Search"
+        className="place-search"
+        type="text"
+        placeholder="Search places"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
       />
 
-      <h3 className="section-title">Locations</h3>
+      <h3 className="place-list-title">Nearby Locations</h3>
 
-      {filteredPlaces.map((place) => (
-        <div
-          key={place.id}
-          className={`place-card ${
-            activeId === place.id ? "active" : ""
-          }`}
-          onClick={() => {
-            setActiveId(place.id);
-            onSelect(place);
-          }}
-        >
-          <div className="place-icon">🏦</div>
+      {/* Places */}
+      {filteredPlaces.map((place) => {
+        const isActive = selectedPlace?.id === place.id;
 
-          <div className="place-info">
-            <div className="place-name">{place.name}</div>
-            <div className="place-meta">
-              {place.type} • {place.distance}
+        return (
+          <div
+            key={place.id}
+            className={`place-item ${isActive ? "active" : ""}`}
+            onClick={() => onSelect(place)}
+          >
+            <div className="place-icon">
+              {place.category === "Bank" && "🏦"}
+              {place.category === "Hospital" && "➕"}
+              {place.category === "Government Office" && "🏛️"}
+            </div>
+
+            <div className="place-info">
+              <div className="place-name">{place.name}</div>
+              <div className="place-meta">
+                {place.category} • {place.distance}
+              </div>
+            </div>
+
+            <div className="place-wait">
+              {Object.values(place.waits)[0]}m
             </div>
           </div>
+        );
+      })}
 
-          <div className="place-time">
-            {place.sections[0]?.time} m
-          </div>
-        </div>
-      ))}
+      {filteredPlaces.length === 0 && (
+        <div className="no-results">No places found</div>
+      )}
     </div>
   );
 }
