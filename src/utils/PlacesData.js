@@ -1,40 +1,31 @@
-export const PlacesData = [
+const PLACES = [
   {
     id: "sbi",
-    name: "State Bank of India",
-    type: "Bank",
-    distance: "0.5 km away",
+    name: "SBI Bank",
+    category: "Bank",
+    distance: "0.5 km",
     address: "Connaught Place, Delhi",
     rating: 4.2,
-    sections: [
-      { name: "Cash Counter", time: 40 },
-      { name: "Loan Desk", time: 25 },
-      { name: "Document Desk", time: 10 },
-      { name: "Account Opening", time: 15 },
-    ],
+    waits: {
+      cash: 40,
+      loan: 25,
+      account: 15,
+    },
+    bestTime: "After 3:30 PM",
   },
   {
     id: "hospital",
     name: "City Hospital OPD",
-    type: "Hospital",
-    distance: "1.2 km away",
+    category: "Hospital",
+    distance: "1.2 km",
     address: "Karol Bagh, Delhi",
     rating: 4.0,
-    sections: [
-      { name: "Registration", time: 20 },
-      { name: "Doctor Visit", time: 35 },
-    ],
-  },
-  {
-    id: "rto",
-    name: "RTO Office",
-    type: "Government Office",
-    distance: "2.1 km away",
-    address: "Dwarka, Delhi",
-    rating: 3.8,
-    sections: [
-      { name: "License", time: 45 },
-      { name: "Vehicle Registration", time: 30 },
-    ],
+    waits: {
+      registration: 20,
+      doctor: 35,
+    },
+    bestTime: "After 4:00 PM",
   },
 ];
+
+export default PLACES;

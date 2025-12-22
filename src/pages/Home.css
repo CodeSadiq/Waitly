@@ -1,170 +1,46 @@
 .home-layout {
   display: grid;
-  grid-template-columns: 320px 1fr 360px;
-  height: calc(100vh - 64px);
-  background: #f3f4f6;
+  grid-template-columns: 300px 1fr 350px;
+  height: 100vh;
 }
 
-.home-left {
-  background: #ffffff;
-  border-right: 1px solid #e5e7eb;
+.home-left,
+.home-right {
   padding: 16px;
+  background: #fff;
   overflow-y: auto;
 }
 
 .home-center {
   display: flex;
-  align-items: center;
   justify-content: center;
-  color: #9ca3af;
-  font-size: 14px;
-}
-
-.home-right {
-  background: #ffffff;
-  border-left: 1px solid #e5e7eb;
-  padding: 16px;
-  overflow-y: auto;
-}
-
-
-
-
-/* Place List */
-.place-search {
-  width: 100%;
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid #d1d5db;
-  margin-bottom: 14px;
-  font-size: 14px;
-}
-
-.place-list-title {
-  margin-bottom: 12px;
-  font-size: 15px;
-  font-weight: 600;
-  color: #111827;
-}
-
-.place-item {
-  display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px;
-  border-radius: 12px;
-  margin-bottom: 10px;
+  background: #f3f4f6;
+}
+
+.place-card {
+  padding: 10px;
+  border-radius: 8px;
   background: #f9fafb;
+  margin-bottom: 8px;
   cursor: pointer;
-  transition: background 0.2s ease;
 }
 
-.place-item:hover {
-  background: #eef2ff;
-}
-
-.place-item.active {
-  background: #e0ecff;
+.place-card.active {
   border: 1px solid #2563eb;
 }
 
-.place-icon {
-  font-size: 22px;
-}
-
-.place-info {
-  flex: 1;
-}
-
-.place-name {
-  font-size: 14px;
-  font-weight: 600;
-  color: #111827;
-}
-
-.place-meta {
-  font-size: 12px;
-  color: #6b7280;
-}
-
-.place-wait {
-  font-size: 13px;
-  font-weight: 600;
-  color: #111827;
-}
-
-.no-results {
-  text-align: center;
-  color: #6b7280;
-  font-size: 13px;
-  margin-top: 20px;
-}
-
-
-
-/* Right Panel - Place Details */
-.place-details {
-  display: flex;
-  flex-direction: column;
-}
-
-.place-details-empty {
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #6b7280;
-  font-size: 14px;
-}
-
-.place-details-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.place-address {
-  font-size: 13px;
-  color: #6b7280;
-  margin-bottom: 14px;
-}
-
-.section-heading {
-  margin: 16px 0 8px;
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.wait-times {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.wait-row {
-  display: flex;
-  justify-content: space-between;
-  background: #f9fafb;
-  padding: 10px 12px;
-  border-radius: 10px;
-  font-size: 13px;
-}
-
-.best-time {
-  margin-top: 14px;
-  font-size: 13px;
-  color: #374151;
-}
-
-.join-queue-btn {
-  margin-top: 20px;
-  padding: 12px;
+.join-btn {
+  margin-top: 16px;
+  padding: 10px;
   background: #2563eb;
   color: white;
   border: none;
-  border-radius: 12px;
-  font-size: 15px;
-  cursor: pointer;
+  border-radius: 8px;
 }
 
-
+.search {
+  width: 100%;
+  padding: 8px;
+  margin-bottom: 12px;
+}

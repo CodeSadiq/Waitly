@@ -1,18 +1,12 @@
-import Navbar from "./components/Navbar";
+import { Routes, Route } from "react-router-dom";
 import Home from "./pages/Home";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-
 import JoinQueue from "./pages/JoinQueue";
-<Route path="/join-queue/:placeId" element={<JoinQueue />} />
 
-
-function App() {
+export default function App() {
   return (
-    <>
-      <Navbar />
-      <Home />
-    </>
+    <Routes>
+      <Route path="/" element={<Home />} />
+      <Route path="/join-queue/:placeId" element={<JoinQueue />} />
+    </Routes>
   );
 }
-
-export default App;
