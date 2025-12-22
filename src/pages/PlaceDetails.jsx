@@ -1,9 +1,15 @@
 import { useNavigate } from "react-router-dom";
+import AutoWaitPopup from "../components/AutoWaitPopup";
+import useAutoWaitPrompt from "../hooks/useAutoWaitPrompt";
+
+
 
 
 export default function PlaceDetails({ place, onJoinQueue }) {
+  const { showPrompt, closePrompt } = useAutoWaitPrompt(place);
    const navigate = useNavigate(); // 
-   
+  
+
   if (!place) {
     return (
       <div className="place-details-empty">
@@ -53,6 +59,15 @@ export default function PlaceDetails({ place, onJoinQueue }) {
         Join Virtual Queue
       </button>
 
+          {showPrompt && place && (
+  <AutoWaitPopup
+    place={place}
+    onClose={closePrompt}
+  />
+)}
+
     </div>
   );
+
+
 }

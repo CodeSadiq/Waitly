@@ -1,0 +1,162 @@
+/* ===== Overlay ===== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+/* ===== Popup Box ===== */
+.modal-box {
+  width: 420px;
+  background: #ffffff;
+  border-radius: 18px;
+  padding: 26px 24px;
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.15);
+  animation: popupFadeIn 0.25s ease-out;
+}
+
+/* ===== Headings ===== */
+.modal-box h3 {
+  font-size: 22px;
+  font-weight: 700;
+  color: #111827;
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+.modal-box p {
+  font-size: 14px;
+  color: #6b7280;
+  text-align: center;
+  margin-bottom: 18px;
+}
+
+/* ===== Slider ===== */
+.modal-box input[type="range"] {
+  width: 100%;
+  margin: 20px 0 8px;
+  accent-color: #2563eb;
+}
+
+/* ===== Wait Value ===== */
+.wait-value {
+  text-align: center;
+  font-size: 15px;
+  font-weight: 600;
+  color: #2563eb;
+  margin-bottom: 18px;
+}
+
+/* ===== Action Buttons ===== */
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+/* ===== Buttons ===== */
+.solid-btn,
+.outline-btn {
+  flex: 1;
+  padding: 12px 0;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+/* Primary Button */
+.solid-btn {
+  background: #2563eb;
+  color: #ffffff;
+  border: none;
+  padding: 10px 10px;
+}
+
+.solid-btn:hover {
+  background: #1e4fd8;
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.35);
+}
+
+/* Secondary Button */
+.outline-btn {
+  background: #f3f4f6;
+  color: #374151;
+  border: none;
+}
+
+.outline-btn:hover {
+  background: #e5e7eb;
+}
+
+
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999; /* 🔥 REQUIRED */
+}
+
+
+
+/* ===== Animation ===== */
+@keyframes popupFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ===== Mobile Responsive ===== */
+@media (max-width: 480px) {
+  .modal-box {
+    width: 90%;
+    padding: 22px 18px;
+  }
+}
+
+
+.counter-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin: 12px 0;
+}
+
+.counter-btn {
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid #d1d5db;
+  background: #f9fafb;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.counter-btn.active {
+  background: #2563eb;
+  color: #fff;
+  border-color: #2563eb;
+}
+
+.other-input {
+  width: 100%;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid #d1d5db;
+  margin-bottom: 10px;
+}
+
