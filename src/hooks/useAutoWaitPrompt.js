@@ -38,7 +38,7 @@ useEffect(() => {
       console.log("Showing popup now");
       setShowPrompt(true);
     }
-  }, 2 * 1000);
+  }, 20* 1000);
 
   return () => clearTimeout(stayTimer);
 }, [place]);
