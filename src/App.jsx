@@ -1,6 +1,10 @@
 import Navbar from "./components/Navbar";
 import Home from "./pages/Home";
-import AppRoutes from "./routes/AppRoutes";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+
+import JoinQueue from "./pages/JoinQueue";
+<Route path="/join-queue/:placeId" element={<JoinQueue />} />
+
 
 function App() {
   return (

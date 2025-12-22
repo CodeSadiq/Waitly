@@ -1,3 +1,5 @@
+import { useNavigate } from "react-router-dom";
+
 export default function PlaceDetails({ place, onJoinQueue }) {
   if (!place) {
     return (
@@ -39,10 +41,15 @@ export default function PlaceDetails({ place, onJoinQueue }) {
         <strong>{place.bestTime}</strong>
       </div>
 
-      {/* Action */}
-      <button className="join-queue-btn" onClick={onJoinQueue}>
+      
+
+      <button
+        className="join-queue-btn"
+        onClick={() => navigate(`/join-queue/${place.id}`)}
+      >
         Join Virtual Queue
       </button>
+
     </div>
   );
 }

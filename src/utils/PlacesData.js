@@ -1,4 +1,4 @@
-export const placesData = [
+export const PlacesData = [
   {
     id: "sbi",
     name: "State Bank of India",

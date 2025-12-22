@@ -1,18 +1,14 @@
-import { Routes, Route } from "react-router-dom";
-import Dashboard from "../pages/Dashboard";
-import JoinQueue from "../pages/JoinQueue";
-import Feedback from "../pages/Feedback";
-import Token from "../pages/Token";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import Home from "./pages/Home";
+import JoinQueue from "./pages/JoinQueue";
 
-function AppRoutes() {
+export default function App() {
   return (
-    <Routes>
-      <Route path="/" element={<Dashboard />} />
-      <Route path="/join" element={<JoinQueue />} />
-      <Route path="/feedback" element={<Feedback />} />
-      <Route path="/token" element={<Token />} />
-    </Routes>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/join-queue/:placeId" element={<JoinQueue />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
-
-export default AppRoutes;
