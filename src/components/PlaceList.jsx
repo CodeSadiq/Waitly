@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 
 export default function PlaceList({ places, selectedPlace, onSelect }) {
@@ -18,7 +19,7 @@ export default function PlaceList({ places, selectedPlace, onSelect }) {
         onChange={(e) => setSearch(e.target.value)}
       />
 
-      <h3 className="place-list-title">Nearby Locations</h3>
+      <h3 className="place-list-title" style={{margin:"20px 0px"}}>Nearby Locations</h3>
 
       {/* Places */}
       {filteredPlaces.map((place) => {

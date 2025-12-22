@@ -1,10 +1,10 @@
 import { NavLink } from "react-router-dom";
-
+import Logo from "../assets/icons/logo.png"
 function Navbar() {
   return (
     <header style={styles.wrapper}>
       <div style={styles.navbar}>
-        <div style={styles.left}>⏱️ WAITLY</div>
+        <div style={styles.left}><img src={Logo} style={{height:"25px"}}/> WAITLY</div>
 
         <nav style={styles.center}>
           <NavLink to="/" style={styles.link}>
@@ -33,13 +33,17 @@ const styles = {
   navbar: {
     maxWidth: "1200px",
     margin: "0 auto",
-    height: "60px",
+    height: "8vh",
     padding: "0 24px",
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between"
   },
   left: {
+    display: "flex",
+    justifyContent:"center",
+    alignItems:"center",
+    gap:"5px",
     fontWeight: "700",
     fontSize: "18px"
   },
