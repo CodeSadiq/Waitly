@@ -1,72 +1,86 @@
+/* ===============================
+   ROOT LAYOUT
+================================ */
 .home-layout {
   display: grid;
   grid-template-columns: 320px 1fr 360px;
+  gap: 20px;
+  padding: 18px;
   height: calc(100vh - 8vh);
   background: #f3f4f6;
+  box-sizing: border-box;
 }
 
-
+/* ===============================
+   LEFT & RIGHT PANELS (DESKTOP)
+================================ */
 .home-left,
 .home-right {
   background: #ffffff;
   padding: 18px;
   overflow-y: auto;
-  border-radius: 16px;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+  border-radius: 18px;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.06);
 }
 
-/* Remove hard borders */
-.home-left {
-  border-right: none;
+/* ===============================
+   CENTER MAP AREA
+================================ */
+.home-center {
+  position: relative;
+  border-radius: 18px;
+  overflow: hidden;
+  background: #e5e7eb;
+  background-size: cover;
+  background-position: center;
 }
 
-.home-right {
-  border-left: none;
-}
-
-
+/* ===============================
+   SEARCH INPUT
+================================ */
 .place-search {
-  width: -webkit-fill-available;
+  width: 100%;
   padding: 12px 14px;
+  margin-bottom: 16px;
   border-radius: 14px;
   border: 1px solid #e5e7eb;
   background: #f9fafb;
   font-size: 14px;
   outline: none;
-  transition: border 0.2s ease, box-shadow 0.2s ease;
+  transition: all 0.2s ease;
 }
 
 .place-search:focus {
   border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
 }
 
-
+/* ===============================
+   PLACE LIST ITEM
+================================ */
 .place-item {
   display: flex;
-  align-items: center;
   gap: 14px;
-  padding: 14px;
-  border-radius: 16px;
+  padding: 14px 16px;
+  border-radius: 14px;
   margin-bottom: 12px;
-  background: linear-gradient(180deg, #ffffff, #f9fafb);
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
   cursor: pointer;
   transition: all 0.2s ease;
-  border: 1px solid #6b7280;
 }
 
 .place-item:hover {
+  background: #f9fafb;
   transform: translateY(-1px);
-  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.08);
 }
 
 .place-item.active {
   background: linear-gradient(135deg, #e0ecff, #f0f7ff);
   border-color: #2563eb;
-  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.2);
+  box-shadow: 0 8px 22px rgba(37, 99, 235, 0.25);
 }
-
-
 
 .place-name {
   font-size: 15px;
@@ -79,25 +93,21 @@
   color: #6b7280;
 }
 
-.place-wait {
-  font-size: 13px;
-  font-weight: 700;
-  color: #1f2937;
-}
-
-
+/* ===============================
+   PLACE DETAILS
+================================ */
 .place-details {
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  gap: 18px;
 }
 
-.place-details-header{
+.place-details-header {
   display: flex;
-  flex-direction: row;
-  align-items: center;
   justify-content: space-between;
+  align-items: center;
 }
+
 .place-details-header h2 {
   font-size: 20px;
   font-weight: 700;
@@ -110,42 +120,66 @@
   color: #f59e0b;
 }
 
+.place-address {
+  font-size: 14px;
+  color: #4b5563;
+  line-height: 1.5;
+}
+
+/* ===============================
+   WAIT TIMES
+================================ */
+.section-heading {
+  margin-top: 22px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
 .wait-row {
   display: flex;
   justify-content: space-between;
-  padding: 12px 14px;
-  margin: 5px 0px;
-  border-radius: 14px;
-  background: linear-gradient(180deg, #f9fafb, #ffffff);
-  font-size: 13px;
+  padding: 10px 14px;
+  margin-top: 8px;
+  border-radius: 12px;
+  background: #f9fafb;
+  font-size: 14px;
   box-shadow: inset 0 0 0 1px #e5e7eb;
 }
 
-.section-heading{
-  margin-top: 30px;
+.wait-label {
+  font-weight: 500;
+  color: #374151;
 }
 
+.wait-value {
+  font-weight: 700;
+  color: #111827;
+}
+
+/* ===============================
+   BEST TIME
+================================ */
 .best-time {
-  margin-top: 16px;
   padding: 14px;
   background: linear-gradient(135deg, #eef2ff, #f5f7ff);
   border-radius: 14px;
-  font-size: 13px;
+  font-size: 13.5px;
   color: #1e3a8a;
-  font-weight: 500;
 }
 
-
+/* ===============================
+   ACTION BUTTON
+================================ */
 .join-queue-btn {
-  margin-top: 5px;
-  padding: 14px;
-  background: linear-gradient(135deg, #2563eb, #1d4ed8);
-  color: white;
-  border: none;
-  border-radius: 16px;
+  padding: 12px;
+  border-radius: 14px;
   font-size: 15px;
   font-weight: 600;
+  border: none;
   cursor: pointer;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #ffffff;
   transition: all 0.2s ease;
 }
 
@@ -154,9 +188,161 @@
   box-shadow: 0 10px 24px rgba(37, 99, 235, 0.35);
 }
 
-
-.home-center{
-  background-image: url(../assets/GMap.png);
-  background-size: cover;
-  background-position: center;
+/* ===============================
+   MAP MARKERS
+================================ */
+.user-drop-marker,
+.place-marker {
+  background: transparent;
+  border: none;
 }
+
+.user-drop-marker .drop {
+  width: 18px;
+  height: 18px;
+  background: #2563eb;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  position: relative;
+  box-shadow: 0 0 8px rgba(37, 99, 235, 0.5);
+}
+
+.user-drop-marker .drop::after {
+  content: "";
+  width: 6px;
+  height: 6px;
+  background: #ffffff;
+  border-radius: 50%;
+  position: absolute;
+  top: 5px;
+  left: 5px;
+}
+
+.place-marker .place-dot {
+  width: 10px;
+  height: 10px;
+  background: #ef4444;
+  border-radius: 50%;
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.3);
+}
+
+/* ===============================
+   ADD PLACE BUTTON
+================================ */
+.add-place-btn {
+  position: absolute;
+  bottom: 28px;
+  right: 24px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  font-size: 28px;
+  background: #2563eb;
+  color: #ffffff;
+  border: none;
+  z-index: 1000;
+  cursor: pointer;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+}
+
+.add-place-btn:hover {
+  background: #1e40af;
+}
+
+.add-place-btn.active {
+  background: #dc2626;
+}
+
+/* ===============================
+   ADD PLACE HINT
+================================ */
+.add-place-hint {
+  position: absolute;
+  bottom: 92px;
+  right: 24px;
+  background: #111827;
+  color: #ffffff;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  z-index: 1000;
+}
+
+/* ===============================
+   TABLET
+================================ */
+@media (max-width: 1024px) {
+  .home-layout {
+    grid-template-columns: 280px 1fr;
+  }
+
+  .home-right {
+    display: none;
+  }
+}
+
+/* ===============================
+   MOBILE (PRO BOTTOM-SHEET UX)
+================================ */
+@media (max-width: 768px) {
+  .home-layout {
+    grid-template-columns: 1fr;
+    padding: 0;
+    height: 100vh;
+  }
+
+  .home-center {
+    border-radius: 0;
+  }
+
+  /* BASE FOR BOTH SHEETS */
+  .home-left,
+  .home-right {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    max-height: 60%;
+    border-radius: 20px 20px 0 0;
+    z-index: 1200;
+    box-shadow: 0 -14px 36px rgba(0, 0, 0, 0.2);
+    transform: translateY(100%);
+    transition: transform 0.3s ease;
+  }
+
+  /* DEFAULT → PLACE LIST */
+  .home-left {
+    transform: translateY(0);
+  }
+
+  .home-right {
+    z-index: 1300;
+  }
+
+  /* DETAILS OPEN */
+  body.details-open .home-left {
+    transform: translateY(100%);
+  }
+
+  body.details-open .home-right {
+    transform: translateY(0);
+  }
+
+  .add-place-btn {
+     bottom: 28px;
+  right: 24px;
+  }
+
+  .add-place-hint {
+   bottom: 92px;
+  right: 24px;
+  height: fit-content;
+}
+
+
+}
+

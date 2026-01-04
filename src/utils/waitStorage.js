@@ -28,7 +28,7 @@ export function dismissPopup(placeId) {
   localStorage.setItem(DISMISS_KEY, JSON.stringify(dismissed));
 }
 
-export function canShowPopup(placeId, intervalMs = 5 * 1000) {
+export function canShowPopup(placeId, intervalMs = 20 * 1000) {
   const dismissed =
     JSON.parse(localStorage.getItem(DISMISS_KEY)) || {};
 

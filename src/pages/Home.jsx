@@ -1,86 +1,143 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import PlaceList from "../components/PlaceList";
 import MapView from "../components/MapView";
 import PlaceDetails from "./PlaceDetails";
+import AddPlaceModal from "../components/AddPlaceModal";
 import "./Home.css";
 
-const PLACES = [
-  {
-    id: 1,
-    name: "SBI Bank",
-    category: "Bank",
-    distance: "0.5 km",
-    address: "Connaught Place, Delhi",
-    rating: 4.2,
-    waits: {
-      cash: 40,
-      loan: 25,
-      document: 10,
-      account: 15,
-    },
-    bestTime: "After 3:30 PM",
-  },
-  {
-    id: 2,
-    name: "City Hospital OPD",
-    category: "Hospital",
-    distance: "1.2 km",
-    address: "Karol Bagh, Delhi",
-    rating: 4.0,
-    waits: {
-      registration: 20,
-      doctor: 35,
-    },
-    bestTime: "After 4:00 PM",
-  },
-  {
-    id: 3,
-    name: "RTO Office",
-    category: "Government Office",
-    distance: "2.1 km",
-    address: "Dwarka, Delhi",
-    rating: 3.8,
-    waits: {
-      license: 45,
-      documents: 30,
-    },
-    bestTime: "After 2:00 PM",
-  },
-];
-
 export default function Home() {
+  const [places, setPlaces] = useState([]);
   const [selectedPlace, setSelectedPlace] = useState(null);
-  const [showQueueModal, setShowQueueModal] = useState(false);
+  const [userLocation, setUserLocation] = useState(null);
+
+  const [addMode, setAddMode] = useState(false);
+  const [newPlaceCoords, setNewPlaceCoords] = useState(null);
+
+  const handleAddPlaceSubmit = async (data) => {
+    try {
+      await fetch("http://localhost:5000/api/admin/pending/add", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...data,
+          source: "user-map"
+        })
+      });
+
+      alert("Place sent for admin approval ✅");
+    } catch (err) {
+      alert("Failed to submit place");
+    }
+  };
+
+  /* 📍 INITIAL LOCATION */
+  useEffect(() => {
+    navigator.geolocation.getCurrentPosition(async (pos) => {
+      const coords = {
+        lat: pos.coords.latitude,
+        lng: pos.coords.longitude
+      };
+
+      setUserLocation(coords);
+
+      // 🔥 Virtual "My Location" place
+      const myLocationPlace = {
+        _id: "my-location",
+        name: "My Location",
+        location: coords,
+        isUserLocation: true
+      };
+
+      const res = await fetch(
+        `http://localhost:5000/api/location/nearby-places?lat=${coords.lat}&lng=${coords.lng}`
+      );
+      const data = await res.json();
+
+      const nearbyPlaces = Array.isArray(data) ? data : [];
+
+      // 🔥 Put My Location at top
+      setPlaces([myLocationPlace, ...nearbyPlaces]);
+
+      // 🔥 Select My Location by default
+      setSelectedPlace(myLocationPlace);
+    });
+  }, []);
+
+
+ 
+
+  useEffect(() => {
+  const handler = () => setSelectedPlace(null);
+
+  window.addEventListener("close-place-details", handler);
+  return () =>
+    window.removeEventListener("close-place-details", handler);
+}, []);
+
+
+
+useEffect(() => {
+  if (selectedPlace && !selectedPlace.isUserLocation) {
+    document.body.classList.add("details-open");
+  } else {
+    document.body.classList.remove("details-open");
+  }
+}, [selectedPlace]);
+
 
   return (
     <div className="home-layout">
-      {/* LEFT PANEL */}
       <aside className="home-left">
         <PlaceList
-          places={PLACES}
+          places={places}
           selectedPlace={selectedPlace}
           onSelect={setSelectedPlace}
         />
       </aside>
 
-      {/* CENTER PANEL */}
-      <main className="home-center">
-        <MapView />
+      <main className="home-center" style={{ position: "relative" }}>
+        {/* ➕ BUTTON */}
+        <button
+          className={`add-place-btn ${addMode ? "active" : ""}`}
+          onClick={() => {
+            setAddMode(!addMode);
+            setSelectedPlace(null);
+          }}
+        >
+          {addMode ? "✖" : "+"}
+        </button>
+
+        {/* 🧠 USER GUIDANCE */}
+        {addMode && (
+          <div className="add-place-hint">
+            📍 Tap on map to add a new place
+          </div>
+        )}
+
+        {userLocation && (
+          <MapView
+            userLocation={userLocation}
+            places={places}
+            selectedPlace={selectedPlace}
+            onSelectPlace={setSelectedPlace}
+            addMode={addMode}
+            onMapSelect={(coords) => {
+              setNewPlaceCoords(coords);
+              setAddMode(false);
+            }}
+          />
+        )}
       </main>
 
-      {/* RIGHT PANEL */}
       <aside className="home-right">
-        <PlaceDetails
-          place={selectedPlace}
-          onJoinQueue={() => setShowQueueModal(true)}
-        />
+        <PlaceDetails place={selectedPlace} />
       </aside>
 
-      {/* JOIN QUEUE MODAL */}
-      {showQueueModal && selectedPlace && (
-        <JoinQueueModal
-          place={selectedPlace}
-          onClose={() => setShowQueueModal(false)}
+      {/* 🔥 ADD PLACE FORM */}
+      {newPlaceCoords && (
+        <AddPlaceModal
+          coords={newPlaceCoords}
+          onClose={() => setNewPlaceCoords(null)}
         />
       )}
     </div>

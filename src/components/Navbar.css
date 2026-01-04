@@ -1,0 +1,220 @@
+/* ===============================
+   NAVBAR WRAPPER
+================================ */
+.navbar-wrapper {
+  background: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+  position: sticky;
+  top: 0;
+  z-index: 2000;
+}
+
+/* ===============================
+   NAVBAR CONTAINER
+================================ */
+.navbar {
+  max-width: 1200px;
+  margin: auto;
+  height: 8vh;
+  min-height: 56px;
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: relative;
+}
+
+/* ===============================
+   LEFT (LOGO)
+================================ */
+.nav-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 22px;
+  font-weight: 700;
+  color: #111827;
+  cursor: pointer;
+}
+
+.nav-left img {
+  height: 26px;
+}
+
+/* ===============================
+   CENTER LINKS (DESKTOP)
+================================ */
+.nav-center {
+  display: flex;
+  gap: 28px;
+}
+
+.nav-center a {
+  text-decoration: none;
+  color: #374151;
+  font-weight: 500;
+  font-size: 14.5px;
+  transition: color 0.2s ease;
+}
+
+.nav-center a:hover {
+  color: #2563eb;
+}
+
+/* ===============================
+   HAMBURGER
+================================ */
+.hamburger {
+  display: none;
+  font-size: 26px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #111827;
+}
+
+/* ===============================
+   RIGHT (AUTH / PROFILE)
+================================ */
+.nav-right {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+/* LOGIN BUTTON */
+.login-btn {
+  padding: 9px 18px;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #ffffff;
+  border-radius: 10px;
+  border: none;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.login-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(37, 99, 235, 0.35);
+}
+
+/* PROFILE ICON */
+.profile span {
+  font-size: 22px;
+  cursor: pointer;
+}
+
+/* ===============================
+   DROPDOWN MENU
+================================ */
+.dropdown {
+  position: absolute;
+  right: 0;
+  top: 42px;
+  background: #ffffff;
+  border-radius: 14px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+  padding: 14px;
+  width: 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  animation: dropdownFade 0.15s ease;
+}
+
+.dropdown .name {
+  font-weight: 600;
+  font-size: 14.5px;
+  color: #111827;
+}
+
+.dropdown .role {
+  font-size: 12.5px;
+  color: #6b7280;
+  margin-bottom: 6px;
+}
+
+.dropdown button {
+  background: none;
+  border: none;
+  padding: 9px 10px;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #374151;
+  transition: background 0.2s ease;
+}
+
+.dropdown button:hover {
+  background: #f3f4f6;
+}
+
+.dropdown .logout {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+/* ===============================
+   MOBILE NAV
+================================ */
+@media (max-width: 768px) {
+  .navbar {
+    padding: 0 16px;
+  }
+
+  /* Show hamburger */
+  .hamburger {
+    display: block;
+  }
+
+  /* Mobile nav menu */
+  .nav-center {
+    position: absolute;
+    top: 8vh;
+    left: 0;
+    width: 100%;
+    background: #ffffff;
+    flex-direction: column;
+    gap: 18px;
+    padding: 20px;
+    display: none;
+    z-index: 1500;
+    box-shadow: 0 14px 30px rgba(0, 0, 0, 0.15);
+    border-bottom-left-radius: 18px;
+    border-bottom-right-radius: 18px;
+  }
+
+  .nav-center.open {
+    display: flex;
+  }
+
+  .nav-center a {
+    font-size: 15px;
+    font-weight: 600;
+  }
+
+  /* Dropdown full-width */
+  .dropdown {
+    width: 100%;
+    right: -16px;
+    top: 52px;
+    border-radius: 18px;
+  }
+}
+
+/* ===============================
+   ANIMATIONS
+================================ */
+@keyframes dropdownFade {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

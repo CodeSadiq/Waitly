@@ -1,0 +1,146 @@
+/* ===== AUTH PAGE LAYOUT ===== */
+.auth-page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #eef2ff, #f9fafb);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+/* ===== AUTH CARD ===== */
+.auth-card {
+  width: 380px;
+  background: #ffffff;
+  padding: 28px 26px;
+  border-radius: 18px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: fadeIn 0.3s ease;
+}
+
+/* ===== HEADER ===== */
+.auth-header {
+  text-align: center;
+}
+
+.auth-header h2 {
+  font-size: 22px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.auth-header p {
+  font-size: 14px;
+  color: #6b7280;
+  margin-top: 4px;
+}
+
+/* ===== INPUTS ===== */
+.auth-card input,
+.auth-card select {
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid #d1d5db;
+  font-size: 14px;
+  outline: none;
+  transition: border 0.2s, box-shadow 0.2s;
+}
+
+.auth-card input:focus,
+.auth-card select:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+/* ===== ROLE SELECT ===== */
+.role-select {
+  display: flex;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.role-btn {
+  flex: 1;
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid #d1d5db;
+  background: #f9fafb;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #111827;
+}
+
+.role-btn:hover {
+  background: #eef2ff;
+}
+
+.role-btn.active {
+  background: #2563eb;
+  color: #ffffff;
+  border-color: #2563eb;
+}
+
+/* ===== PRIMARY BUTTON ===== */
+.auth-btn {
+  margin-top: 10px;
+  padding: 12px;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #ffffff;
+  border: none;
+  border-radius: 14px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.auth-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 18px rgba(37, 99, 235, 0.25);
+}
+
+/* ===== FOOTER ===== */
+.auth-footer {
+  text-align: center;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.auth-footer span {
+  color: #2563eb;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+/* ===== ANIMATION ===== */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.auth-btn.outline {
+  background: transparent;
+  color: #2563eb;
+  border: 1px solid #2563eb;
+}
+
+.auth-btn.outline:hover {
+  background: #eff6ff;
+}
+
+
+/* ===== MOBILE ===== */
+@media (max-width: 420px) {
+  .auth-card {
+    width: 100%;
+  }
+}

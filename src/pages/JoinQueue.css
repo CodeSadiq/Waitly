@@ -164,3 +164,12 @@
   background: #ffffff;
   padding: 0 4px;
 }
+
+.counter-info {
+  background: #f9fafb;
+  border-radius: 12px;
+  padding: 12px;
+  margin: 10px 0;
+  font-size: 14px;
+  color: #374151;
+}

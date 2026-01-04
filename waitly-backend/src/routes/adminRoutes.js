@@ -1,0 +1,50 @@
+import express from "express";
+import {
+  fetchFromOSM,
+  fetchFromGoogle,
+  addPlaceFromAPI,
+  addPlaceManually,
+  getPendingPlaces,
+  approvePlace,
+  rejectPlace,
+  addPendingPlace,
+  updatePendingPlace,
+  getAllPlaces,              // ✅ existing
+  updatePlaceByAdmin,        // ✅ existing
+  approveEditedPendingPlace,  // ✅ ADD THIS
+  deletePlaceByAdmin
+} from "../controllers/waitlyAdminController.js";
+
+const router = express.Router();
+
+/* ================= ADMIN FETCH ================= */
+router.post("/fetch/osm", fetchFromOSM);
+router.post("/fetch/google", fetchFromGoogle);
+
+/* ================= ADD PLACES ================= */
+router.post("/place/api", addPlaceFromAPI);
+router.post("/place/manual", addPlaceManually);
+
+/* ================= PENDING (ADMIN) ================= */
+router.get("/pending", getPendingPlaces);
+router.post("/pending/approve/:id", approvePlace);
+router.post("/pending/reject/:id", rejectPlace);
+router.post("/pending/add", addPendingPlace);
+router.put("/pending/:id", updatePendingPlace);
+
+/* 🔥 REQUIRED: APPROVE EDITED JSON */
+router.post(
+  "/pending/approve-edited/:id",
+  approveEditedPendingPlace
+);
+
+/* ================= DATABASE PLACES ================= */
+router.get("/places", getAllPlaces);
+router.post("/place/update/:id", updatePlaceByAdmin);
+
+
+router.get("/places", getAllPlaces);
+router.post("/place/update/:id", updatePlaceByAdmin);
+router.delete("/place/:id", deletePlaceByAdmin); // ✅ THIS FIXES 404
+
+export default router;
