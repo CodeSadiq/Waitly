@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import "./JoinQueue.css";
+import API_BASE from "../config/api";
 
 export default function JoinQueue() {
   const { placeId } = useParams();
@@ -26,7 +27,7 @@ export default function JoinQueue() {
     const loadPlace = async () => {
       try {
         const res = await fetch(
-          `http://localhost:5000/api/location/place/${placeId}`
+          `${API_BASE}/api/location/place/${placeId}`
         );
 
         if (!res.ok) throw new Error("Place not found");

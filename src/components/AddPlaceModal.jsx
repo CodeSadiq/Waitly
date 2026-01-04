@@ -1,5 +1,6 @@
 import { useState } from "react";
 import "./AddPlaceModal.css";
+import API_BASE from "../config/api";
 
 export default function AddPlaceModal({ coords, onClose }) {
   const [form, setForm] = useState({
@@ -17,7 +18,7 @@ export default function AddPlaceModal({ coords, onClose }) {
       return;
     }
 
-    await fetch("http://localhost:5000/api/admin/pending/add", {
+    await fetch(`${API_BASE}/api/admin/pending/add`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

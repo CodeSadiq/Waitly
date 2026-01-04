@@ -11,11 +11,17 @@ dotenv.config();
 const app = express();
 
 /* ✅ CORS – THIS IS ENOUGH */
+
 app.use(cors({
-  origin: "http://localhost:5173",
+  origin: [
+    "http://localhost:5173",              // local dev
+    "https://waitly-frontend.onrender.com" // production
+  ],
   methods: ["GET", "POST", "PUT", "DELETE"],
-  allowedHeaders: ["Content-Type", "Authorization"]
+  credentials: true
 }));
+
+
 
 /* Body parser */
 app.use(express.json());

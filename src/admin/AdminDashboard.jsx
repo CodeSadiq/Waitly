@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import "./AdminDashboard.css";
+import API_BASE from "../config/api";
 
 export default function AdminDashboard() {
   /* ================= STATE ================= */
@@ -84,7 +85,7 @@ export default function AdminDashboard() {
   /* ================= LOAD PENDING ================= */
   const loadPending = async () => {
     try {
-      const res = await fetch("http://localhost:5000/api/admin/pending");
+      const res = await fetch(`${API_BASE}/api/admin/pending`);
       const data = await res.json();
       setPending(Array.isArray(data) ? data : []);
     } catch (err) {
@@ -107,7 +108,7 @@ export default function AdminDashboard() {
     setOsmResults([]);
 
     try {
-      const res = await fetch("http://localhost:5000/api/admin/fetch/osm", {
+      const res = await fetch(`${API_BASE}/api/admin/fetch/osm`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(osmForm)
@@ -132,7 +133,7 @@ export default function AdminDashboard() {
     setOsmResults([]);
 
     try {
-      const res = await fetch("http://localhost:5000/api/admin/fetch/google", {
+      const res = await fetch(`${API_BASE}/api/admin/fetch/google`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(osmForm)
@@ -190,7 +191,7 @@ export default function AdminDashboard() {
       }
     };
 
-    const res = await fetch("http://localhost:5000/api/admin/place/api", {
+    const res = await fetch(`${API_BASE}/api/admin/place/api`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
@@ -222,7 +223,7 @@ export default function AdminDashboard() {
       return;
     }
 
-    await fetch("http://localhost:5000/api/admin/place/manual", {
+    await fetch(`${API_BASE}/api/admin/place/manual`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...manualForm, counters })
@@ -243,7 +244,7 @@ export default function AdminDashboard() {
   /* ================= APPROVE / REJECT ================= */
   const approve = async (id) => {
     await fetch(
-      `http://localhost:5000/api/admin/pending/approve/${id}`,
+      `${API_BASE}/api/admin/pending/approve/${id}`,
       { method: "POST" }
     );
     loadPending();
@@ -251,7 +252,7 @@ export default function AdminDashboard() {
 
   const reject = async (id) => {
     await fetch(
-      `http://localhost:5000/api/admin/pending/reject/${id}`,
+      `${API_BASE}/api/admin/pending/reject/${id}`,
       { method: "POST" }
     );
     loadPending();
@@ -268,7 +269,7 @@ export default function AdminDashboard() {
     }
 
     await fetch(
-      `http://localhost:5000/api/admin/pending/approve-edited/${editingPlace._id}`,
+      `${API_BASE}/api/admin/pending/approve-edited/${editingPlace._id}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -287,7 +288,7 @@ export default function AdminDashboard() {
     setDbError("");
 
     try {
-      const res = await fetch("http://localhost:5000/api/admin/places");
+      const res = await fetch(`${API_BASE}/api/admin/places`);
       if (!res.ok) throw new Error();
       const data = await res.json();
       setDbPlaces(Array.isArray(data) ? data : []);
@@ -310,7 +311,7 @@ export default function AdminDashboard() {
 
     try {
       const res = await fetch(
-        `http://localhost:5000/api/admin/place/update/${editingDbPlace._id}`,
+        `${API_BASE}/api/admin/place/update/${editingDbPlace._id}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -331,7 +332,7 @@ export default function AdminDashboard() {
   const deleteDbPlace = async (id) => {
     if (!window.confirm("Delete this place permanently?")) return;
 
-    await fetch(`http://localhost:5000/api/admin/place/${id}`, {
+    await fetch(`${API_BASE}/api/admin/place/${id}`, {
       method: "DELETE"
     });
 

@@ -4,6 +4,7 @@ import MapView from "../components/MapView";
 import PlaceDetails from "./PlaceDetails";
 import AddPlaceModal from "../components/AddPlaceModal";
 import "./Home.css";
+import API_BASE from "../config/api";
 
 export default function Home() {
   const [places, setPlaces] = useState([]);
@@ -15,7 +16,7 @@ export default function Home() {
 
   const handleAddPlaceSubmit = async (data) => {
     try {
-      await fetch("http://localhost:5000/api/admin/pending/add", {
+      await fetch(`${API_BASE}/api/admin/pending/add`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -49,7 +50,7 @@ export default function Home() {
       };
 
       const res = await fetch(
-        `http://localhost:5000/api/location/nearby-places?lat=${coords.lat}&lng=${coords.lng}`
+        `${API_BASE}/api/location/nearby-places?lat=${coords.lat}&lng=${coords.lng}`
       );
       const data = await res.json();
 
