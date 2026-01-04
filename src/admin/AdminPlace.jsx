@@ -11,7 +11,7 @@ export default function AddPlace() {
   });
 
   const submit = async () => {
-    await fetch(`${API_BASE}/api/admin/add-place", {
+    await fetch(`${API_BASE}/api/admin/add-place`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(form)
