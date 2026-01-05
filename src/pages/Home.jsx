@@ -177,19 +177,33 @@ useEffect(() => {
           </div>
         )}
 
-        {userLocation && (
-          <MapView
-            userLocation={userLocation}
-            places={places}
-            selectedPlace={selectedPlace}
-            onSelectPlace={setSelectedPlace}
-            addMode={addMode}
-            onMapSelect={(coords) => {
-              setNewPlaceCoords(coords);
-              setAddMode(false);
-            }}
-          />
-        )}
+        
+
+
+  {!userLocation && (
+    <div className="map-loading">
+      <div className="spinner"></div>
+      <p>Map is loading…</p>
+    </div>
+  )}
+
+  {userLocation && (
+    <MapView
+      userLocation={userLocation}
+      places={places}
+      selectedPlace={selectedPlace}
+      onSelectPlace={setSelectedPlace}
+      addMode={addMode}
+      onMapSelect={(coords) => {
+        setNewPlaceCoords(coords);
+        setAddMode(false);
+      }}
+    />
+  )}
+
+
+
+
       </main>
 
       <aside className="home-right">

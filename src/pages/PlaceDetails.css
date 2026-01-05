@@ -157,11 +157,12 @@
 ================================ */
 @media (max-width: 768px) {
   .place-details {
-    gap: 18px;
+    gap: 0px;
     padding: 18px 18px 22px;
     border-radius: 20px 20px 0 0;
     box-shadow: 0 -16px 38px rgba(0, 0, 0, 0.24);
   }
+
 
   /* Drag handle (visual only) */
   .place-details::before {
@@ -177,7 +178,12 @@
   }
 
   .place-details-header h2 {
+    margin-top: 60px;
     font-size: 20px;
+    margin-bottom: 10px;
+  }
+  .rating{
+    margin-top: 60px;
   }
 
   .place-details-empty h1 {
@@ -190,6 +196,11 @@
 
   .section-heading {
     margin-top: 20px;
+    margin-bottom: 10px;
+  }
+
+  .best-time{
+    margin-bottom: 20px;
   }
 }
 
