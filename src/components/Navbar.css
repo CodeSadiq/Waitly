@@ -42,11 +42,12 @@
 }
 
 /* ===============================
-   CENTER LINKS (DESKTOP)
+   CENTER NAV (DESKTOP)
 ================================ */
 .nav-center {
   display: flex;
   gap: 28px;
+  align-items: center;
 }
 
 .nav-center a {
@@ -61,6 +62,11 @@
   color: #2563eb;
 }
 
+
+
+.mobile-auth{
+  display: none;
+}
 /* ===============================
    HAMBURGER
 ================================ */
@@ -74,15 +80,18 @@
 }
 
 /* ===============================
-   RIGHT (AUTH / PROFILE)
+   RIGHT (DESKTOP AUTH)
 ================================ */
 .nav-right {
-  position: relative;
   display: flex;
   align-items: center;
+  gap: 12px;
+  position: relative;
 }
 
-/* LOGIN BUTTON */
+/* ===============================
+   BUTTONS
+================================ */
 .login-btn {
   padding: 9px 18px;
   background: linear-gradient(135deg, #2563eb, #1d4ed8);
@@ -100,14 +109,33 @@
   box-shadow: 0 6px 18px rgba(37, 99, 235, 0.35);
 }
 
-/* PROFILE ICON */
+/* ADMIN / STAFF BUTTON */
+.admin-btn {
+  padding: 8px 14px;
+  background: #111827;
+  color: #ffffff;
+  border-radius: 9px;
+  border: none;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.admin-btn:hover {
+  background: #1f2937;
+}
+
+/* ===============================
+   PROFILE
+================================ */
 .profile span {
   font-size: 22px;
   cursor: pointer;
 }
 
 /* ===============================
-   DROPDOWN MENU
+   DROPDOWN (DESKTOP)
 ================================ */
 .dropdown {
   position: absolute;
@@ -122,6 +150,7 @@
   flex-direction: column;
   gap: 10px;
   animation: dropdownFade 0.15s ease;
+  z-index: 3000;
 }
 
 .dropdown .name {
@@ -145,7 +174,6 @@
   border-radius: 8px;
   font-size: 14px;
   color: #374151;
-  transition: background 0.2s ease;
 }
 
 .dropdown button:hover {
@@ -157,20 +185,29 @@
   font-weight: 600;
 }
 
-/* ===============================
-   MOBILE NAV
-================================ */
+/* ==================================================
+   MOBILE NAV — FULL HAMBURGER MODE
+================================================== */
 @media (max-width: 768px) {
+
   .navbar {
     padding: 0 16px;
+
+    z-index: 50000;
   }
 
   /* Show hamburger */
   .hamburger {
     display: block;
+    z-index: 3000;
   }
 
-  /* Mobile nav menu */
+  /* Hide desktop right section */
+  .nav-right {
+    display: none;
+  }
+
+  /* Mobile menu container */
   .nav-center {
     position: absolute;
     top: 8vh;
@@ -178,10 +215,11 @@
     width: 100%;
     background: #ffffff;
     flex-direction: column;
+    align-items: flex-start;
     gap: 18px;
     padding: 20px;
     display: none;
-    z-index: 1500;
+    z-index: 2500;
     box-shadow: 0 14px 30px rgba(0, 0, 0, 0.15);
     border-bottom-left-radius: 18px;
     border-bottom-right-radius: 18px;
@@ -196,12 +234,45 @@
     font-weight: 600;
   }
 
-  /* Dropdown full-width */
-  .dropdown {
+  /* ===============================
+     MOBILE AUTH SECTION
+  ================================ */
+  .mobile-auth {
     width: 100%;
-    right: -16px;
-    top: 52px;
-    border-radius: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding-top: 10px;
+    border-top: 1px solid #e5e7eb;
+  }
+
+  .mobile-auth .login-btn,
+  .mobile-auth .admin-btn,
+  .mobile-auth .logout-btn {
+    width: 100%;
+    text-align: center;
+  }
+
+  .logout-btn {
+    padding: 9px;
+    background: #fee2e2;
+    color: #991b1b;
+    border-radius: 9px;
+    border: none;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  /* Mobile dropdown simplified */
+  .mobile-auth .dropdown {
+    position: static;
+    width: 100%;
+    box-shadow: none;
+    border-radius: 12px;
+    padding: 12px;
+    background: #f9fafb;
+    
   }
 }
 

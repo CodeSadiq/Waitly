@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import "./Auth.css";
+import "./Auth.css"
 
 export default function Login() {
   const [role, setRole] = useState("user");

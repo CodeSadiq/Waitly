@@ -11,6 +11,8 @@ export default function PlaceDetails({ place }) {
     ? place.counters
     : [];
 
+
+
   /* =========================
      ⏳ AUTO POPUP (LONG STAY)
      ========================= */
@@ -117,6 +119,20 @@ export default function PlaceDetails({ place }) {
       >
         Update Wait Time
       </button>
+
+
+
+
+    <div
+  className="mobile-back-btn"
+  onClick={() =>
+    window.dispatchEvent(new Event("close-place-details"))
+  }
+>
+  ← Back
+</div>
+
+
 
       {/* Popup */}
       {showWaitPopup && (

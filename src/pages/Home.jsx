@@ -86,6 +86,26 @@ useEffect(() => {
 }, [selectedPlace]);
 
 
+
+useEffect(() => {
+  if (newPlaceCoords) {
+    document.body.classList.add("add-place-open");
+  } else {
+    document.body.classList.remove("add-place-open");
+  }
+}, [newPlaceCoords]);
+
+
+useEffect(() => {
+  if (addMode) {
+    document.body.classList.add("add-mode");
+  } else {
+    document.body.classList.remove("add-mode");
+  }
+}, [addMode]);
+
+
+
   return (
     <div className="home-layout">
       <aside className="home-left">

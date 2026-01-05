@@ -148,6 +148,7 @@
 .join-queue-btn.secondary {
   background: #f3f4f6;
   color: #111827;
+  flex: 0;
 }
 
 /* ===============================
