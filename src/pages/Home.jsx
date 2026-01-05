@@ -105,6 +105,44 @@ useEffect(() => {
 }, [addMode]);
 
 
+useEffect(() => {
+  let startY = 0;
+
+  const sheet = document.querySelector(".home-left");
+  if (!sheet) return;
+
+  const onTouchStart = (e) => {
+    startY = e.touches[0].clientY;
+  };
+
+  const onTouchEnd = (e) => {
+    const endY = e.changedTouches[0].clientY;
+    const diff = startY - endY;
+
+    // Swipe UP → expand
+    if (diff > 50) {
+      document.body.classList.add("list-expanded");
+      document.body.classList.remove("list-collapsed");
+    }
+
+    // Swipe DOWN → collapse
+    if (diff < -50) {
+      document.body.classList.remove("list-expanded");
+      document.body.classList.add("list-collapsed");
+    }
+  };
+
+  sheet.addEventListener("touchstart", onTouchStart);
+  sheet.addEventListener("touchend", onTouchEnd);
+
+  return () => {
+    sheet.removeEventListener("touchstart", onTouchStart);
+    sheet.removeEventListener("touchend", onTouchEnd);
+  };
+}, []);
+
+
+
 
   return (
     <div className="home-layout">

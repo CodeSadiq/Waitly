@@ -40,11 +40,8 @@
 ================================ */
 .place-search {
   width: 100%;
-  padding: 12px 14px;
-  margin-bottom: 16px;
   border-radius: 14px;
   border: 1px solid #e5e7eb;
-  background: #f9fafb;
   font-size: 14px;
   outline: none;
   transition: all 0.2s ease;
@@ -478,5 +475,25 @@ body.add-place-open .home-right {
 }
 
 
+/* ===============================
+   LIST COLLAPSED (SWIPE DOWN)
+   Map gets more space
+================================ */
+body.list-collapsed .home-left {
+  height: 12vh;
+}
+
+/* Map adjusts when list expanded */
+body.list-expanded .home-center {
+  height: calc(100vh - 8vh - 60vh);
+}
+
+/* Map adjusts when list collapsed */
+body.list-collapsed .home-center {
+  height: calc(100vh - 8vh - 12vh);
+}
+
 
 }
+
+
