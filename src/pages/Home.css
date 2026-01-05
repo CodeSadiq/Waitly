@@ -312,18 +312,6 @@
     box-shadow: 0 -16px 36px rgba(0, 0, 0, 0.2);
     transition: height 0.3s ease, transform 0.3s ease;
   }
-
-  /* DRAG HANDLE */
-  .home-left::before {
-    content: "";
-    display: block;
-    width: 46px;
-    height: 5px;
-    background: #d1d5db;
-    border-radius: 999px;
-    margin: 0 auto 10px;
-  }
-
   /* EXPANDED LIST (toggle via body.list-expanded) */
   body.list-expanded .home-left {
     height: 60vh;
@@ -333,8 +321,7 @@
 
   .home-center {
   position: relative;
-  height: 57dvh;
-  margin-top: 8dvh;
+  height: 65dvh;
   border-radius: 18px;
   overflow: hidden;
   background: #e5e7eb;
@@ -391,7 +378,7 @@
     position: fixed;
     bottom: 40vh;
     right: 16px;
-    z-index: 6000;
+    z-index: 700;
   }
 
 
@@ -474,23 +461,44 @@ body.add-place-open .home-right {
   display: none;
 }
 
-
 /* ===============================
-   LIST COLLAPSED (SWIPE DOWN)
-   Map gets more space
+   LIST STATES (MOBILE)
 ================================ */
+
+/* COLLAPSED LIST — map almost full */
 body.list-collapsed .home-left {
   height: 12vh;
 }
 
-/* Map adjusts when list expanded */
+/* EXPANDED LIST — map reduced */
+body.list-expanded .home-left {
+  height: 60vh;
+}
+
+/* MAP HEIGHT — DEFAULT (uses existing base height) */
+.home-center {
+  transition: height 0.3s ease;
+}
+
+/* MAP WHEN LIST EXPANDED */
 body.list-expanded .home-center {
   height: calc(100vh - 8vh - 60vh);
 }
 
-/* Map adjusts when list collapsed */
+/* MAP WHEN LIST COLLAPSED */
 body.list-collapsed .home-center {
   height: calc(100vh - 8vh - 12vh);
+}
+
+/* ===============================
+   PLACE LIST SLIDER / HANDLE
+================================ */
+.sheet-handle {
+  width: 50px;
+  height: 6px;
+  background: #2563eb;              /* 🔴 RED COLOR */
+  border-radius: 999px;
+  margin: 0 auto 12px;
 }
 
 

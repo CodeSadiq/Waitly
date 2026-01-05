@@ -12,7 +12,14 @@ export default function PlaceList({ places, selectedPlace, onSelect }) {
 
   return (
     <div className="place-list">
-      {/* SEARCH */}
+      {/* ===============================
+          DRAG HANDLE (ONLY THIS MOVES SHEET)
+      =============================== */}
+      <div className="sheet-handle" style={{color:"red"}} />
+
+      {/* ===============================
+          SEARCH
+      =============================== */}
       <input
         className="place-search"
         type="text"
@@ -25,7 +32,9 @@ export default function PlaceList({ places, selectedPlace, onSelect }) {
         Nearby Locations
       </h3>
 
-      {/* PLACE ITEMS */}
+      {/* ===============================
+          PLACE ITEMS
+      =============================== */}
       {filteredPlaces.map((place) => {
         const isActive = selectedPlace?._id === place._id;
         const category = place.category?.toLowerCase();
@@ -64,7 +73,9 @@ export default function PlaceList({ places, selectedPlace, onSelect }) {
         );
       })}
 
-      {/* EMPTY STATE */}
+      {/* ===============================
+          EMPTY STATE
+      =============================== */}
       {filteredPlaces.length === 0 && (
         <div className="no-results">No places found</div>
       )}

@@ -96,6 +96,11 @@ useEffect(() => {
 }, [newPlaceCoords]);
 
 
+
+
+
+
+
 useEffect(() => {
   if (addMode) {
     document.body.classList.add("add-mode");
@@ -104,12 +109,11 @@ useEffect(() => {
   }
 }, [addMode]);
 
-
 useEffect(() => {
   let startY = 0;
 
-  const sheet = document.querySelector(".home-left");
-  if (!sheet) return;
+  const handle = document.querySelector(".sheet-handle");
+  if (!handle) return;
 
   const onTouchStart = (e) => {
     startY = e.touches[0].clientY;
@@ -132,12 +136,12 @@ useEffect(() => {
     }
   };
 
-  sheet.addEventListener("touchstart", onTouchStart);
-  sheet.addEventListener("touchend", onTouchEnd);
+  handle.addEventListener("touchstart", onTouchStart);
+  handle.addEventListener("touchend", onTouchEnd);
 
   return () => {
-    sheet.removeEventListener("touchstart", onTouchStart);
-    sheet.removeEventListener("touchend", onTouchEnd);
+    handle.removeEventListener("touchstart", onTouchStart);
+    handle.removeEventListener("touchend", onTouchEnd);
   };
 }, []);
 
