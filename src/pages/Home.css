@@ -494,9 +494,9 @@ body.list-collapsed .home-center {
    PLACE LIST SLIDER / HANDLE
 ================================ */
 .sheet-handle {
-  width: 50px;
-  height: 6px;
-  background: #2563eb;              /* 🔴 RED COLOR */
+  width: 150px;
+  height: 16px;
+  background: #d1d5db;              /* 🔴 RED COLOR */
   border-radius: 999px;
   margin: 0 auto 12px;
 }
