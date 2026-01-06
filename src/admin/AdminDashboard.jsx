@@ -417,7 +417,7 @@ export default function AdminDashboard() {
           </button>
 
           <button onClick={fetchGoogle} disabled={loadingGoogle}>
-            {loadingGoogle ? "Fetching Google…" : "Fetch Google"}
+            {loadingGoogle ? "Fetching Google…" : "Fetch Google (currently not available)"}
           </button>
         </div>
 
