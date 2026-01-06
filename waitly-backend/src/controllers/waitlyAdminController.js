@@ -28,17 +28,65 @@ const buildCounters = (counterNames = []) => {
 /* =====================================================
    FETCH FROM OSM
    ===================================================== */
+/* =====================================================
+   FETCH FROM OSM (SAFE + CATEGORY-AWARE)
+   ===================================================== */
+
+const OSM_CATEGORY_MAP = {
+  // ✅ Amenity based
+  bank: { key: "amenity", value: "bank" },
+  hospital: { key: "amenity", value: "hospital" },
+  police: { key: "amenity", value: "police" },
+  post_office: { key: "amenity", value: "post_office" },
+  college: { key: "amenity", value: "college" },
+  school: { key: "amenity", value: "school" },
+  restaurant: { key: "amenity", value: "restaurant" },
+  cafe: { key: "amenity", value: "cafe" },
+  bus_station: { key: "amenity", value: "bus_station" },
+
+   // 🔥 FIXED ONES
+  courthouse: { key: "amenity", value: "courthouse" },
+  gas_agency: { key: "amenity", value: "fuel" },
+  government: { key: "office", value: "government" },
+
+
+  // 🏛 Government / office
+  passport_office: { key: "government", value: "passport" },
+  electricity_office: { key: "office", value: "utility" },
+  water_office: { key: "office", value: "water_utility" },
+  telecom_office: { key: "office", value: "telecommunication" },
+
+  // 🚆 Transport
+  railway_station: { key: "railway", value: "station" },
+  airport: { key: "aeroway", value: "aerodrome" },
+
+  // 🛍 Commercial
+  mall: { key: "shop", value: "mall" }
+};
+
 export const fetchFromOSM = async (req, res) => {
   try {
     const { category, lat, lng } = req.body;
 
+    if (!category || !lat || !lng) {
+      return res.status(400).json({ message: "Category & location required" });
+    }
+
+    const tag = OSM_CATEGORY_MAP[category];
+
+    // 🔒 Prevent Overpass crash for unsupported categories
+    if (!tag) {
+      console.warn("Unsupported OSM category:", category);
+      return res.json([]);
+    }
+
     const overpassQuery = `
-      [out:json];
-      node
-        ["amenity"="${category}"]
-        (around:20000,${lat},${lng});
-      out body 15;
-    `;
+[out:json][timeout:25];
+node
+  ["${tag.key}"="${tag.value}"]
+  (around:40000,${lat},${lng});
+out body 10;
+`;
 
     const overpassRes = await fetch(
       "https://overpass-api.de/api/interpreter",
@@ -54,18 +102,29 @@ export const fetchFromOSM = async (req, res) => {
 
     const overpassText = await overpassRes.text();
 
-    if (overpassText.startsWith("<")) {
-      console.error("Overpass returned non-JSON:", overpassText.slice(0, 200));
-      return res.status(502).json({ error: "OSM Overpass error" });
+    // ❌ Overpass sometimes returns HTML (rate limit / error page)
+    if (!overpassRes.ok || overpassText.startsWith("<")) {
+      console.error(
+        "Overpass error:",
+        overpassText.slice(0, 200)
+      );
+      return res.status(502).json({
+        message: "OSM service temporarily unavailable"
+      });
     }
 
     const overpassData = JSON.parse(overpassText);
+
+    if (!Array.isArray(overpassData.elements)) {
+      return res.json([]);
+    }
 
     const normalized = [];
 
     for (const p of overpassData.elements) {
       let address = "";
 
+      // 🔄 Reverse geocode (best-effort, never crash)
       try {
         const geoRes = await fetch(
           `https://nominatim.openstreetmap.org/reverse?lat=${p.lat}&lon=${p.lon}&format=json`,
@@ -78,7 +137,6 @@ export const fetchFromOSM = async (req, res) => {
         );
 
         const geoText = await geoRes.text();
-
         if (!geoText.startsWith("<")) {
           const geoData = JSON.parse(geoText);
           address = geoData.display_name || "";
@@ -88,23 +146,26 @@ export const fetchFromOSM = async (req, res) => {
       }
 
       normalized.push({
-        name: p.tags?.name || category,
+        name: p.tags?.name || category.replace(/_/g, " "),
         lat: p.lat,
         lng: p.lon,
         address,
         source: "osm"
       });
 
-      // 🔥 polite delay to avoid rate limit
-      await new Promise((r) => setTimeout(r, 350));
+      // ⏱ Polite delay (prevents 429 bans)
+      await new Promise((r) => setTimeout(r, 300));
     }
 
     res.json(normalized);
   } catch (err) {
-    console.error("OSM ERROR:", err);
-    res.status(500).json({ error: "Failed to fetch from OSM" });
+    console.error("OSM FETCH FAILED:", err);
+    res.status(500).json({
+      message: "Failed to fetch from OSM"
+    });
   }
 };
+
 
 
 

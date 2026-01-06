@@ -1,8 +1,9 @@
 import { useNavigate } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
 import AutoWaitPopup from "../components/AutoWaitPopup";
-import "./PlaceDetails.css"
-export default function PlaceDetails({ place }) {
+import "./PlaceDetails.css";
+
+export default function PlaceDetails({ place, onWaitUpdated }) {
   const navigate = useNavigate();
   const [showWaitPopup, setShowWaitPopup] = useState(false);
   const autoTimerRef = useRef(null);
@@ -11,13 +12,10 @@ export default function PlaceDetails({ place }) {
     ? place.counters
     : [];
 
-
-
   /* =========================
      ⏳ AUTO POPUP (LONG STAY)
      ========================= */
   useEffect(() => {
-    // Always clear old timer
     if (autoTimerRef.current) {
       clearTimeout(autoTimerRef.current);
       autoTimerRef.current = null;
@@ -25,7 +23,6 @@ export default function PlaceDetails({ place }) {
 
     if (!place) return;
 
-    // 🔥 DO NOT trigger auto popup for My Location
     if (place.isUserLocation || place._id === "my-location") return;
 
     autoTimerRef.current = setTimeout(() => {
@@ -44,7 +41,6 @@ export default function PlaceDetails({ place }) {
      🧱 UI
      ========================= */
 
-  // No selection
   if (!place) {
     return (
       <div className="place-details-empty">
@@ -53,11 +49,16 @@ export default function PlaceDetails({ place }) {
     );
   }
 
-  // 🔥 MY LOCATION (SPECIAL CASE)
   if (place.isUserLocation || place._id === "my-location") {
     return (
       <div className="place-details-my-location">
-        <div className="my-location-title">📍 You are here</div>
+        <div className="my-location-title" style={{ display: "flex", flexDirection:"row", justifyContent:"center", alignItems: "center", gap: 6 }}>
+
+<svg width="30" height="30" viewBox="0 0 24 24" fill="#ec4899">
+    <path d="M12 2c-3.87 0-7 3.13-7 7 0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z"/>
+  </svg>
+
+           You are here</div>
         <div className="my-location-subtitle">
           Select a place from the list or map to see details
         </div>
@@ -65,28 +66,33 @@ export default function PlaceDetails({ place }) {
     );
   }
 
-  // ✅ NORMAL PLACE DETAILS
   return (
     <div className="place-details">
-      {/* Header */}
       <div className="place-details-header">
         <h2>{place.name}</h2>
         <span className="rating">⭐ N/A</span>
       </div>
 
-      {/* Address */}
       <p className="place-address">
         {place.address || "Address not available"}
       </p>
 
-      {/* Live Wait Times */}
       <h4 className="section-heading">Live Wait Times</h4>
 
       <div className="wait-times">
         {counters.length > 0 ? (
           counters.map((counter, index) => (
             <div key={index} className="wait-row">
-              <span className="wait-label">⭕ {counter.name}</span>
+              <span className="wait-label"><span className="counter-icon">
+                {<svg width="24" height="24" viewBox="0 0 24 24" fill="none"
+                  xmlns="http://www.w3.org/2000/svg">
+                  <rect x="3" y="10" width="18" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5" />
+                  <rect x="6" y="5" width="12" height="5" rx="1" stroke="currentColor" stroke-width="1.5" />
+                  <circle cx="12" cy="8" r="1.2" fill="currentColor" />
+                </svg>
+                }
+              </span>
+                {counter.name}</span>
               <strong className="wait-value">
                 {counter.normalWait?.avgTime > 0
                   ? `${counter.normalWait.avgTime} min`
@@ -99,13 +105,11 @@ export default function PlaceDetails({ place }) {
         )}
       </div>
 
-      {/* Best Time */}
       <div className="best-time">
         <h4 className="section-heading">Best Time to Visit</h4>
         <p className="muted">🚧 Future Enhancement</p>
       </div>
 
-      {/* Actions */}
       <button
         className="join-queue-btn"
         onClick={() => navigate(`/join-queue/${place._id}`)}
@@ -120,25 +124,20 @@ export default function PlaceDetails({ place }) {
         Update Wait Time
       </button>
 
+      <div
+        className="mobile-back-btn"
+        onClick={() =>
+          window.dispatchEvent(new Event("close-place-details"))
+        }
+      >
+        ← Back
+      </div>
 
-
-
-    <div
-  className="mobile-back-btn"
-  onClick={() =>
-    window.dispatchEvent(new Event("close-place-details"))
-  }
->
-  ← Back
-</div>
-
-
-
-      {/* Popup */}
       {showWaitPopup && (
         <AutoWaitPopup
           place={place}
           onClose={() => setShowWaitPopup(false)}
+          onWaitUpdated={onWaitUpdated}
         />
       )}
     </div>

@@ -106,7 +106,18 @@
 .wait-label {
   font-weight: 500;
   color: #374151;
+  display: flex;
+  align-items: center;
+  gap: 3px;
 }
+
+.counter-icon svg {
+  padding-top: 4px;
+  color: #2563eb; /* blue */
+  display: flex;
+  align-items: center;
+}
+
 
 .wait-value {
   font-weight: 700;

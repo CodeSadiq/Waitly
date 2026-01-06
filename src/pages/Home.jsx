@@ -14,24 +14,36 @@ export default function Home() {
   const [addMode, setAddMode] = useState(false);
   const [newPlaceCoords, setNewPlaceCoords] = useState(null);
 
-  const handleAddPlaceSubmit = async (data) => {
-    try {
-      await fetch(`${API_BASE}/api/admin/pending/add`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...data,
-          source: "user-map"
-        })
-      });
+  /* =========================
+     🔄 REFRESH SINGLE PLACE (NEW)
+     ========================= */
+  const refreshSelectedPlace = async () => {
+    if (!selectedPlace || selectedPlace.isUserLocation) return;
 
-      alert("Place sent for admin approval ✅");
+    try {
+
+      const res = await fetch(
+        `${API_BASE}/api/location/place/${selectedPlace._id}`
+      );
+
+      const updatedPlace = await res.json();
+
+      setSelectedPlace(updatedPlace);
+
+      // 🔥 also update in places list
+      setPlaces((prev) =>
+        prev.map((p) =>
+          p._id === updatedPlace._id ? updatedPlace : p
+        )
+      );
     } catch (err) {
-      alert("Failed to submit place");
+      console.error("Failed to refresh place", err);
     }
   };
 
-  /* 📍 INITIAL LOCATION */
+  /* =========================
+     📍 INITIAL LOCATION
+     ========================= */
   useEffect(() => {
     navigator.geolocation.getCurrentPosition(async (pos) => {
       const coords = {
@@ -41,7 +53,6 @@ export default function Home() {
 
       setUserLocation(coords);
 
-      // 🔥 Virtual "My Location" place
       const myLocationPlace = {
         _id: "my-location",
         name: "My Location",
@@ -53,101 +64,89 @@ export default function Home() {
         `${API_BASE}/api/location/nearby-places?lat=${coords.lat}&lng=${coords.lng}`
       );
       const data = await res.json();
-
       const nearbyPlaces = Array.isArray(data) ? data : [];
 
-      // 🔥 Put My Location at top
       setPlaces([myLocationPlace, ...nearbyPlaces]);
-
-      // 🔥 Select My Location by default
       setSelectedPlace(myLocationPlace);
     });
   }, []);
 
+  /* =========================
+     🔙 CLOSE DETAILS
+     ========================= */
+  useEffect(() => {
+    const handler = () => setSelectedPlace(null);
+    window.addEventListener("close-place-details", handler);
+    return () =>
+      window.removeEventListener("close-place-details", handler);
+  }, []);
 
- 
+  /* =========================
+     🧠 BODY STATES
+     ========================= */
+  useEffect(() => {
+    if (selectedPlace && !selectedPlace.isUserLocation) {
+      document.body.classList.add("details-open");
+    } else {
+      document.body.classList.remove("details-open");
+    }
+  }, [selectedPlace]);
 
   useEffect(() => {
-  const handler = () => setSelectedPlace(null);
-
-  window.addEventListener("close-place-details", handler);
-  return () =>
-    window.removeEventListener("close-place-details", handler);
-}, []);
-
-
-
-useEffect(() => {
-  if (selectedPlace && !selectedPlace.isUserLocation) {
-    document.body.classList.add("details-open");
-  } else {
-    document.body.classList.remove("details-open");
-  }
-}, [selectedPlace]);
-
-
-
-useEffect(() => {
-  if (newPlaceCoords) {
-    document.body.classList.add("add-place-open");
-  } else {
-    document.body.classList.remove("add-place-open");
-  }
-}, [newPlaceCoords]);
-
-
-
-
-
-
-
-useEffect(() => {
-  if (addMode) {
-    document.body.classList.add("add-mode");
-  } else {
-    document.body.classList.remove("add-mode");
-  }
-}, [addMode]);
-
-useEffect(() => {
-  let startY = 0;
-
-  const handle = document.querySelector(".sheet-handle");
-  if (!handle) return;
-
-  const onTouchStart = (e) => {
-    startY = e.touches[0].clientY;
-  };
-
-  const onTouchEnd = (e) => {
-    const endY = e.changedTouches[0].clientY;
-    const diff = startY - endY;
-
-    // Swipe UP → expand
-    if (diff > 50) {
-      document.body.classList.add("list-expanded");
-      document.body.classList.remove("list-collapsed");
+    if (newPlaceCoords) {
+      document.body.classList.add("add-place-open");
+    } else {
+      document.body.classList.remove("add-place-open");
     }
+  }, [newPlaceCoords]);
 
-    // Swipe DOWN → collapse
-    if (diff < -50) {
-      document.body.classList.remove("list-expanded");
-      document.body.classList.add("list-collapsed");
+  useEffect(() => {
+    if (addMode) {
+      document.body.classList.add("add-mode");
+    } else {
+      document.body.classList.remove("add-mode");
     }
-  };
+  }, [addMode]);
 
-  handle.addEventListener("touchstart", onTouchStart);
-  handle.addEventListener("touchend", onTouchEnd);
+  /* =========================
+     📱 SWIPE HANDLER
+     ========================= */
+  useEffect(() => {
+    let startY = 0;
+    const handle = document.querySelector(".sheet-handle");
+    if (!handle) return;
 
-  return () => {
-    handle.removeEventListener("touchstart", onTouchStart);
-    handle.removeEventListener("touchend", onTouchEnd);
-  };
-}, []);
+    const onTouchStart = (e) => {
+      startY = e.touches[0].clientY;
+    };
 
+    const onTouchEnd = (e) => {
+      const endY = e.changedTouches[0].clientY;
+      const diff = startY - endY;
 
+      if (diff > 50) {
+        document.body.classList.add("list-expanded");
+        document.body.classList.remove("list-collapsed");
+      }
 
+      if (diff < -50) {
+        document.body.classList.remove("list-expanded");
+        document.body.classList.add("list-collapsed");
+      }
+    };
 
+    handle.addEventListener("touchstart", onTouchStart);
+    handle.addEventListener("touchend", onTouchEnd);
+
+    return () => {
+      handle.removeEventListener("touchstart", onTouchStart);
+      handle.removeEventListener("touchend", onTouchEnd);
+    };
+  }, []);
+
+  /* =========================
+     🧱 UI
+     ========================= */
   return (
     <div className="home-layout">
       <aside className="home-left">
@@ -159,7 +158,6 @@ useEffect(() => {
       </aside>
 
       <main className="home-center" style={{ position: "relative" }}>
-        {/* ➕ BUTTON */}
         <button
           className={`add-place-btn ${addMode ? "active" : ""}`}
           onClick={() => {
@@ -170,47 +168,42 @@ useEffect(() => {
           {addMode ? "✖" : "+"}
         </button>
 
-        {/* 🧠 USER GUIDANCE */}
         {addMode && (
           <div className="add-place-hint">
             📍 Tap on map to add a new place
           </div>
         )}
 
-        
+        {!userLocation && (
+          <div className="map-loading">
+            <div className="spinner"></div>
+            <p>Map is loading…</p>
+            <p>Please turn on your location.</p>
+          </div>
+        )}
 
-
-  {!userLocation && (
-    <div className="map-loading">
-      <div className="spinner"></div>
-      <p>Map is loading…</p>
-    </div>
-  )}
-
-  {userLocation && (
-    <MapView
-      userLocation={userLocation}
-      places={places}
-      selectedPlace={selectedPlace}
-      onSelectPlace={setSelectedPlace}
-      addMode={addMode}
-      onMapSelect={(coords) => {
-        setNewPlaceCoords(coords);
-        setAddMode(false);
-      }}
-    />
-  )}
-
-
-
-
+        {userLocation && (
+          <MapView
+            userLocation={userLocation}
+            places={places}
+            selectedPlace={selectedPlace}
+            onSelectPlace={setSelectedPlace}
+            addMode={addMode}
+            onMapSelect={(coords) => {
+              setNewPlaceCoords(coords);
+              setAddMode(false);
+            }}
+          />
+        )}
       </main>
 
       <aside className="home-right">
-        <PlaceDetails place={selectedPlace} />
+        <PlaceDetails
+          place={selectedPlace}
+          onWaitUpdated={refreshSelectedPlace} // 🔥 NEW
+        />
       </aside>
 
-      {/* 🔥 ADD PLACE FORM */}
       {newPlaceCoords && (
         <AddPlaceModal
           coords={newPlaceCoords}

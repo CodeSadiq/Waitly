@@ -6,6 +6,7 @@ export default function AdminDashboard() {
   /* ================= STATE ================= */
   const [pending, setPending] = useState([]);
   const [osmResults, setOsmResults] = useState([]);
+  const [fetchMessage, setFetchMessage] = useState("");
 
   const [loadingOSM, setLoadingOSM] = useState(false);
   const [loadingGoogle, setLoadingGoogle] = useState(false);
@@ -106,6 +107,7 @@ export default function AdminDashboard() {
 
     setLoadingOSM(true);
     setOsmResults([]);
+    setFetchMessage("");
 
     try {
       const res = await fetch(`${API_BASE}/api/admin/fetch/osm`, {
@@ -114,9 +116,15 @@ export default function AdminDashboard() {
         body: JSON.stringify(osmForm)
       });
       const data = await res.json();
-      setOsmResults(Array.isArray(data) ? data : []);
+
+      if (!Array.isArray(data) || data.length === 0) {
+        setFetchMessage("No data fetched from OSM. Please retry.");
+        return;
+      }
+
+      setOsmResults(data);
     } catch {
-      alert("OSM fetch failed. Please retry.");
+      setFetchMessage("OSM fetch failed. Please retry.");
     } finally {
       setLoadingOSM(false);
     }
@@ -131,6 +139,7 @@ export default function AdminDashboard() {
 
     setLoadingGoogle(true);
     setOsmResults([]);
+    setFetchMessage("");
 
     try {
       const res = await fetch(`${API_BASE}/api/admin/fetch/google`, {
@@ -139,9 +148,15 @@ export default function AdminDashboard() {
         body: JSON.stringify(osmForm)
       });
       const data = await res.json();
-      setOsmResults(Array.isArray(data) ? data : []);
+
+      if (!Array.isArray(data) || data.length === 0) {
+        setFetchMessage("No data fetched from Google. Please retry.");
+        return;
+      }
+
+      setOsmResults(data);
     } catch {
-      alert("Google fetch failed. Please retry.");
+      setFetchMessage("Google fetch failed. Please retry.");
     } finally {
       setLoadingGoogle(false);
     }
@@ -181,14 +196,8 @@ export default function AdminDashboard() {
         lat: Number(pendingAddPlace.lat),
         lng: Number(pendingAddPlace.lng)
       },
-
-      counters: counters.map((c) => ({
-        name: c
-      })),
-
-      metadata: {
-        source: pendingAddPlace.source || "osm"
-      }
+      counters: counters.map((c) => ({ name: c })),
+      metadata: { source: pendingAddPlace.source || "osm" }
     };
 
     const res = await fetch(`${API_BASE}/api/admin/place/api`, {
@@ -230,23 +239,13 @@ export default function AdminDashboard() {
     });
 
     alert("Place added successfully");
-
-    setManualForm({
-      name: "",
-      category: "bank",
-      address: "",
-      lat: "",
-      lng: ""
-    });
+    setManualForm({ name: "", category: "bank", address: "", lat: "", lng: "" });
     setCounters([]);
   };
 
   /* ================= APPROVE / REJECT ================= */
   const approve = async (id) => {
-    await fetch(
-      `${API_BASE}/api/admin/pending/approve/${id}`,
-      { method: "POST" }
-    );
+    await fetch(`${API_BASE}/api/admin/pending/approve/${id}`, { method: "POST" });
     loadPending();
   };
 
@@ -375,15 +374,26 @@ export default function AdminDashboard() {
         <div className="form-row">
           <select
             value={osmForm.category}
-            onChange={(e) =>
-              setOsmForm({ ...osmForm, category: e.target.value })
-            }
+            onChange={(e) => setOsmForm({ ...osmForm, category: e.target.value })}
           >
             <option value="bank">Bank</option>
             <option value="hospital">Hospital</option>
+            <option value="government">Government Office</option>
+            <option value="courthouse">Courthouse</option>
+            <option value="police">Police Station</option>
             <option value="college">College</option>
+            <option value="school">School</option>
+            <option value="post_office">Post Office</option>
+            <option value="passport_office">Passport Office</option>
+            <option value="railway_station">Railway Station</option>
+            <option value="bus_station">Bus Station</option>
             <option value="restaurant">Restaurant</option>
             <option value="cafe">Cafe</option>
+            <option value="mall">Mall</option>
+            <option value="electricity_office">Electricity Office</option>
+            <option value="water_office">Water Office</option>
+            <option value="gas_agency">Gas Agency</option>
+            <option value="telecom_office">Telecom Office</option>
           </select>
 
           <input
@@ -410,6 +420,8 @@ export default function AdminDashboard() {
             {loadingGoogle ? "Fetching Google…" : "Fetch Google"}
           </button>
         </div>
+
+        {fetchMessage && <p className="error-text">{fetchMessage}</p>}
 
         {osmResults.map((p, i) => (
           <div key={i} className="result-item">
@@ -508,8 +520,22 @@ export default function AdminDashboard() {
           >
             <option value="bank">Bank</option>
             <option value="hospital">Hospital</option>
+            <option value="government">Government Office</option>
+            <option value="courthouse">Courthouse</option>
+            <option value="police">Police Station</option>
             <option value="college">College</option>
+            <option value="school">School</option>
+            <option value="post_office">Post Office</option>
+            <option value="passport_office">Passport Office</option>
+            <option value="railway_station">Railway Station</option>
+            <option value="bus_station">Bus Station</option>
             <option value="restaurant">Restaurant</option>
+            <option value="cafe">Cafe</option>
+            <option value="mall">Mall</option>
+            <option value="electricity_office">Electricity Office</option>
+            <option value="water_office">Water Office</option>
+            <option value="gas_agency">Gas Agency</option>
+            <option value="telecom_office">Telecom Office</option>
           </select>
 
           <input

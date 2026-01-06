@@ -6,10 +6,14 @@ import {
 
 import Place from "../models/Place.js";
 import { submitPlaceByUser } from "../controllers/locationController.js";
+import { updateWaitTime } from "../controllers/waitController.js";
+
+
 
 const router = express.Router();
 
 
+router.post("/update-wait", updateWaitTime);
 
 router.post("/submit-place", submitPlaceByUser);
 
