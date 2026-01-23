@@ -5,6 +5,15 @@ import PlaceDetails from "./PlaceDetails";
 import AddPlaceModal from "../components/AddPlaceModal";
 import "./Home.css";
 import API_BASE from "../config/api";
+import { io } from "socket.io-client";
+
+/* =========================
+   🔌 SOCKET (SINGLE INSTANCE)
+   ========================= */
+const socket = io(API_BASE, {
+  transports: ["websocket"],
+  withCredentials: true
+});
 
 export default function Home() {
   const [places, setPlaces] = useState([]);
@@ -15,31 +24,30 @@ export default function Home() {
   const [newPlaceCoords, setNewPlaceCoords] = useState(null);
 
   /* =========================
-     🔄 REFRESH SINGLE PLACE (NEW)
+     ⚡ LIVE WAIT UPDATE (SOCKET)
      ========================= */
-  const refreshSelectedPlace = async () => {
-    if (!selectedPlace || selectedPlace.isUserLocation) return;
+  useEffect(() => {
+    socket.on("wait-updated", ({ placeId, counters }) => {
+  if (!Array.isArray(counters)) return; // 🛡️ safety guard
 
-    try {
+  setSelectedPlace((prev) =>
+    prev && prev._id === placeId
+      ? { ...prev, counters }
+      : prev
+  );
 
-      const res = await fetch(
-        `${API_BASE}/api/location/place/${selectedPlace._id}`
-      );
+  setPlaces((prev) =>
+    prev.map((p) =>
+      p._id === placeId ? { ...p, counters } : p
+    )
+  );
+});
 
-      const updatedPlace = await res.json();
 
-      setSelectedPlace(updatedPlace);
-
-      // 🔥 also update in places list
-      setPlaces((prev) =>
-        prev.map((p) =>
-          p._id === updatedPlace._id ? updatedPlace : p
-        )
-      );
-    } catch (err) {
-      console.error("Failed to refresh place", err);
-    }
-  };
+    return () => {
+      socket.off("wait-updated");
+    };
+  }, []);
 
   /* =========================
      📍 INITIAL LOCATION
@@ -198,10 +206,7 @@ export default function Home() {
       </main>
 
       <aside className="home-right">
-        <PlaceDetails
-          place={selectedPlace}
-          onWaitUpdated={refreshSelectedPlace} // 🔥 NEW
-        />
+        <PlaceDetails place={selectedPlace} />
       </aside>
 
       {newPlaceCoords && (

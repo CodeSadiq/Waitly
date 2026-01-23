@@ -1,4 +1,5 @@
 import Place from "../models/Place.js";
+import { io } from "../server.js"; // 🔹 socket instance
 
 export const updateWaitTime = async (req, res) => {
   try {
@@ -13,16 +14,25 @@ export const updateWaitTime = async (req, res) => {
       return res.status(404).json({ message: "Place not found" });
     }
 
+    /* ===============================
+       🔹 NORMALIZE COUNTER NAMES
+       =============================== */
+    const normalize = (str) =>
+      String(str).toLowerCase().replace(/\s+/g, "").trim();
+
     const targetCounter = place.counters.find(
-      (c) => c.name.toLowerCase() === counter.toLowerCase()
+      (c) => normalize(c.name) === normalize(counter)
     );
 
     if (!targetCounter) {
       return res.status(404).json({ message: "Counter not found" });
     }
 
-    const oldAvg = targetCounter.normalWait.avgTime;
-    const oldCount = targetCounter.normalWait.reportsCount;
+    /* ===============================
+       🔢 CALCULATE NEW AVERAGE
+       =============================== */
+    const oldAvg = targetCounter.normalWait.avgTime || 0;
+    const oldCount = targetCounter.normalWait.reportsCount || 0;
 
     const newCount = oldCount + 1;
     const newAvg =
@@ -32,9 +42,28 @@ export const updateWaitTime = async (req, res) => {
     targetCounter.normalWait.reportsCount = newCount;
     targetCounter.normalWait.lastUpdated = new Date();
 
+    /* ===============================
+       💾 SAVE
+       =============================== */
     await place.save();
 
-    res.json({ success: true });
+    /* ===============================
+       🔥 REAL-TIME SOCKET EMIT (FIXED)
+       =============================== */
+    io.emit("wait-updated", {
+      placeId: place._id.toString(),
+      counters: place.counters   // ✅ FULL ARRAY (CRITICAL FIX)
+    });
+
+    /* ===============================
+       ✅ API RESPONSE
+       =============================== */
+    res.json({ 
+      success: true,
+      placeId: place._id.toString(),
+      counters: place.counters
+    });
+
   } catch (err) {
     console.error("WAIT UPDATE ERROR:", err);
     res.status(500).json({ error: "Failed to update wait time" });

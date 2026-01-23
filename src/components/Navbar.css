@@ -111,6 +111,7 @@
 
 /* ADMIN / STAFF BUTTON */
 .admin-btn {
+  display: none;
   padding: 8px 14px;
   background: #111827;
   color: #ffffff;

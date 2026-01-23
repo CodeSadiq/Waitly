@@ -1,21 +1,28 @@
-import { useState } from "react";
-import {
-  dismissPopup,
-} from "../utils/waitStorage.js";
+import { useState, useRef } from "react";
+import { dismissPopup } from "../utils/waitStorage.js";
 import "./AutoWaitPopup.css";
 import API_BASE from "../config/api";
 
 export default function AutoWaitPopup({ place, onClose, onWaitUpdated }) {
-  const [step, setStep] = useState(1); // 1 → ask, 2 → wait, 3 → counter
+  const [step, setStep] = useState(1);
   const [wait, setWait] = useState(20);
   const [counter, setCounter] = useState("");
   const [otherCounter, setOtherCounter] = useState("");
 
-  /* ================= GET COUNTERS FROM PLACE ================= */
+  /* =====================================================
+     🔒 FIX: PERSIST ORIGINAL COUNTERS (DO NOT LOSE THEM)
+     ===================================================== */
+  const initialCountersRef = useRef(
+    Array.isArray(place?.counters) && place.counters.length > 0
+      ? place.counters.map((c) => c.name)
+      : ["General"]
+  );
+
+  /* ================= GET COUNTERS (SAFE) ================= */
   const counters =
     Array.isArray(place?.counters) && place.counters.length > 0
       ? place.counters.map((c) => c.name)
-      : ["General"];
+      : initialCountersRef.current;
 
   const goNext = () => setStep((s) => s + 1);
   const goBack = () => setStep((s) => s - 1);
@@ -25,7 +32,7 @@ export default function AutoWaitPopup({ place, onClose, onWaitUpdated }) {
     onClose();
   };
 
-  /* ================= SUBMIT WAIT (FIXED) ================= */
+  /* ================= SUBMIT WAIT ================= */
   const submitWait = async () => {
     const selectedCounter =
       counter === "other"
@@ -33,17 +40,17 @@ export default function AutoWaitPopup({ place, onClose, onWaitUpdated }) {
         : counter;
 
     try {
-    await fetch(`${API_BASE}/api/location/update-wait`, {
+      await fetch(`${API_BASE}/api/location/update-wait`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          placeId: place._id,          // 🔥 MongoDB ID
+          placeId: place._id,
           counter: selectedCounter,
           waitTime: wait
         })
       });
 
-      // 🔥 Tell Home.jsx to re-fetch updated place
+      // 🔥 re-fetch updated place (Home.jsx)
       if (typeof onWaitUpdated === "function") {
         await onWaitUpdated();
       }
@@ -58,7 +65,7 @@ export default function AutoWaitPopup({ place, onClose, onWaitUpdated }) {
     <div className="modal-overlay">
       <div className="modal-box">
 
-        {/* ================= STEP 1 — ASK ================= */}
+        {/* STEP 1 */}
         {step === 1 && (
           <>
             <h3>{place.name}</h3>
@@ -75,7 +82,7 @@ export default function AutoWaitPopup({ place, onClose, onWaitUpdated }) {
           </>
         )}
 
-        {/* ================= STEP 2 — WAIT TIME ================= */}
+        {/* STEP 2 */}
         {step === 2 && (
           <>
             <h3>{place.name}</h3>
@@ -103,7 +110,7 @@ export default function AutoWaitPopup({ place, onClose, onWaitUpdated }) {
           </>
         )}
 
-        {/* ================= STEP 3 — COUNTER ================= */}
+        {/* STEP 3 */}
         {step === 3 && (
           <>
             <h3>{place.name}</h3>
@@ -113,9 +120,7 @@ export default function AutoWaitPopup({ place, onClose, onWaitUpdated }) {
               {counters.map((c) => (
                 <button
                   key={c}
-                  className={`counter-btn ${
-                    counter === c ? "active" : ""
-                  }`}
+                  className={`counter-btn ${counter === c ? "active" : ""}`}
                   onClick={() => setCounter(c)}
                 >
                   {c}
@@ -123,9 +128,7 @@ export default function AutoWaitPopup({ place, onClose, onWaitUpdated }) {
               ))}
 
               <button
-                className={`counter-btn ${
-                  counter === "other" ? "active" : ""
-                }`}
+                className={`counter-btn ${counter === "other" ? "active" : ""}`}
                 onClick={() => setCounter("other")}
               >
                 Other
@@ -137,9 +140,7 @@ export default function AutoWaitPopup({ place, onClose, onWaitUpdated }) {
                 className="other-input"
                 placeholder="Enter other counter (optional)"
                 value={otherCounter}
-                onChange={(e) =>
-                  setOtherCounter(e.target.value)
-                }
+                onChange={(e) => setOtherCounter(e.target.value)}
               />
             )}
 
