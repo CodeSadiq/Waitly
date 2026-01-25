@@ -6,47 +6,18 @@ import "./Navbar.css";
 export default function Navbar() {
   const navigate = useNavigate();
 
-  const [menuOpen, setMenuOpen] = useState(false);   // hamburger menu
-  const [profileOpen, setProfileOpen] = useState(false); // profile dropdown
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
 
-  const auth = JSON.parse(localStorage.getItem("auth"));
+  const role = localStorage.getItem("waitly_role");
 
   const handleLogout = () => {
-    localStorage.removeItem("auth");
+    localStorage.removeItem("waitly_role");
     setMenuOpen(false);
     setProfileOpen(false);
     navigate("/login");
   };
 
-
-  /* =====================================================
-   🚨 DEV ONLY: TEMP ADMIN AUTO LOGIN (REMOVE LATER)
-   ===================================================== */
-useEffect(() => {
-  // ⚠️ REMOVE THIS BLOCK WHEN AUTH IS READY
-  const DEV_AUTO_ADMIN = true; // ← set false or delete block later
-
-  if (DEV_AUTO_ADMIN) {
-    const existingAuth = JSON.parse(localStorage.getItem("auth"));
-
-    if (!existingAuth) {
-      const adminAuth = {
-        name: "Dev Admin",
-        role: "admin",
-        token: "dev-token-no-auth"
-      };
-
-      localStorage.setItem("auth", JSON.stringify(adminAuth));
-      navigate("/admin"); // routes to AdminDashboard.jsx
-    }
-  }
-}, [navigate]);
-
-
-
-
-
-  // Close hamburger on route change
   useEffect(() => {
     return () => {
       setMenuOpen(false);
@@ -54,41 +25,29 @@ useEffect(() => {
     };
   }, []);
 
-
   useEffect(() => {
-  if (menuOpen) {
-    document.body.classList.add("menu-open");
-  } else {
-    document.body.classList.remove("menu-open");
-  }
+    if (menuOpen) document.body.classList.add("menu-open");
+    else document.body.classList.remove("menu-open");
 
-  return () => {
-    document.body.classList.remove("menu-open");
-  };
-}, [menuOpen]);
-
+    return () => document.body.classList.remove("menu-open");
+  }, [menuOpen]);
 
   return (
     <header className="navbar-wrapper">
       <div className="navbar">
-        {/* ================= LEFT (LOGO) ================= */}
+        {/* LEFT */}
         <div className="nav-left" onClick={() => navigate("/")}>
           <img src={Logo} alt="logo" style={{ height: "28px" }} />
           <span>WAITLY</span>
         </div>
 
-        {/* ================= HAMBURGER ================= */}
-        <button
-          className="hamburger"
-          onClick={() => setMenuOpen(!menuOpen)}
-          aria-label="Toggle navigation"
-        >
+        {/* HAMBURGER */}
+        <button className="hamburger" onClick={() => setMenuOpen(!menuOpen)}>
           ☰
         </button>
 
-        {/* ================= NAV MENU (DESKTOP + MOBILE) ================= */}
+        {/* CENTER */}
         <nav className={`nav-center ${menuOpen ? "open" : ""}`}>
-          {/* PRIMARY LINKS */}
           <NavLink to="/" onClick={() => setMenuOpen(false)}>
             Home
           </NavLink>
@@ -101,9 +60,16 @@ useEffect(() => {
             Contact
           </NavLink>
 
-          {/* ================= AUTH / ADMIN (MOBILE VIEW) ================= */}
+          {/* ✅ MY TICKET (USER ONLY) */}
+          {role === "USER" && (
+            <NavLink to="/my-ticket" onClick={() => setMenuOpen(false)}>
+              My Ticket
+            </NavLink>
+          )}
+
+          {/* MOBILE AUTH */}
           <div className="mobile-auth">
-            {!auth ? (
+            {!role ? (
               <button
                 className="login-btn"
                 onClick={() => {
@@ -115,33 +81,30 @@ useEffect(() => {
               </button>
             ) : (
               <>
-                {/* ADMIN BUTTON (EXPLICIT) */}
-                {auth.role === "admin" && (
+                {role === "ADMIN" && (
                   <button
                     className="admin-btn"
                     onClick={() => {
                       setMenuOpen(false);
-                      navigate("/admin");
+                      navigate("/admin/dashboard");
                     }}
                   >
                     Admin Dashboard
                   </button>
                 )}
 
-                {/* STAFF BUTTON */}
-                {auth.role === "staff" && (
+                {role === "STAFF" && (
                   <button
                     className="admin-btn"
                     onClick={() => {
                       setMenuOpen(false);
-                      navigate("/staff");
+                      navigate("/staff/dashboard");
                     }}
                   >
                     Staff Dashboard
                   </button>
                 )}
 
-                {/* LOGOUT */}
                 <button className="logout-btn" onClick={handleLogout}>
                   Logout
                 </button>
@@ -150,45 +113,48 @@ useEffect(() => {
           </div>
         </nav>
 
-        {/* ================= RIGHT (DESKTOP ONLY) ================= */}
+        {/* RIGHT DESKTOP */}
         <div className="nav-right">
-          {!auth ? (
-            <button
-              className="login-btn"
-              onClick={() => navigate("/login")}
-            >
+          {!role ? (
+            <button className="login-btn" onClick={() => navigate("/login")}>
               Login
             </button>
           ) : (
             <>
-              {/* ADMIN BUTTON (DESKTOP) */}
-              {auth.role === "admin" && (
+              {/* ✅ MY TICKET DESKTOP */}
+              {role === "USER" && (
+                <button
+                  className="ticket-btn"
+                  onClick={() => navigate("/my-ticket")}
+                >
+                  My Ticket
+                </button>
+              )}
+
+              {role === "ADMIN" && (
                 <button
                   className="admin-btn"
-                  onClick={() => navigate("/admin")}
+                  onClick={() => navigate("/admin/dashboard")}
                 >
                   Admin
                 </button>
               )}
 
-              {auth.role === "staff" && (
+              {role === "STAFF" && (
                 <button
                   className="admin-btn"
-                  onClick={() => navigate("/staff")}
+                  onClick={() => navigate("/staff/dashboard")}
                 >
                   Staff
                 </button>
               )}
 
-              {/* PROFILE DROPDOWN */}
               <div className="profile">
                 <span onClick={() => setProfileOpen(!profileOpen)}>👤</span>
 
                 {profileOpen && (
                   <div className="dropdown">
-                    <p className="name">{auth.name}</p>
-                    <p className="role">{auth.role.toUpperCase()}</p>
-
+                    <p className="role">{role}</p>
                     <button onClick={handleLogout} className="logout">
                       Logout
                     </button>

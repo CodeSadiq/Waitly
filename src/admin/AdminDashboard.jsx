@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import "./AdminDashboard.css";
 import API_BASE from "../config/api";
+import { adminFetch } from "../utils/adminFetch";
 
 export default function AdminDashboard() {
   /* ================= STATE ================= */
@@ -83,10 +84,19 @@ export default function AdminDashboard() {
     setCounters([...counters, name]);
   };
 
+  /* ================= LOGOUT ================= */
+  const logout = async () => {
+    try {
+      await adminFetch("/api/auth/logout", { method: "POST" });
+    } catch {}
+    localStorage.removeItem("waitly_role");
+    window.location.href = "/login";
+  };
+
   /* ================= LOAD PENDING ================= */
   const loadPending = async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/admin/pending`);
+      const res = await adminFetch("/api/admin/pending");
       const data = await res.json();
       setPending(Array.isArray(data) ? data : []);
     } catch (err) {
@@ -110,7 +120,7 @@ export default function AdminDashboard() {
     setFetchMessage("");
 
     try {
-      const res = await fetch(`${API_BASE}/api/admin/fetch/osm`, {
+      const res = await adminFetch("/api/admin/fetch/osm", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(osmForm)
@@ -142,7 +152,7 @@ export default function AdminDashboard() {
     setFetchMessage("");
 
     try {
-      const res = await fetch(`${API_BASE}/api/admin/fetch/google`, {
+      const res = await adminFetch("/api/admin/fetch/google", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(osmForm)
@@ -200,7 +210,7 @@ export default function AdminDashboard() {
       metadata: { source: pendingAddPlace.source || "osm" }
     };
 
-    const res = await fetch(`${API_BASE}/api/admin/place/api`, {
+    const res = await adminFetch("/api/admin/place/api", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
@@ -232,7 +242,7 @@ export default function AdminDashboard() {
       return;
     }
 
-    await fetch(`${API_BASE}/api/admin/place/manual`, {
+    await adminFetch("/api/admin/place/manual", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...manualForm, counters })
@@ -245,15 +255,12 @@ export default function AdminDashboard() {
 
   /* ================= APPROVE / REJECT ================= */
   const approve = async (id) => {
-    await fetch(`${API_BASE}/api/admin/pending/approve/${id}`, { method: "POST" });
+    await adminFetch(`/api/admin/pending/approve/${id}`, { method: "POST" });
     loadPending();
   };
 
   const reject = async (id) => {
-    await fetch(
-      `${API_BASE}/api/admin/pending/reject/${id}`,
-      { method: "POST" }
-    );
+    await adminFetch(`/api/admin/pending/reject/${id}`, { method: "POST" });
     loadPending();
   };
 
@@ -267,9 +274,7 @@ export default function AdminDashboard() {
       return;
     }
 
-    await fetch(
-      `${API_BASE}/api/admin/pending/approve-edited/${editingPlace._id}`,
-      {
+    await adminFetch(`/api/admin/pending/approve-edited/${editingPlace._id}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(parsed)
@@ -287,8 +292,7 @@ export default function AdminDashboard() {
     setDbError("");
 
     try {
-      const res = await fetch(`${API_BASE}/api/admin/places`);
-      if (!res.ok) throw new Error();
+      const res = await adminFetch("/api/admin/places");
       const data = await res.json();
       setDbPlaces(Array.isArray(data) ? data : []);
     } catch {
@@ -299,42 +303,34 @@ export default function AdminDashboard() {
   };
 
   /* ================= SAVE DB EDIT ================= */
-  const saveDbEdit = async () => {
-    let parsed;
-    try {
-      parsed = JSON.parse(dbJsonText);
-    } catch {
-      alert("Invalid JSON format");
-      return;
-    }
+const saveDbEdit = async () => {
+  let parsed;
 
-    try {
-      const res = await fetch(
-        `${API_BASE}/api/admin/place/update/${editingDbPlace._id}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(parsed)
-        }
-      );
-      if (!res.ok) throw new Error();
-      alert("Database place updated");
-      setEditingDbPlace(null);
-      setDbJsonText("");
-      loadDbPlaces();
-    } catch {
-      alert("Update API not available");
-    }
-  };
+  try {
+    parsed = JSON.parse(dbJsonText);
+
+    await adminFetch(`/api/admin/place/update/${editingDbPlace._id}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(parsed),
+    });
+
+    alert("Database place updated");
+    setEditingDbPlace(null);
+    setDbJsonText("");
+    loadDbPlaces();
+
+  } catch (error) {
+    console.error(error);
+    alert("Update API not available or invalid JSON");
+  }
+};
+
 
   /* ================= DELETE DB PLACE ================= */
   const deleteDbPlace = async (id) => {
     if (!window.confirm("Delete this place permanently?")) return;
-
-    await fetch(`${API_BASE}/api/admin/place/${id}`, {
-      method: "DELETE"
-    });
-
+    await adminFetch(`/api/admin/place/${id}`, { method: "DELETE" });
     loadDbPlaces();
   };
 
@@ -365,6 +361,7 @@ export default function AdminDashboard() {
   /* ================= UI ================= */
   return (
     <div className="admin-page">
+      <button className="logout-btn" onClick={logout}>Logout</button>
       <h1 className="admin-title">WAITLY Admin Dashboard</h1>
 
       {/* ================= FETCH ================= */}

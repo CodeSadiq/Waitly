@@ -7,6 +7,11 @@ import Navbar from "./components/Navbar.jsx";
 import "./index.css";
 import AdminDashboard from "./admin/AdminDashboard";
 import AddPlace from "./admin/AdminPlace";
+import StaffDashboard from "./pages/StaffDashboard.jsx";
+import MyTicket from "./pages/MyTicket";
+
+
+
 
 export default function App() {
   return (
@@ -17,9 +22,11 @@ export default function App() {
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
-          <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/add" element={<AddPlace />} />
         <Route path="/join-queue/:placeId" element={<JoinQueue />} />
+         <Route path="/my-ticket" element={<MyTicket />} />
+         <Route path="/admin/dashboard" element={<AdminDashboard />} />
+         <Route path="/staff/dashboard" element={<StaffDashboard />} />
       </Routes>
     </>
   );

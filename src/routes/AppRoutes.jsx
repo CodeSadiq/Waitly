@@ -22,14 +22,7 @@ export default function AppRoutes() {
         }
       />
 
-      <Route
-        path="/staff"
-        element={
-          <ProtectedRoute role="staff">
-            <StaffDashboard />
-          </ProtectedRoute>
-        }
-      />
+       <Route path="/staff" element={<StaffDashboard />} />
     </Routes>
   );
 }

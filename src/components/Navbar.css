@@ -290,3 +290,16 @@
     transform: translateY(0);
   }
 }
+.ticket-btn {
+  background: #2563eb;
+  color: white;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.ticket-btn:hover {
+  background: #1d4ed8;
+}

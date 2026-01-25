@@ -10,13 +10,13 @@ export default function JoinQueue() {
   const [place, setPlace] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // form → payment → success
   const [step, setStep] = useState("form");
-  const [token, setToken] = useState(null);
 
   const [form, setForm] = useState({
     name: "",
     dob: "",
-    counterIndex: "",   // ✅ single source of truth
+    counterIndex: "",
     slotDateTime: ""
   });
 
@@ -52,44 +52,48 @@ export default function JoinQueue() {
     return <p style={{ padding: 20 }}>Invalid place</p>;
   }
 
-  /* =========================
-     COUNTER LOGIC
-     ========================= */
   const counters = place.counters || [];
 
-  const selectedCounter =
-    form.counterIndex !== ""
-      ? counters[Number(form.counterIndex)]
-      : null;
-
-  const peopleAhead =
-    selectedCounter?.queueWait?.peopleAhead ?? 0;
-
-  const estimatedWait =
-    selectedCounter?.queueWait?.avgTime ?? 0;
-
-  /* =========================
-     TOKEN GENERATION
-     ========================= */
-  const generateToken = () => ({
-    tokenNo: Math.floor(100 + Math.random() * 900),
-    placeName: place.name,
-    counter: selectedCounter?.name,
-    peopleAhead,
-    estimatedWait,
-    time: new Date().toLocaleTimeString()
-  });
-
-  const handlePay = () => {
-    setToken(generateToken());
-    setStep("success");
+  const proceedToPayment = () => {
+    setStep("payment");
   };
 
   /* =========================
-     UI
+     STEP 2 → CREATE TOKEN
      ========================= */
+  const confirmPayment = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/queue/join`, {
+        method: "POST",
+        credentials: "include",       // 🔥 ONLY CHANGE
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          placeId,
+          counterIndex: form.counterIndex,
+          userName: form.name,
+          userDob: form.dob
+        })
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || "Unable to create ticket");
+      }
+
+      const data = await res.json();
+
+      localStorage.setItem("waitly_token_id", data.tokenId);
+
+      setStep("success");
+    } catch (err) {
+      console.error(err);
+      alert(err.message || "Unable to create ticket");
+    }
+  };
+
   return (
     <div className="join-page">
+
       {step === "form" && (
         <div className="join-card">
           <h2>Join Virtual Queue</h2>
@@ -106,20 +110,6 @@ export default function JoinQueue() {
             }
           />
 
-          <input
-            type="text"
-            placeholder="Date of Birth"
-            onFocus={(e) => (e.target.type = "date")}
-            onBlur={(e) =>
-              !e.target.value && (e.target.type = "text")
-            }
-            value={form.dob}
-            onChange={(e) =>
-              setForm({ ...form, dob: e.target.value })
-            }
-          />
-
-          {/* ✅ COUNTER SELECT */}
           <select
             value={form.counterIndex}
             onChange={(e) =>
@@ -136,19 +126,6 @@ export default function JoinQueue() {
               </option>
             ))}
           </select>
-
-          {/* ✅ LIVE COUNTER INFO */}
-          {selectedCounter && (
-            <div className="counter-info">
-              <p>
-                <strong>People ahead:</strong> {peopleAhead}
-              </p>
-              <p>
-                <strong>Estimated wait:</strong>{" "}
-                {estimatedWait} min
-              </p>
-            </div>
-          )}
 
           <div className="input-wrapper">
             {!form.slotDateTime && (
@@ -172,9 +149,9 @@ export default function JoinQueue() {
           <button
             className="pay-btn"
             disabled={!form.name || form.counterIndex === ""}
-            onClick={handlePay}
+            onClick={proceedToPayment}
           >
-            Pay ₹20 & Join
+            Pay ₹20 & Continue
           </button>
 
           <button
@@ -186,25 +163,56 @@ export default function JoinQueue() {
         </div>
       )}
 
-      {/* ================= SUCCESS ================= */}
-      {step === "success" && token && (
+      {step === "payment" && (
         <div className="join-card">
-          <h2>Token Confirmed 🎉</h2>
+          <h2>Confirm Payment</h2>
 
-          <div className="token-box">
-            <p><strong>Token No:</strong> {token.tokenNo}</p>
-            <p><strong>Place:</strong> {token.placeName}</p>
-            <p><strong>Counter:</strong> {token.counter}</p>
-            <p><strong>People Ahead:</strong> {token.peopleAhead}</p>
-            <p>
-              <strong>Estimated Wait:</strong>{" "}
-              {token.estimatedWait} min
-            </p>
-            <p><strong>Issued At:</strong> {token.time}</p>
-          </div>
+          <p>
+            You are paying <strong>₹20</strong> to join the virtual
+            queue at <strong>{place.name}</strong>.
+          </p>
+
+          <p style={{ fontSize: 13, color: "#6b7280" }}>
+            (Payment gateway will be added later)
+          </p>
 
           <button
             className="pay-btn"
+            onClick={confirmPayment}
+          >
+            Confirm & Pay ₹20
+          </button>
+
+          <button
+            className="text-btn"
+            onClick={() => setStep("form")}
+          >
+            Back
+          </button>
+        </div>
+      )}
+
+      {step === "success" && (
+        <div className="join-card">
+          <h2>🎉 Token Generated</h2>
+
+          <p>
+            Your virtual queue ticket has been created successfully.
+          </p>
+
+          <p style={{ fontSize: 14, color: "#6b7280" }}>
+            You can now track live updates in <strong>My Ticket</strong>.
+          </p>
+
+          <button
+            className="pay-btn"
+            onClick={() => navigate("/my-ticket")}
+          >
+            View My Ticket
+          </button>
+
+          <button
+            className="text-btn"
             onClick={() => navigate("/")}
           >
             Back to Home

@@ -10,10 +10,10 @@ import { io } from "socket.io-client";
 /* =========================
    🔌 SOCKET (SINGLE INSTANCE)
    ========================= */
-const socket = io(API_BASE, {
-  transports: ["websocket"],
+const socket = io("http://localhost:5000", {
   withCredentials: true
 });
+
 
 export default function Home() {
   const [places, setPlaces] = useState([]);
