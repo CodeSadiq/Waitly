@@ -10,7 +10,7 @@ import { io } from "socket.io-client";
 /* =========================
    🔌 SOCKET (SINGLE INSTANCE)
    ========================= */
-const socket = io("http://localhost:5000", {
+const socket = io(API_BASE, {
   withCredentials: true
 });
 

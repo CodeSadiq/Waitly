@@ -5,8 +5,10 @@ import { io } from "socket.io-client";
 import "./MyTicket.css";
 import API_BASE from "../config/api";
 
+
 // 🔥 Socket must connect DIRECTLY to backend
-const socket = io("http://localhost:5000", {
+
+const socket = io(API_BASE, {
   withCredentials: true
 });
 

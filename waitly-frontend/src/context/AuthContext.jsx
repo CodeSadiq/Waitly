@@ -1,4 +1,5 @@
 import { createContext, useEffect, useState } from "react";
+import API_BASE from "../config/api";
 
 export const AuthContext = createContext();
 
@@ -9,15 +10,19 @@ export function AuthProvider({ children }) {
   // 🔥 reusable loader (called on app load + after login)
   const loadUser = async () => {
     try {
-      const res = await fetch("/api/auth/me", {
+      const res = await fetch(`${API_BASE}/api/auth/me`, {
         credentials: "include"
       });
 
-      if (!res.ok) throw new Error();
+      if (!res.ok) {
+        setUser(null);
+        return;
+      }
 
       const data = await res.json();
       setUser(data);
-    } catch {
+    } catch (err) {
+      console.error("Auth load error:", err);
       setUser(null);
     } finally {
       setLoading(false);
@@ -35,4 +40,3 @@ export function AuthProvider({ children }) {
     </AuthContext.Provider>
   );
 }
-
