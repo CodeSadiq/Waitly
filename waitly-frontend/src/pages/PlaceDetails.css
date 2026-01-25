@@ -1,22 +1,24 @@
-/* ===============================
+/* ======================================================
    PLACE DETAILS ROOT
-================================ */
+====================================================== */
+
 .place-details {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
   background: #ffffff;
-  padding: 22px;
+  padding: 24px;
   border-radius: 0px;
-  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.06);
+  /* box-shadow: 0 12px 30px rgba(0, 0, 0, 0.06); */
   height: 100%;
   position: relative;
-  overflow:scroll;
+  overflow-y: auto;
 }
 
-/* ===============================
-   EMPTY / MY LOCATION STATE
-================================ */
+/* ======================================================
+   EMPTY STATE
+====================================================== */
+
 .place-details-empty {
   height: 100%;
   display: flex;
@@ -24,38 +26,43 @@
   align-items: center;
   justify-content: center;
   text-align: center;
-  padding: 32px;
+  padding: 40px 24px;
 }
 
 .place-details-empty h1 {
-  font-size: 30px;
+  font-size: 32px;
   font-weight: 800;
   color: #111827;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
+  letter-spacing: -0.5px;
 }
 
 .place-details-empty p {
   font-size: 16px;
   font-weight: 500;
   color: #6b7280;
-  line-height: 1.5;
+  line-height: 1.6;
+  max-width: 420px;
 }
 
-/* ===============================
+/* ======================================================
    HEADER
-================================ */
+====================================================== */
+
 .place-details-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #f1f5f9;
 }
 
 .place-details-header h2 {
   font-size: 22px;
   font-weight: 700;
   color: #111827;
-  line-height: 1.2;
+  line-height: 1.25;
 }
 
 .rating {
@@ -64,85 +71,126 @@
   color: #f59e0b;
 }
 
-/* ===============================
+/* ======================================================
    ADDRESS
-================================ */
+====================================================== */
+
 .place-address {
   font-size: 14.5px;
   color: #4b5563;
-  line-height: 1.55;
+  line-height: 1.6;
 }
 
-/* ===============================
+/* ======================================================
    SECTION HEADING
-================================ */
+====================================================== */
+
 .section-heading {
-  margin-top: 26px;
-  font-size: 15px;
+  margin-top: 22px;
+  font-size: 14px;
   font-weight: 600;
   color: #1f2937;
 }
 
-/* ===============================
+/* ======================================================
    WAIT TIMES
-================================ */
+====================================================== */
+
 .wait-times {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 }
 
 .wait-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 14px;
+  padding: 12px 16px;
   border-radius: 14px;
-  background: #f9fafb;
-  font-size: 16px;
-  box-shadow: inset 0 0 0 1px #e5e7eb;
+  background: #ffffff;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.04),
+              inset 0 0 0 1px #e5e7eb;
+  transition: transform 0.15s ease;
 }
 
+.wait-row:hover {
+  transform: translateY(-1px);
+}
+
+/* COUNTER LABEL */
+
 .wait-label {
-  font-weight: 500;
-  color: #374151;
   display: flex;
   align-items: center;
-  gap: 3px;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 15px;
+  color: #111827;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: #f8fafc;
 }
 
 .counter-icon svg {
-  padding-top: 4px;
-  color: #2563eb; /* blue */
-  display: flex;
-  align-items: center;
+  color: #2563eb;
+  background: #eef2ff;
+  border-radius: 6px;
+  padding: 2px;
 }
 
+/* WAIT VALUE BADGE */
 
 .wait-value {
-  font-weight: 700;
-  color: #111827;
+  font-weight: 800;
+  font-size: 16px;
+  min-width: 72px;
+  text-align: center;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: #f9fafb;
+  box-shadow: inset 0 0 0 1px #e5e7eb;
 }
 
-/* ===============================
-   BEST TIME CARD
-================================ */
+/* COLOR STATES */
+
+.wait-low {
+  color: #16a34a;
+  box-shadow: 0 0 0 1px rgba(22,163,74,0.25);
+}
+
+.wait-medium {
+  color: #f59e0b;
+  box-shadow: 0 0 0 1px rgba(245,158,11,0.3);
+}
+
+.wait-high {
+  color: #dc2626;
+  box-shadow: 0 0 0 1px rgba(220,38,38,0.35);
+}
+
+/* ======================================================
+   BEST TIME
+====================================================== */
+
 .best-time {
-  margin-top: 10px;
-  padding: 5px 14px;
+  margin-top: 12px;
+  padding: 10px 16px;
   border-radius: 14px;
-  background: linear-gradient(135deg, #eef2ff, #f5f7ff);
+  background: linear-gradient(135deg, #eef2ff, #f8faff);
   font-size: 13.5px;
   font-weight: 500;
   color: #1e3a8a;
+  box-shadow: inset 0 0 0 1px #e0e7ff;
 }
 
-/* ===============================
+/* ======================================================
    ACTION BUTTONS
-================================ */
+====================================================== */
+
 .join-queue-btn {
-  margin-top: 6px;
-  padding: 10px;
+  margin-top: 10px;
+  padding: 12px;
   border-radius: 14px;
   font-size: 15px;
   font-weight: 600;
@@ -150,35 +198,37 @@
   cursor: pointer;
   background: linear-gradient(135deg, #2563eb, #1d4ed8);
   color: #ffffff;
-  transition: all 0.2s ease;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
 .join-queue-btn:hover {
   transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(37, 99, 235, 0.35);
 }
 
 .join-queue-btn.secondary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-height: 44px;
   background: #f3f4f6;
-  flex: 0;
-  border-radius: 14px;
+  color: #374151;
 }
 
-/* ===============================
-   MOBILE BOTTOM-SHEET ENHANCEMENTS
-================================ */
+/* ======================================================
+   MOBILE BOTTOM SHEET
+====================================================== */
+
 @media (max-width: 768px) {
   .place-details {
-    gap: 0px;
-    padding: 18px 18px 22px;
+    padding: 20px 18px 22px;
     border-radius: 20px 20px 0 0;
-    box-shadow: 0 -16px 38px rgba(0, 0, 0, 0.24);
+    box-shadow: 0 -18px 38px rgba(0, 0, 0, 0.24);
   }
 
-
-  /* Drag handle (visual only) */
   .place-details::before {
     content: "";
-    width: 42px;
+    width: 44px;
     height: 4px;
     background: #d1d5db;
     border-radius: 4px;
@@ -188,74 +238,22 @@
     transform: translateX(-50%);
   }
 
-  .place-details-header h2 {
-    margin-top: 60px;
-    font-size: 20px;
-    margin-bottom: 10px;
-  }
-  .rating{
-    margin-top: 60px;
-  }
-
-  .place-details-empty h1 {
-    font-size: 26px;
-  }
-
-  .place-details-empty p {
-    font-size: 15px;
-  }
-
-  .section-heading {
-    margin-top: 20px;
-    margin-bottom: 10px;
-  }
-
-  .best-time{
-    margin-bottom: 20px;
+  .place-details-header h2,
+  .rating {
+    margin-top: 56px;
   }
 }
 
-/* ===============================
-   MOBILE CLOSE BUTTON
-================================ */
-.close-details-btn {
-  display: none;
-  position: absolute;
-  top: 14px;
-  right: 14px;
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  border: none;
-  background: #f3f4f6;
-  color: #111827;
-  font-size: 18px;
-  font-weight: 700;
-  cursor: pointer;
-  z-index: 10;
-}
-
-/* SHOW ONLY ON MOBILE */
-@media (max-width: 768px) {
-  .close-details-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-}
-
-
-/* ===============================
-   MY LOCATION TAGLINE
-================================ */
+/* ======================================================
+   LOCATION TEXT
+====================================================== */
 
 .my-location-title {
   font-size: 28px;
   font-weight: 800;
   color: #111827;
   text-align: center;
-  margin-bottom: 8px;
-  letter-spacing: -0.3px;
+  margin-bottom: 10px;
 }
 
 .my-location-subtitle {
@@ -263,48 +261,7 @@
   font-weight: 500;
   color: #6b7280;
   text-align: center;
-  line-height: 1.5;
+  line-height: 1.6;
   max-width: 420px;
   margin: 0 auto;
-}
-
-/* ===============================
-   TABLET
-================================ */
-@media (max-width: 1024px) {
-  .my-location-title {
-    font-size: 24px;
-  }
-
-  .my-location-subtitle {
-    font-size: 15px;
-  }
-}
-
-/* ===============================
-   MOBILE (BOTTOM SHEET FRIENDLY)
-================================ */
-@media (max-width: 768px) {
-  .my-location-title {
-    font-size: 22px;
-    margin-bottom: 6px;
-  }
-
-  .my-location-subtitle {
-    font-size: 14.5px;
-    padding: 0 16px;
-  }
-}
-
-/* ===============================
-   SMALL DEVICES
-================================ */
-@media (max-width: 420px) {
-  .my-location-title {
-    font-size: 20px;
-  }
-
-  .my-location-subtitle {
-    font-size: 14px;
-  }
 }

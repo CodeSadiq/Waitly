@@ -1,5 +1,5 @@
 import { useState } from "react";
-
+import "./PlaceList.css";
 /* ================= ICONS ================= */
 
 const BankIcon = () => (
@@ -177,12 +177,7 @@ export default function PlaceList({ places, selectedPlace, onSelect }) {
               <div className="place-meta">{place.category}</div>
             </div>
 
-            {/* WAIT TIME */}
-            <div className="place-wait">
-              {typeof waitTime === "number" && (
-                <strong>{waitTime}m</strong>
-              )}
-            </div>
+           
           </div>
         );
       })}

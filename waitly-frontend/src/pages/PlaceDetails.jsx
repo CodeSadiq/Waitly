@@ -27,7 +27,6 @@ export default function PlaceDetails({ place, onWaitUpdated }) {
     const handler = (data) => {
       if (data.placeId !== place._id) return;
 
-      /* 🔥 Inform parent (Home.jsx) */
       if (typeof onWaitUpdated === "function") {
         onWaitUpdated(data);
       }
@@ -64,9 +63,6 @@ export default function PlaceDetails({ place, onWaitUpdated }) {
     };
   }, [place?._id]);
 
-  /* =========================
-     🧱 UI
-     ========================= */
   if (!place) {
     return (
       <div className="place-details-empty">
@@ -106,26 +102,35 @@ export default function PlaceDetails({ place, onWaitUpdated }) {
 
       <div className="wait-times">
         {counters.length > 0 ? (
-          counters.map((counter, index) => (
-            <div key={index} className="wait-row">
-              <span className="wait-label">
-                <span className="counter-icon">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                    <rect x="3" y="10" width="18" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.5"/>
-                    <rect x="6" y="5" width="12" height="5" rx="1" stroke="currentColor" strokeWidth="1.5"/>
-                    <circle cx="12" cy="8" r="1.2" fill="currentColor"/>
-                  </svg>
-                </span>
-                {counter.name}
-              </span>
+          counters.map((counter, index) => {
+            const avg = counter.normalWait?.avgTime || 0;
 
-              <strong className="wait-value">
-                {counter.normalWait?.avgTime > 0
-                  ? `${counter.normalWait.avgTime} min`
-                  : "No data"}
-              </strong>
-            </div>
-          ))
+            const waitClass =
+              avg <= 10
+                ? "wait-low"
+                : avg <= 30
+                ? "wait-medium"
+                : "wait-high";
+
+            return (
+              <div key={index} className="wait-row">
+                <span className="wait-label">
+                  <span className="counter-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                      <rect x="3" y="10" width="18" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.5"/>
+                      <rect x="6" y="5" width="12" height="5" rx="1" stroke="currentColor" strokeWidth="1.5"/>
+                      <circle cx="12" cy="8" r="1.2" fill="currentColor"/>
+                    </svg>
+                  </span>
+                  {counter.name}
+                </span>
+
+                <strong className={`wait-value ${waitClass}`}>
+                  {avg > 0 ? `${avg} min` : "No data"}
+                </strong>
+              </div>
+            );
+          })
         ) : (
           <p>No counters available</p>
         )}

@@ -1,4 +1,7 @@
-/* 🔒 Background overlay */
+/* ======================================================
+   BASE MODAL LAYOUT
+====================================================== */
+
 .modal-backdrop {
   position: fixed;
   inset: 0;
@@ -9,9 +12,8 @@
   z-index: 2000;
 }
 
-/* 🧾 Modal card */
 .modal-card {
-  background: #ffffff;
+  background: #fff;
   width: 420px;
   max-width: 92%;
   border-radius: 14px;
@@ -20,7 +22,7 @@
   animation: popIn 0.25s ease-out;
 }
 
-/* ✨ Animation */
+/* Entry animation */
 @keyframes popIn {
   from {
     transform: scale(0.95);
@@ -32,15 +34,30 @@
   }
 }
 
-/* 🏷 Title */
+/* ======================================================
+   HEADINGS
+====================================================== */
+
 .modal-card h3 {
-  margin: 0 0 16px;
+  margin-bottom: 16px;
+  text-align: center;
   font-size: 20px;
   font-weight: 700;
   color: #111827;
 }
 
-/* 🔤 Inputs */
+.modal-card h4 {
+  text-align: left;
+  margin: 14px 0 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+}
+
+/* ======================================================
+   FORM CONTROLS
+====================================================== */
+
 .modal-card input,
 .modal-card select {
   width: 100%;
@@ -50,7 +67,7 @@
   border: 1px solid #d1d5db;
   font-size: 14px;
   outline: none;
-  transition: border 0.2s, box-shadow 0.2s;
+  transition: 0.2s ease;
 }
 
 .modal-card input:focus,
@@ -59,42 +76,97 @@
   box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
 }
 
-/* 🧱 Section heading */
-.modal-card h4 {
-  margin: 14px 0 8px;
-  font-size: 14px;
-  font-weight: 600;
+/* ======================================================
+   COORDINATES
+====================================================== */
+
+.coords-display {
+  margin-top: 8px;
+  padding: 10px 12px;
+  background: #f8f9fb;
+  border: 1px solid #e2e6ef;
+  border-radius: 6px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
   color: #374151;
 }
 
-/* ➕ Add counter button */
-.modal-card button:not(.secondary):not(.submit-btn) {
+/* ======================================================
+   COUNTER SYSTEM
+====================================================== */
+
+.counter-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.counter-tag {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   background: #eef2ff;
   color: #1e40af;
-  border: none;
-  padding: 8px 12px;
+  padding: 6px 12px;
+  border-radius: 999px;
   font-size: 13px;
-  border-radius: 6px;
+}
+
+.counter-tag button {
+  background: none;
+  border: none;
   cursor: pointer;
+  color: #1e40af;
+  font-size: 14px;
+}
+
+.counter-tag button:hover {
+  color: #dc2626;
+}
+
+/* Add counter row */
+
+.counter-input {
+  display: flex;
+  gap: 8px;
   margin-bottom: 14px;
 }
 
-.modal-card button:not(.secondary):not(.submit-btn):hover {
-  background: #e0e7ff;
+.counter-input input {
+  flex: 1;
 }
 
-/* 🧨 Action buttons */
+.counter-input button {
+  background: #2563eb;
+  color: white;
+  border: none;
+  padding: 0 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  height: 2.5rem;
+}
+
+.counter-input button:hover {
+  background: #1e40af;
+}
+
+/* ======================================================
+   ACTION BUTTONS
+====================================================== */
+
 .actions {
   display: flex;
   gap: 10px;
-  margin-top: 10px;
+  margin-top: 12px;
 }
 
-/* ✅ Submit */
 .submit-btn {
   flex: 1;
   background: #2563eb;
-  color: #ffffff;
+  color: white;
   border: none;
   padding: 10px 0;
   border-radius: 8px;
@@ -107,7 +179,6 @@
   background: #1e40af;
 }
 
-/* ❌ Cancel */
 .secondary {
   flex: 1;
   background: #f3f4f6;
@@ -123,7 +194,48 @@
   background: #e5e7eb;
 }
 
-/* 📱 Mobile tweaks */
+/* ======================================================
+   POPUP MESSAGE LAYER
+====================================================== */
+
+.modal-backdrop .modal-backdrop {
+  background: rgba(0, 0, 0, 0.65);
+  z-index: 3000;
+}
+
+.modal-backdrop .modal-card {
+  max-width: 360px;
+  text-align: center;
+  animation: popupBounce 0.25s ease-out;
+}
+
+@keyframes popupBounce {
+  from {
+    transform: scale(0.85);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.modal-card p {
+  margin: 12px 0 16px;
+  font-size: 14px;
+  color: #374151;
+}
+
+.modal-backdrop .modal-card .submit-btn {
+  width: 120px;
+  margin: 0 auto;
+  display: block;
+}
+
+/* ======================================================
+   MOBILE
+====================================================== */
+
 @media (max-width: 480px) {
   .modal-card {
     padding: 18px;
@@ -132,26 +244,4 @@
   .modal-card h3 {
     font-size: 18px;
   }
-}
-
-.coords-display {
-  margin-top: 10px;
-  padding: 10px 12px;
-  background: #f8f9fb;
-  border: 1px solid #e2e6ef;
-  border-radius: 6px;
-}
-
-.coords-display label {
-  display: block;
-  font-size: 13px;
-  color: #555;
-  margin-bottom: 6px;
-}
-
-.coords-values {
-  display: flex;
-  justify-content: space-between;
-  font-size: 14px;
-  color: #222;
 }

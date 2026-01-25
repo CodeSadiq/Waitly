@@ -9,19 +9,29 @@ export default function AddPlaceModal({ coords, onClose }) {
     address: "",
     lat: coords?.lat || "",
     lng: coords?.lng || "",
-    counters: ["General"] // 🔥 counter NAMES only
+    counters: ["General"]
   });
+
+  const [otherCategory, setOtherCategory] = useState("");
+  const [counterInput, setCounterInput] = useState("");
+  const [successPopup, setSuccessPopup] = useState(false);
+  const [popupMsg, setPopupMsg] = useState("");
+
+  const showPopup = (msg) => setPopupMsg(msg);
 
   const submit = async () => {
     if (!form.name) {
-      alert("Place name required");
+      showPopup("Place name required");
       return;
     }
 
-    if (!form.counters.length || form.counters.some((c) => !c.trim())) {
-      alert("Please enter at least one valid counter name");
+    if (!form.counters.length) {
+      showPopup("Please add at least one counter");
       return;
     }
+
+    const finalCategory =
+      form.category === "other" ? otherCategory.trim() : form.category;
 
     try {
       const res = await fetch(`${API_BASE}/api/admin/pending/add`, {
@@ -29,29 +39,44 @@ export default function AddPlaceModal({ coords, onClose }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: form.name.trim(),
-          category: form.category,
+          category: finalCategory,
           address: form.address || "",
           location: {
             lat: Number(form.lat),
             lng: Number(form.lng)
           },
-          counters: form.counters // 🔥 names only
+          counters: form.counters
         })
       });
 
       if (!res.ok) {
-        const err = await res.json();
-        console.error("Submit failed:", err);
-        alert("Failed to submit place");
+        showPopup("Failed to submit place");
         return;
       }
 
-      alert("Place sent for admin approval ✅");
-      onClose();
+      setSuccessPopup(true);
     } catch (err) {
       console.error("Network error:", err);
-      alert("Server error");
+      showPopup("Server error");
     }
+  };
+
+  const addCounter = () => {
+    if (!counterInput.trim()) return;
+
+    setForm({
+      ...form,
+      counters: [...form.counters, counterInput.trim()]
+    });
+
+    setCounterInput("");
+  };
+
+  const removeCounter = (i) => {
+    setForm({
+      ...form,
+      counters: form.counters.filter((_, index) => index !== i)
+    });
   };
 
   return (
@@ -59,7 +84,6 @@ export default function AddPlaceModal({ coords, onClose }) {
       <div className="modal-card">
         <h3>Add New Place</h3>
 
-        {/* PLACE NAME */}
         <input
           placeholder="Place name *"
           value={form.name}
@@ -68,7 +92,6 @@ export default function AddPlaceModal({ coords, onClose }) {
           }
         />
 
-        {/* CATEGORY */}
         <select
           value={form.category}
           onChange={(e) =>
@@ -76,26 +99,34 @@ export default function AddPlaceModal({ coords, onClose }) {
           }
         >
           <option value="bank">Bank</option>
-            <option value="hospital">Hospital</option>
-            <option value="government">Government Office</option>
-            <option value="courthouse">Courthouse</option>
-            <option value="police">Police Station</option>
-            <option value="college">College</option>
-            <option value="school">School</option>
-            <option value="post_office">Post Office</option>
-            <option value="passport_office">Passport Office</option>
-            <option value="railway_station">Railway Station</option>
-            <option value="bus_station">Bus Station</option>
-            <option value="restaurant">Restaurant</option>
-            <option value="cafe">Cafe</option>
-            <option value="mall">Mall</option>
-            <option value="electricity_office">Electricity Office</option>
-            <option value="water_office">Water Office</option>
-            <option value="gas_agency">Gas Agency</option>
-            <option value="telecom_office">Telecom Office</option>
+          <option value="hospital">Hospital</option>
+          <option value="government">Government Office</option>
+          <option value="courthouse">Courthouse</option>
+          <option value="police">Police Station</option>
+          <option value="college">College</option>
+          <option value="school">School</option>
+          <option value="post_office">Post Office</option>
+          <option value="passport_office">Passport Office</option>
+          <option value="railway_station">Railway Station</option>
+          <option value="bus_station">Bus Station</option>
+          <option value="restaurant">Restaurant</option>
+          <option value="cafe">Cafe</option>
+          <option value="mall">Mall</option>
+          <option value="electricity_office">Electricity Office</option>
+          <option value="water_office">Water Office</option>
+          <option value="gas_agency">Gas Agency</option>
+          <option value="telecom_office">Telecom Office</option>
+          <option value="other">Other</option>
         </select>
 
-        {/* ADDRESS */}
+        {form.category === "other" && (
+          <input
+            placeholder="Other category"
+            value={otherCategory}
+            onChange={(e) => setOtherCategory(e.target.value)}
+          />
+        )}
+
         <input
           placeholder="Address (optional)"
           value={form.address}
@@ -104,41 +135,32 @@ export default function AddPlaceModal({ coords, onClose }) {
           }
         />
 
-        {/* COORDS */}
         <div className="coords-display">
-          <label>Selected Latitude & Longitude</label>
-          <div className="coords-values">
-            <span><strong>Lat:</strong> {form.lat}</span>
-            <span><strong>Lng:</strong> {form.lng}</span>
-          </div>
+          <span>Lat: {form.lat}</span>
+          <span>Lng: {form.lng}</span>
         </div>
 
-        {/* COUNTERS */}
         <h4>Counters</h4>
 
-        {form.counters.map((counter, index) => (
-          <input
-            key={index}
-            placeholder={`Counter ${index + 1}`}
-            value={counter}
-            onChange={(e) => {
-              const copy = [...form.counters];
-              copy[index] = e.target.value;
-              setForm({ ...form, counters: copy });
-            }}
-          />
-        ))}
+        {/* ADDED COUNTERS */}
+        <div className="counter-tags">
+          {form.counters.map((c, i) => (
+            <span key={i} className="counter-tag">
+              {c}
+              <button onClick={() => removeCounter(i)}>×</button>
+            </span>
+          ))}
+        </div>
 
-        <button
-          onClick={() =>
-            setForm({
-              ...form,
-              counters: [...form.counters, ""]
-            })
-          }
-        >
-          + Add Counter
-        </button>
+        {/* INPUT */}
+        <div className="counter-input">
+          <input
+            placeholder="Enter counter name"
+            value={counterInput}
+            onChange={(e) => setCounterInput(e.target.value)}
+          />
+          <button onClick={addCounter}>Add</button>
+        </div>
 
         <div className="actions">
           <button onClick={submit} className="submit-btn">
@@ -150,6 +172,29 @@ export default function AddPlaceModal({ coords, onClose }) {
           </button>
         </div>
       </div>
+
+      {(successPopup || popupMsg) && (
+        <div className="modal-backdrop">
+          <div className="modal-card">
+            <h3>{successPopup ? "✅ Submitted" : "⚠️ Message"}</h3>
+            <p>
+              {successPopup
+                ? "Place sent for admin approval"
+                : popupMsg}
+            </p>
+            <button
+              onClick={() => {
+                setPopupMsg("");
+                if (successPopup) onClose();
+                setSuccessPopup(false);
+              }}
+              className="submit-btn"
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
