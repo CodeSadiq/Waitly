@@ -2,7 +2,7 @@ import express from "express";
 import Token from "../models/Token.js";
 import Place from "../models/Place.js";
 import { generateTokenCode } from "../utils/generateToken.js";
-import { verifyUser } from "../../middleware/authMiddleware.js";
+import { verifyUser } from "../middleware/authMiddleware.js";
 import { io } from "../server.js";
 
 const router = express.Router();

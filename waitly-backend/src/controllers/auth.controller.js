@@ -3,7 +3,9 @@ import Admin from "../models/Admin.js";
 import Staff from "../models/Staff.js";
 import { createToken } from "../utils/jwt.js";
 
-/* ================= USER REGISTER ================= */
+/* =====================================================
+   USER REGISTER
+===================================================== */
 export const userRegister = async (req, res) => {
   try {
     const { username, email, password, role } = req.body;
@@ -27,102 +29,128 @@ export const userRegister = async (req, res) => {
     });
 
     res.json({ message: "User registered successfully" });
+
   } catch (err) {
     console.error("REGISTER ERROR:", err);
     res.status(500).json({ message: "Registration failed" });
   }
 };
 
-/* ================= USER LOGIN ================= */
+/* =====================================================
+   USER LOGIN
+===================================================== */
 export const userLogin = async (req, res) => {
-  const { identifier, password } = req.body;
+  try {
+    const { identifier, password } = req.body;
 
-  const user = await User.findOne({
-    $or: [{ email: identifier }, { username: identifier }]
-  });
+    const user = await User.findOne({
+      $or: [{ email: identifier }, { username: identifier }]
+    });
 
-  if (!user || !(await user.comparePassword(password))) {
-    return res.status(401).json({ message: "Invalid credentials" });
+    if (!user || !(await user.comparePassword(password))) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    const token = createToken({
+      id: user._id.toString(),
+      role: user.role
+    });
+
+    res.cookie("token", token, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: false,
+      path: "/"
+    });
+
+    res.json({ user });
+
+  } catch (err) {
+    console.error("LOGIN ERROR:", err);
+    res.status(500).json({ message: "Login failed" });
   }
-
-  const token = createToken({
-    id: user._id,
-    role: user.role
-  });
-
-  // ✅ CHROME SAFE COOKIE
-  res.cookie("token", token, {
-    httpOnly: true,
-    sameSite: "none",
-    secure: true
-  });
-
-  res.json({ role: user.role });
 };
 
-/* ================= STAFF LOGIN ================= */
+/* =====================================================
+   STAFF LOGIN
+===================================================== */
 export const staffLogin = async (req, res) => {
-  const { identifier, password } = req.body;
+  try {
+    const { identifier, password } = req.body;
 
-  const staff = await Staff.findOne({
-    $or: [{ email: identifier }, { username: identifier }]
-  });
+    const staff = await Staff.findOne({
+      $or: [{ email: identifier }, { username: identifier }]
+    });
 
-  if (!staff || !(await staff.comparePassword(password))) {
-    return res.status(401).json({ message: "Invalid credentials" });
+    if (!staff || !(await staff.comparePassword(password))) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    const token = createToken({
+      id: staff._id.toString(),
+      role: "staff",
+      placeId: staff.placeId
+    });
+
+    res.cookie("token", token, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: false,
+      path: "/"
+    });
+
+    res.json({ user: staff });
+
+  } catch (err) {
+    console.error("STAFF LOGIN ERROR:", err);
+    res.status(500).json({ message: "Staff login failed" });
   }
-
-  const token = createToken({
-    id: staff._id,
-    role: "staff",
-    placeId: staff.placeId
-  });
-
-  // ✅ CHROME SAFE COOKIE
-  res.cookie("token", token, {
-    httpOnly: true,
-    sameSite: "none",
-    secure: true
-  });
-
-  res.json({ role: "staff" });
 };
 
-/* ================= ADMIN LOGIN ================= */
+/* =====================================================
+   ADMIN LOGIN
+===================================================== */
 export const adminLogin = async (req, res) => {
-  const { email, password } = req.body;
+  try {
+    const { email, password } = req.body;
 
-  const admin = await Admin.findOne({ email });
+    const admin = await Admin.findOne({ email });
 
-  if (!admin || !(await admin.comparePassword(password))) {
-    return res.status(401).json({ message: "Invalid credentials" });
+    if (!admin || !(await admin.comparePassword(password))) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    const token = createToken({
+      id: admin._id.toString(),
+      role: "admin"
+    });
+
+    res.cookie("token", token, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: false,
+      path: "/"
+    });
+
+    res.json({ user: admin });
+
+  } catch (err) {
+    console.error("ADMIN LOGIN ERROR:", err);
+    res.status(500).json({ message: "Admin login failed" });
   }
-
-  const token = createToken({
-    id: admin._id,
-    role: "admin"
-  });
-
-  // ✅ CHROME SAFE COOKIE
-  res.cookie("token", token, {
-    httpOnly: true,
-    sameSite: "none",
-    secure: true
-  });
-
-  res.json({ role: "admin" });
 };
 
-/* ================= CURRENT USER ================= */
+/* =====================================================
+   CURRENT USER
+===================================================== */
 export const getMe = async (req, res) => {
-  res.json({
-    id: req.user._id,
-    role: req.user.role
-  });
+  res.json({ user: req.user });
 };
 
-/* ================= LOGOUT ================= */
+/* =====================================================
+   LOGOUT
+===================================================== */
 export const logout = (req, res) => {
-  res.clearCookie("token");
+  res.clearCookie("token", { path: "/" });
   res.json({ message: "Logged out" });
 };

@@ -43,12 +43,16 @@ export default function Login() {
 
       const data = await res.json();
 
-      // Load user into context
+      // Allow cookie to be written
+      await new Promise(r => setTimeout(r, 200));
+
+      // Restore session
       await loadUser();
 
-      // Redirect based on role from backend
-      if (data.role === "admin") navigate("/admin/dashboard");
-      else if (data.role === "staff") navigate("/staff/dashboard");
+      const role = data.user?.role;
+
+      if (role === "admin") navigate("/admin/dashboard");
+      else if (role === "staff") navigate("/staff/dashboard");
       else navigate("/");
 
     } catch {
@@ -100,7 +104,6 @@ export default function Login() {
 
         <h2>{mode === "login" ? "Login to WAITLY" : "Create Account"}</h2>
 
-        {/* ROLE SELECT ONLY FOR REGISTER */}
         {mode === "register" && (
           <div className="role-select">
             {["user", "staff", "admin"].map(r => (
@@ -151,7 +154,6 @@ export default function Login() {
           </span>
         </div>
 
-        {/* FORGOT PASSWORD */}
         {mode === "login" && (
           <p
             style={{ fontSize: 13, cursor: "pointer", color: "#6366f1" }}

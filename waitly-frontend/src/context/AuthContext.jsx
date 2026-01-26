@@ -7,7 +7,6 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // 🔥 reusable loader (called on app load + after login)
   const loadUser = async () => {
     try {
       const res = await fetch(`${API_BASE}/api/auth/me`, {
@@ -15,12 +14,16 @@ export function AuthProvider({ children }) {
       });
 
       if (!res.ok) {
-        setUser(null);
+        // IMPORTANT: don't wipe user on initial 401
+        setLoading(false);
         return;
       }
 
       const data = await res.json();
-      setUser(data);
+
+      // normalize response
+      setUser(data.user || data);
+
     } catch (err) {
       console.error("Auth load error:", err);
       setUser(null);
@@ -29,13 +32,12 @@ export function AuthProvider({ children }) {
     }
   };
 
-  // run once on app start
   useEffect(() => {
     loadUser();
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, setUser, loading, loadUser }}>
+    <AuthContext.Provider value={{ user, loading, loadUser }}>
       {children}
     </AuthContext.Provider>
   );
