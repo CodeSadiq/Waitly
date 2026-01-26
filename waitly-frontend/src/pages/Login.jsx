@@ -1,14 +1,14 @@
-import { useState, useContext } from "react";
+import { useState, useContext, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "./Auth.css";
 import API_BASE from "../config/api";
 import { AuthContext } from "../context/AuthContext";
 
 export default function Login() {
-  const { loadUser } = useContext(AuthContext);
+  const { user, loadUser } = useContext(AuthContext);
 
-  const [mode, setMode] = useState("login"); // login | register
-  const [role, setRole] = useState("user"); // ONLY for register
+  const [mode, setMode] = useState("login");
+  const [role, setRole] = useState("user");
 
   const [identifier, setIdentifier] = useState("");
   const [email, setEmail] = useState("");
@@ -19,6 +19,11 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
+
+  /* 🔥 Load user on mount */
+  useEffect(() => {
+    loadUser();
+  }, []);
 
   /* ================= LOGIN ================= */
   const handleLogin = async () => {
@@ -41,19 +46,9 @@ export default function Login() {
 
       if (!res.ok) throw new Error();
 
-      const data = await res.json();
-
-      // Allow cookie to be written
       await new Promise(r => setTimeout(r, 200));
 
-      // Restore session
       await loadUser();
-
-      const role = data.user?.role;
-
-      if (role === "admin") navigate("/admin/dashboard");
-      else if (role === "staff") navigate("/staff/dashboard");
-      else navigate("/");
 
     } catch {
       setError("Invalid credentials");
@@ -97,6 +92,56 @@ export default function Login() {
       setLoading(false);
     }
   };
+
+  /* ================= LOGOUT ================= */
+  const handleLogout = async () => {
+    await fetch(`${API_BASE}/api/auth/logout`, {
+      credentials: "include"
+    });
+
+    window.location.reload();
+  };
+
+  /* =====================================================
+     ✅ IF USER EXISTS — SHOW PROFILE CARD
+  ===================================================== */
+
+  if (user) {
+    return (
+      <div className="auth-page">
+        <div className="auth-card">
+
+          <h2>Welcome {user.username}</h2>
+
+          <p>Email: {user.email}</p>
+          <p>Role: {user.role}</p>
+
+          <button
+            className="auth-btn"
+            onClick={() => {
+              if (user.role === "admin") navigate("/admin/dashboard");
+              else if (user.role === "staff") navigate("/staff/dashboard");
+              else navigate("/");
+            }}
+          >
+            Go to Dashboard
+          </button>
+
+          <button
+            className="auth-btn outline"
+            onClick={handleLogout}
+          >
+            Logout
+          </button>
+
+        </div>
+      </div>
+    );
+  }
+
+  /* =====================================================
+     LOGIN / REGISTER FORM
+  ===================================================== */
 
   return (
     <div className="auth-page">

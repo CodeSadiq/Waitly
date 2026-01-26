@@ -29,9 +29,9 @@ router.post("/admin/login", adminLogin);
 /* =====================================================
    CURRENT USER
 ===================================================== */
-router.get("/me", (req, res) => {
-  res.json({ msg: "ME HIT", cookies: req.cookies });
-});
+// router.get("/me", (req, res) => {
+//   res.json({ msg: "ME HIT", cookies: req.cookies });
+// });
 
 
 /* =====================================================
