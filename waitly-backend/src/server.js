@@ -22,21 +22,21 @@ console.log("JWT SECRET:", process.env.JWT_SECRET);
 const app = express();
 
 /* ================= CORS ================= */
-// app.use(
-//   cors({
-//     origin: [
-//       "http://localhost:5173",
-//       "https://waitly-frontend.onrender.com"
-//     ],
-//     methods: ["GET", "POST", "PUT", "DELETE"],
-//     credentials: true
-//   })
-// );
+app.use(
+  cors({
+    origin: [
+      "http://localhost:5173",
+      "https://waitly-frontend.onrender.com"
+    ],
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    credentials: true
+  })
+);
 
-app.use(cors({
-  origin: "http://localhost:5173",
-  credentials: true
-}));
+// app.use(cors({
+//   origin: "http://localhost:5173",
+//   credentials: true
+// }));
 
 
 
@@ -68,7 +68,7 @@ export const io = new Server(server, {
   cors: {
     origin: [
       "http://localhost:5173",
-      // "https://waitly-frontend.onrender.com"
+      "https://waitly-frontend.onrender.com"
     ],
     methods: ["GET", "POST"],
     credentials: true
