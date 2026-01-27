@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
+import { useAuth } from "../context/AuthContext";
 import AutoWaitPopup from "../components/AutoWaitPopup";
 import { io } from "socket.io-client";
 import "./PlaceDetails.css";
@@ -11,6 +12,7 @@ const socket = io(import.meta.env.VITE_API_BASE || "http://localhost:5000", {
 
 export default function PlaceDetails({ place, onWaitUpdated }) {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [showWaitPopup, setShowWaitPopup] = useState(false);
   const autoTimerRef = useRef(null);
 
@@ -51,6 +53,9 @@ export default function PlaceDetails({ place, onWaitUpdated }) {
     if (!place) return;
     if (place.isUserLocation || place._id === "my-location") return;
 
+    // Disable auto popup for staff and admin
+    if (user && (user.role === 'staff' || user.role === 'admin')) return;
+
     autoTimerRef.current = setTimeout(() => {
       setShowWaitPopup(true);
     }, 20000);
@@ -61,7 +66,7 @@ export default function PlaceDetails({ place, onWaitUpdated }) {
         autoTimerRef.current = null;
       }
     };
-  }, [place?._id]);
+  }, [place?._id, user]);
 
   if (!place) {
     return (
@@ -152,19 +157,31 @@ export default function PlaceDetails({ place, onWaitUpdated }) {
         <p className="muted">🚧 Future Enhancement</p>
       </div>
 
-      <button
-        className="join-queue-btn"
-        onClick={() => navigate(`/join-queue/${place._id}`)}
-      >
-        Join Virtual Queue
-      </button>
+      {user && (user.role === 'staff' || user.role === 'admin') ? (
+        <button
+          className="join-queue-btn"
+          style={{ opacity: 0.6, cursor: 'not-allowed', background: '#94a3b8' }}
+          disabled
+        >
+          View Only Mode ({user.role})
+        </button>
+      ) : (
+        <>
+          <button
+            className="join-queue-btn"
+            onClick={() => navigate(`/join-queue/${place._id}`)}
+          >
+            Join Virtual Queue
+          </button>
 
-      <button
-        className="join-queue-btn secondary"
-        onClick={() => setShowWaitPopup(true)}
-      >
-        Update Wait Time
-      </button>
+          <button
+            className="join-queue-btn secondary"
+            onClick={() => setShowWaitPopup(true)}
+          >
+            Update Wait Time
+          </button>
+        </>
+      )}
 
       {showWaitPopup && (
         <AutoWaitPopup

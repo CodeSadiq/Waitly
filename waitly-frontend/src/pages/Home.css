@@ -40,11 +40,20 @@
 ================================ */
 .place-search {
   width: 100%;
-  border-radius: 14px;
-  border: 1px solid #e5e7eb;
-  font-size: 14px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid #d1d5db;
+  /* Stronger border */
+  font-size: 15px;
+  background: #f9fafb;
+  /* Light background */
   outline: none;
-  transition: all 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  color: #111827;
+}
+
+.place-search::placeholder {
+  color: #94a3b8;
 }
 
 .place-search:focus {
