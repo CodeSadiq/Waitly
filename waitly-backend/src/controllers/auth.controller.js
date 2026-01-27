@@ -173,15 +173,15 @@ export const userLogin = async (req, res) => {
     // Set cookies
     res.cookie("token", token, {
       httpOnly: true,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
+      sameSite: "none",
+      secure: true,
       path: "/"
     });
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
+      sameSite: "none",
+      secure: true,
       path: "/"
     });
 
@@ -250,15 +250,15 @@ export const staffLogin = async (req, res) => {
 
     res.cookie("token", token, {
       httpOnly: true,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
+      sameSite: "none",
+      secure: true,
       path: "/"
     });
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
+      sameSite: "none",
+      secure: true,
       path: "/"
     });
 
@@ -342,15 +342,15 @@ export const unifiedLogin = async (req, res) => {
     // Set Cookies
     res.cookie("token", token, {
       httpOnly: true,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
+      sameSite: "none",
+      secure: true,
       path: "/"
     });
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
+      sameSite: "none",
+      secure: true,
       path: "/"
     });
 
@@ -413,15 +413,15 @@ export const adminLogin = async (req, res) => {
 
     res.cookie("token", token, {
       httpOnly: true,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
+      sameSite: "none",
+      secure: true,
       path: "/"
     });
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
+      sameSite: "none",
+      secure: true,
       path: "/"
     });
 
@@ -458,8 +458,8 @@ export const getMe = async (req, res) => {
    LOGOUT
 ===================================================== */
 export const logout = (req, res) => {
-  res.clearCookie("token", { path: "/" });
-  res.clearCookie("refreshToken", { path: "/" });
+  res.clearCookie("token", { path: "/", sameSite: "none", secure: true });
+  res.clearCookie("refreshToken", { path: "/", sameSite: "none", secure: true });
 
   res.json({
     success: true,
@@ -673,15 +673,15 @@ export const refreshToken = async (req, res) => {
     // Set new cookies
     res.cookie("token", newAccessToken, {
       httpOnly: true,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
+      sameSite: "none",
+      secure: true,
       path: "/"
     });
 
     res.cookie("refreshToken", newRefreshToken, {
       httpOnly: true,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
+      sameSite: "none",
+      secure: true,
       path: "/"
     });
 
