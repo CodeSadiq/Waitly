@@ -31,6 +31,13 @@ export default function StaffDashboard() {
   const [appliedPlace, setAppliedPlace] = useState(null);
   const [loadingPlace, setLoadingPlace] = useState(false);
 
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem('waitly_token');
+    const headers = { "Content-Type": "application/json" };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    return headers;
+  };
+
   // All Tokens Modal & Inspecting Mode
   const [showTokensModal, setShowTokensModal] = useState(false);
   const [allTokens, setAllTokens] = useState([]);
@@ -40,7 +47,8 @@ export default function StaffDashboard() {
     if (!selectedCounter) return;
     try {
       const res = await fetch(`${API_BASE}/api/staff/all-tokens?counterName=${selectedCounter}`, {
-        credentials: "include"
+        credentials: "include",
+        headers: getAuthHeaders()
       });
       const data = await res.json();
       setAllTokens(data.tokens || []);
@@ -76,7 +84,8 @@ export default function StaffDashboard() {
 
     try {
       const res = await fetch(`${API_BASE}/api/staff/counters`, {
-        credentials: "include"
+        credentials: "include",
+        headers: getAuthHeaders()
       });
 
       if (!res.ok) {
@@ -122,7 +131,8 @@ export default function StaffDashboard() {
         setLoadingPlace(true);
         try {
           const res = await fetch(`${API_BASE}/api/staff/places/${user.application.placeId}`, {
-            credentials: "include"
+            credentials: "include",
+            headers: getAuthHeaders()
           });
           if (res.ok) {
             const data = await res.json();
@@ -144,7 +154,7 @@ export default function StaffDashboard() {
     try {
       const res = await fetch(`${API_BASE}/api/staff/next`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ counterName: selectedCounter }),
         credentials: "include"
       });
@@ -171,7 +181,7 @@ export default function StaffDashboard() {
     try {
       const res = await fetch(`${API_BASE}/api/staff/action`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ tokenId: currentTicket._id, action }),
         credentials: "include"
       });
@@ -190,7 +200,8 @@ export default function StaffDashboard() {
     if (!selectedCounter) return;
     try {
       const res = await fetch(`${API_BASE}/api/staff/status?counterName=${selectedCounter}`, {
-        credentials: "include"
+        credentials: "include",
+        headers: getAuthHeaders()
       });
       const data = await res.json();
       setCurrentTicket(data.currentTicket);
@@ -289,7 +300,8 @@ export default function StaffDashboard() {
     setSearchError("");
     try {
       const res = await fetch(`${API_BASE}/api/staff/places/search?q=${searchQuery}`, {
-        credentials: "include"
+        credentials: "include",
+        headers: getAuthHeaders()
       });
       const data = await res.json();
       setSearchResults(Array.isArray(data) ? data : []);
@@ -306,7 +318,7 @@ export default function StaffDashboard() {
     try {
       const res = await fetch(`${API_BASE}/api/staff/places/apply`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ placeId }),
         credentials: "include"
       });
@@ -329,7 +341,8 @@ export default function StaffDashboard() {
     try {
       const res = await fetch(`${API_BASE}/api/staff/places/cancel`, {
         method: "POST",
-        credentials: "include"
+        credentials: "include",
+        headers: getAuthHeaders()
       });
       if (res.ok) {
         showNotification("Application cancelled.", "success");

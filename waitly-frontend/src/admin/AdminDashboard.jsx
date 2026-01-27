@@ -9,6 +9,12 @@ export default function AdminDashboard() {
   const [staffRequests, setStaffRequests] = useState([]); // ✅ NEW
   const [osmResults, setOsmResults] = useState([]);
   const [fetchMessage, setFetchMessage] = useState("");
+  const [notification, setNotification] = useState({ message: "", type: "", visible: false });
+
+  const showNotification = (msg, type = "success") => {
+    setNotification({ message: msg, type, visible: true });
+    setTimeout(() => setNotification({ ...notification, visible: false }), 4000);
+  };
 
   const [loadingOSM, setLoadingOSM] = useState(false);
   const [loadingGoogle, setLoadingGoogle] = useState(false);
@@ -149,28 +155,30 @@ export default function AdminDashboard() {
   const approveStaff = async (id) => {
     if (!window.confirm("Approve this staff request?")) return;
     try {
+      console.log("📡 [ADMIN] Approving staff request:", id);
       const res = await adminFetch(`/api/admin/staff-requests/approve/${id}`, {
         method: "POST",
-        body: JSON.stringify({}) // Ensure body is present for POST
+        body: JSON.stringify({})
       });
 
       const data = await res.json();
 
       if (res.ok) {
-        alert("Staff approved successfully!");
+        showNotification("Staff approved successfully!", "success");
         loadStaffRequests();
       } else {
-        alert(`Failed to approve: ${data.message || "Unknown error"}`);
+        showNotification(data.message || "Failed to approve staff", "error");
       }
     } catch (e) {
       console.error(e);
-      alert("Network or Server Error");
+      showNotification("Network or Server Error", "error");
     }
   };
 
   const rejectStaff = async (id) => {
     if (!window.confirm("Reject and reset this staff request?")) return;
     try {
+      console.log("🚫 [ADMIN] Rejecting staff request:", id);
       const res = await adminFetch(`/api/admin/staff-requests/reject/${id}`, {
         method: "POST",
         body: JSON.stringify({})
@@ -179,14 +187,14 @@ export default function AdminDashboard() {
       const data = await res.json();
 
       if (res.ok) {
-        alert("Staff request rejected.");
+        showNotification("Staff request rejected.", "success");
         loadStaffRequests();
       } else {
-        alert(`Failed to reject: ${data.message || "Unknown error"}`);
+        showNotification(data.message || "Failed to reject staff", "error");
       }
     } catch (e) {
       console.error(e);
-      alert("Network or Server Error");
+      showNotification("Network or Server Error", "error");
     }
   };
 

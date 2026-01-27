@@ -486,7 +486,7 @@ export const approveStaffRequest = async (req, res) => {
     if (staff.status === "applied" && staff.application?.placeId) {
       console.log(`✅ [APPROVE STAFF] Processing APPLIED staff: ${staff.username}`);
       staff.status = "active";
-      staff.placeId = staff.application.placeId;
+      staff.placeId = staff.application.placeId._id || staff.application.placeId;
       staff.application = undefined; // Clear application
       await staff.save();
       return res.json({ success: true, staff });

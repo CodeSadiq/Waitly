@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 import "./JoinQueue.css";
 import API_BASE from "../config/api";
 
 export default function JoinQueue() {
   const { placeId } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const [place, setPlace] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -15,7 +17,6 @@ export default function JoinQueue() {
 
   const [form, setForm] = useState({
     name: "",
-    dob: "",
     counterIndex: "",
     slotDateTime: ""
   });
@@ -63,15 +64,22 @@ export default function JoinQueue() {
      ========================= */
   const confirmPayment = async () => {
     try {
+      const token = localStorage.getItem('waitly_token');
+      const headers = { "Content-Type": "application/json" };
+
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const res = await fetch(`${API_BASE}/api/queue/join`, {
         method: "POST",
-        credentials: "include",       // 🔥 ONLY CHANGE
-        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        headers,
         body: JSON.stringify({
           placeId,
           counterIndex: form.counterIndex,
           userName: form.name,
-          userDob: form.dob
+          slotDateTime: form.slotDateTime || null
         })
       });
 
@@ -206,7 +214,7 @@ export default function JoinQueue() {
 
           <button
             className="pay-btn"
-            onClick={() => navigate("/my-ticket")}
+            onClick={() => navigate("/user/dashboard")}
           >
             View My Ticket
           </button>

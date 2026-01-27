@@ -24,8 +24,24 @@ export default function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password/:token" element={<ResetPassword />} />
-        <Route path="/join-queue/:placeId" element={<JoinQueue />} />
-        <Route path="/user/dashboard" element={<UserDashboard />} />
+
+        {/* Protected User Routes - Require login */}
+        <Route
+          path="/join-queue/:placeId"
+          element={
+            <ProtectedRoute allowedRoles={["user"]}>
+              <JoinQueue />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/user/dashboard"
+          element={
+            <ProtectedRoute allowedRoles={["user"]}>
+              <UserDashboard />
+            </ProtectedRoute>
+          }
+        />
 
         {/* Protected Admin Routes */}
         <Route

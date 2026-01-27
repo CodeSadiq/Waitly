@@ -27,8 +27,16 @@ export default function UserDashboard() {
     // Fetch tickets
     const fetchTickets = async () => {
         try {
+            const token = localStorage.getItem('waitly_token');
+            const headers = {};
+
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+
             const res = await fetch(`${API_BASE}/api/queue/my-tickets`, {
-                credentials: "include"
+                credentials: "include",
+                headers
             });
 
             if (!res.ok) throw new Error();
