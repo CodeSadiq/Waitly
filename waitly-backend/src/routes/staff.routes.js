@@ -142,7 +142,8 @@ router.get("/counters", verifyStaff, async (req, res) => {
 
         res.json({
             counters,
-            placeName: place.name
+            placeName: place.name,
+            placeAddress: place.address
         });
     } catch (err) {
         console.error("❌ [COUNTERS] ERROR:", err);
@@ -233,7 +234,31 @@ router.get("/all-tokens", verifyStaff, async (req, res) => {
             createdAt: { $gte: new Date(new Date().setHours(0, 0, 0, 0)) } // Filter for today
         }).sort({ createdAt: 1 });
 
-        res.json({ tokens });
+        // Enrich with Position in Queue
+        const enrichedTokens = await Promise.all(tokens.map(async (t) => {
+            let position = null;
+            if (t.status === "Waiting") {
+                // Same "peopleAhead" logic as queue.js
+                const peopleAhead = await Token.countDocuments({
+                    place: req.user.placeId,
+                    counterName: counterName,
+                    _id: { $ne: t._id },
+                    $or: [
+                        { status: "Waiting", createdAt: { $lt: t.createdAt } },
+                        { status: "Serving" }
+                    ]
+                });
+                // Position # is basically peopleAhead + 1
+                // E.g. 0 people ahead means I am #1
+                position = peopleAhead + 1;
+            }
+            return {
+                ...t.toObject(),
+                position
+            };
+        }));
+
+        res.json({ tokens: enrichedTokens });
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: "Failed to fetch all tokens" });

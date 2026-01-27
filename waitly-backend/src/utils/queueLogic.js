@@ -35,11 +35,14 @@ export const getNextTicket = async (placeId, counterName) => {
     // 2. Separate candidates
     const dueScheduled = [];
     const walkIns = [];
-    const futureScheduled = []; // don't serve these yet if there are others
+    const futureScheduled = [];
+
+    const GRACE_PERIOD_MS = 5 * 60 * 1000; // 5 minutes grace period
 
     candidates.forEach(t => {
         if (t.scheduledTime) {
-            if (t.scheduledTime <= now) {
+            // Priority given if current time is within 5 mins of scheduled time OR past it
+            if (t.scheduledTime <= new Date(now.getTime() + GRACE_PERIOD_MS)) {
                 dueScheduled.push(t);
             } else {
                 futureScheduled.push(t);
@@ -51,14 +54,13 @@ export const getNextTicket = async (placeId, counterName) => {
 
     // 3. Priority Selection
 
-    // Rule A: If there's a scheduled ticket that is DUE (or past due), serve it first.
-    // Sort by scheduledTime ASC to get the most "overdue" one.
+    // Rule A: If there's a scheduled ticket that is DUE (or within grace period), serve it first.
     if (dueScheduled.length > 0) {
         dueScheduled.sort((a, b) => a.scheduledTime - b.scheduledTime);
         return dueScheduled[0];
     }
 
-    // Rule B: If no due scheduled tickets, serve walk-ins (FIFO - already sorted by createdAt from find)
+    // Rule B: If no due scheduled tickets, serve walk-ins (FIFO)
     if (walkIns.length > 0) {
         return walkIns[0];
     }

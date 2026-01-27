@@ -12,133 +12,103 @@ const socket = io(API_BASE, {
 });
 
 // Helper Component for a single ticket card
-function TicketCard({ ticket, onPrint }) {
-    const isActive = ticket.status === "Waiting";
+function TicketCard({ ticket, onPrint, onCancel, onDelete }) {
+    const isWaiting = ticket.status === "Waiting";
+    const isServing = ticket.status === "Serving";
+    const isInactive = ["Completed", "Cancelled", "Skipped"].includes(ticket.status);
+
+    // Cancellation Rule: Can only cancel if wait time > 30 mins
+    const canCancel = isWaiting && ticket.estimatedWait > 30;
+
+    // Display status label
     const displayStatus = ticket.status === "Skipped" ? "Expired" : ticket.status;
 
     return (
         <div id={`ticket-${ticket._id}`} className="dash-ticket-card printable-ticket">
-            <div className="card-header">
-                <span className={`status-badge ${ticket.status.toLowerCase()}`}>
+            {/* TICKET HEADER - Place & Status */}
+            <div className="ticket-header-modern">
+                <div className="place-info-modern">
+                    <h4>{ticket.place?.name}</h4>
+                    <span className="place-addr">{ticket.place?.address || "Location unavailable"}</span>
+                </div>
+                <div className={`status-pill-modern ${ticket.status.toLowerCase()}`}>
                     {displayStatus}
-                </span>
-                <span className="ticket-date">
-                    {new Date(ticket.createdAt).toLocaleDateString()} at {new Date(ticket.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </span>
+                </div>
             </div>
 
-            <div className="card-body">
-                <div className="place-info">
-                    <h4>{ticket.place?.name}</h4>
-                    <p>{ticket.place?.address}</p>
-                </div>
-
-                <div className="booking-info" style={{ marginBottom: '15px' }}>
-                    <span style={{ fontSize: '12px', color: '#64748b', display: 'block' }}>Booking For</span>
-                    <span style={{ fontWeight: '600', color: '#0f172a', fontSize: '15px' }}>
-                        {ticket.userName}
-                    </span>
-                </div>
-
-                <div className="token-display">
-                    <span className="token-label">Token ID</span>
-                    <span className="token-value">{ticket.tokenCode}</span>
-                </div>
-
-                <div className="qr-wrapper">
-                    <QRCode value={ticket.tokenCode} size={120} />
-                </div>
-
-                <div className="queue-stats printable-stats">
-                    <div className="q-stat">
-                        <span className="val">{ticket.peopleAhead}</span>
-                        <span className="lbl">People Ahead</span>
+            <div className="ticket-body-modern">
+                {/* DATE & USER ROW */}
+                <div className="ticket-meta-row">
+                    <div className="meta-item">
+                        <span className="meta-label">Date</span>
+                        <span className="meta-value">{new Date(ticket.createdAt).toLocaleDateString()}</span>
                     </div>
-                    <div className="q-stat">
-                        <span className="val">{ticket.estimatedWait}m</span>
-                        <span className="lbl">Est. Wait</span>
-                    </div>
-                    <div className="q-stat">
-                        <span className="val">{ticket.counterName}</span>
-                        <span className="lbl">Counter</span>
+                    <div className="meta-item right">
+                        <span className="meta-label">Booking For</span>
+                        <span className="meta-value">{ticket.userName}</span>
                     </div>
                 </div>
 
-                {ticket.status === "Serving" && (
-                    <div className="serving-msg" style={{
-                        marginTop: '10px',
-                        padding: '10px',
-                        background: '#eff6ff',
-                        color: '#1d4ed8',
-                        borderRadius: '8px',
-                        fontSize: '13px',
-                        fontWeight: '600',
-                        width: '100%'
-                    }}>
-                        It's your turn! Please go to the counter: {ticket.counterName}
+                {/* MAIN TOKEN DISPLAY */}
+                <div className="token-display-modern">
+                    <span className="token-label-xs">YOUR TOKEN</span>
+                    <span className="token-code-xl">{ticket.tokenCode}</span>
+                    {ticket.timeSlotLabel && (
+                        <div className="slot-badge-modern">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                            {ticket.timeSlotLabel}
+                        </div>
+                    )}
+                </div>
+
+                {/* STATS GRID */}
+                <div className="stats-grid-modern">
+                    <div className="stat-brick">
+                        <span className="brick-val">{ticket.peopleAhead}</span>
+                        <span className="brick-lbl">Ahead</span>
+                    </div>
+                    <div className="brick-divider"></div>
+                    <div className="stat-brick">
+                        <span className="brick-val">{ticket.estimatedWait}<small>m</small></span>
+                        <span className="brick-lbl">Wait</span>
+                    </div>
+                    <div className="brick-divider"></div>
+                    <div className="stat-brick">
+                        <span className="brick-val" style={{ fontSize: '14px' }}>{ticket.counterName}</span>
+                        <span className="brick-lbl">Counter</span>
+                    </div>
+                </div>
+
+                {/* QR SECTION */}
+                <div className="qr-section-modern">
+                    <QRCode value={ticket.tokenCode} size={100} />
+                </div>
+
+                {/* SERVING ALERT */}
+                {isServing && (
+                    <div className="serving-alert-modern">
+                        <div className="pulse-dot"></div>
+                        It's your turn! Please proceed to {ticket.counterName}
                     </div>
                 )}
 
-                <div className="ticket-actions" style={{
-                    marginTop: '20px',
-                    display: 'flex',
-                    gap: '10px',
-                    width: '100%',
-                    borderTop: '1px solid #f1f5f9',
-                    paddingTop: '15px'
-                }}>
-                    <button
-                        onClick={() => onPrint(ticket._id)}
-                        className="action-btn print-btn"
-                        style={{
-                            flex: 1,
-                            padding: '10px',
-                            background: '#f8fafc',
-                            border: '1px solid #e2e8f0',
-                            borderRadius: '8px',
-                            fontSize: '13px',
-                            fontWeight: '600',
-                            color: '#475569',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '8px'
-                        }}
-                    >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <polyline points="6 9 6 2 18 2 18 9"></polyline>
-                            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
-                            <rect x="6" y="14" width="12" height="8"></rect>
-                        </svg>
-                        Print
+                {/* ACTIONS */}
+                <div className="actions-footer-modern">
+                    <button onClick={() => onPrint(ticket._id)} className="action-icon-btn" title="Print Ticket">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
                     </button>
-                    <button
-                        onClick={() => onPrint(ticket._id)}
-                        className="action-btn download-btn"
-                        style={{
-                            flex: 1,
-                            padding: '10px',
-                            background: '#2563eb',
-                            border: 'none',
-                            borderRadius: '8px',
-                            fontSize: '13px',
-                            fontWeight: '600',
-                            color: 'white',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '8px'
-                        }}
-                    >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ stroke: 'white' }}>
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                            <polyline points="7 10 12 15 17 10"></polyline>
-                            <line x1="12" y1="15" x2="12" y2="3"></line>
-                        </svg>
-                        Download
-                    </button>
+
+                    {isWaiting && (
+                        canCancel ? (
+                            <button onClick={() => onCancel(ticket._id)} className="action-text-btn danger">Cancel</button>
+                        ) : (
+                            <span className="wait-msg-xs">You can only cancel if wait is over 30 mins</span>
+                        )
+                    )}
+
+                    {isInactive && onDelete && (
+                        <button onClick={() => onDelete(ticket._id)} className="action-text-btn danger">Delete</button>
+                    )}
                 </div>
             </div>
         </div>
@@ -210,6 +180,36 @@ export default function UserDashboard() {
         ticketElement.classList.remove('print-target');
     };
 
+    // Cancel Ticket
+    const handleCancel = async (id) => {
+        if (!window.confirm("Are you sure you want to cancel this ticket?")) return;
+        try {
+            const token = localStorage.getItem('waitly_token');
+            const res = await fetch(`${API_BASE}/api/queue/cancel/${id}`, {
+                method: 'PUT',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) fetchTickets();
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
+    // Delete Ticket
+    const handleDelete = async (id) => {
+        if (!window.confirm("Remove this ticket from your history?")) return;
+        try {
+            const token = localStorage.getItem('waitly_token');
+            const res = await fetch(`${API_BASE}/api/queue/delete/${id}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) fetchTickets();
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
     if (!user) return <div className="dashboard-loading">Loading...</div>;
 
     return (
@@ -224,16 +224,17 @@ export default function UserDashboard() {
                     <p className="email">{user.email}</p>
                     <div className="role-batch">{user.role}</div>
 
-                    <div className="profile-stats">
-                        <div className="stat">
-                            <span className="value">{tickets.length}</span>
+                    <div className="profile-stats" style={{ justifyContent: 'space-evenly', alignItems: 'center' }}>
+                        <div className="stat" style={{ alignItems: 'center' }}>
+                            <span className="value" style={{ color: '#2563eb' }}>{tickets.filter(t => ["Waiting", "Serving"].includes(t.status)).length}</span>
                             <span className="label">Active Tickets</span>
                         </div>
+                        <div style={{ width: '1px', background: '#e2e8f0', height: '40px' }}></div>
+                        <div className="stat" style={{ alignItems: 'center' }}>
+                            <span className="value" style={{ color: '#16a34a' }}>{tickets.filter(t => t.status === "Completed").length}</span>
+                            <span className="label">Completed Tickets</span>
+                        </div>
                     </div>
-
-                    <button onClick={() => logout().then(() => navigate("/login"))} className="logout-btn-dash">
-                        Logout
-                    </button>
                 </div>
             </aside>
 
@@ -252,7 +253,10 @@ export default function UserDashboard() {
                             {/* ACTIVE TICKETS (WAITING & SERVING) */}
                             {tickets.filter(t => ["Waiting", "Serving"].includes(t.status)).length > 0 && (
                                 <>
-                                    <h2>🎟 Active Tickets</h2>
+                                    <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" /></svg>
+                                        Active Tickets
+                                    </h2>
                                     <div className="dashboard-ticket-grid">
                                         {tickets
                                             .filter(t => ["Waiting", "Serving"].includes(t.status))
@@ -261,6 +265,8 @@ export default function UserDashboard() {
                                                     key={ticket._id}
                                                     ticket={ticket}
                                                     onPrint={handlePrint}
+                                                    onCancel={handleCancel}
+                                                    onDelete={handleDelete} // Pass this too just in case
                                                 />
                                             ))}
                                     </div>
@@ -268,18 +274,23 @@ export default function UserDashboard() {
                                 </>
                             )}
 
-                            {/* COMPLETED TICKETS */}
-                            {tickets.filter(t => t.status === "Completed").length > 0 && (
+                            {/* HISTORY / INACTIVE TICKETS */}
+                            {tickets.filter(t => ["Completed", "Cancelled", "Skipped"].includes(t.status)).length > 0 && (
                                 <>
-                                    <h2>✅ Completed Today</h2>
+                                    <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
+                                        Recent History
+                                    </h2>
                                     <div className="dashboard-ticket-grid">
                                         {tickets
-                                            .filter(t => t.status === "Completed")
+                                            .filter(t => ["Completed", "Cancelled", "Skipped"].includes(t.status))
                                             .map((ticket) => (
                                                 <TicketCard
                                                     key={ticket._id}
                                                     ticket={ticket}
                                                     onPrint={handlePrint}
+                                                    onCancel={handleCancel} // Pass this too
+                                                    onDelete={handleDelete}
                                                 />
                                             ))}
                                     </div>
@@ -288,7 +299,9 @@ export default function UserDashboard() {
 
                             {tickets.length === 0 && (
                                 <div className="empty-state">
-                                    <div className="empty-icon">🎫</div>
+                                    <div className="empty-icon">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}><path strokeLinecap="round" strokeLinejoin="round" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" /></svg>
+                                    </div>
                                     <h3>No tickets at the moment</h3>
                                     <p>Join a queue to see your ticket here.</p>
                                     <button onClick={() => navigate("/")} className="primary-btn">

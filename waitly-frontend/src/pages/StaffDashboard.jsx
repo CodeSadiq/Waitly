@@ -18,6 +18,7 @@ export default function StaffDashboard() {
 
   const [counters, setCounters] = useState([]);
   const [placeName, setPlaceName] = useState("");
+  const [placeAddress, setPlaceAddress] = useState("");
   const [selectedCounter, setSelectedCounter] = useState(null);
   const [showProfile, setShowProfile] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
@@ -110,6 +111,7 @@ export default function StaffDashboard() {
 
       setCounters(counterList);
       setPlaceName(data.placeName || "Workplace");
+      setPlaceAddress(data.placeAddress || "");
     } catch (err) {
       console.error("❌ [DASHBOARD] Network error fetching counters:", err);
       setFetchError("Network error. Please check your internet connection.");
@@ -562,7 +564,7 @@ export default function StaffDashboard() {
                 <button className="vc-text-btn danger" onClick={() => window.location.reload()}>Change Counter</button>
               </div>
             </div>
-            <p className="vc-sub">Managing {queueStats.waiting + queueStats.completed + (currentTicket ? 1 : 0)} Tokens Today</p>
+            <p className="vc-sub">{placeAddress}</p>
           </div>
 
           <div className="vc-grid">
@@ -591,6 +593,28 @@ export default function StaffDashboard() {
                   </div>
                 )}
               </div>
+
+              {!loading && displayTicket && displayTicket.timeSlotLabel && (
+                <div className="vc-slot-badge" style={{
+                  fontSize: '0.9rem',
+                  marginBottom: '20px',
+                  marginTop: '-10px', // Pull it up slightly closer to the code
+                  background: '#f0fdf4',
+                  color: '#166534',
+                  padding: '6px 16px',
+                  borderRadius: '20px',
+                  fontWeight: '600',
+                  border: '1px solid #bbf7d0',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  {displayTicket.timeSlotLabel}
+                </div>
+              )}
               <div className={`vc-qr-area ${isVerified ? "verified-border" : ""} ${!displayTicket ? "clean" : ""}`}>
                 {displayTicket ? (
                   isVerified ? (
@@ -621,6 +645,12 @@ export default function StaffDashboard() {
               <div className="vc-stat-row"><span>Near Service</span><span className="vc-val orange">{nextTickets.length}</span></div>
               <div className="vc-stat-row"><span>Completed</span><span className="vc-val green">{queueStats.completed}</span></div>
               <div className="vc-stat-row"><span>Skipped</span><span className="vc-val red" style={{ color: '#ef4444' }}>{queueStats.skipped}</span></div>
+              <div className="vc-stat-row" style={{ borderTop: '2px dashed #f1f5f9', marginTop: '8px', paddingTop: '12px' }}>
+                <span style={{ fontWeight: '700', color: '#0f172a' }}>Total Tokens</span>
+                <span className="vc-val" style={{ color: '#0f172a' }}>
+                  {queueStats.waiting + queueStats.completed + queueStats.skipped + (currentTicket ? 1 : 0)}
+                </span>
+              </div>
             </div>
           </div>
 
@@ -646,13 +676,15 @@ export default function StaffDashboard() {
             <div className="tokens-table-container">
               <table className="tokens-table">
                 <thead>
-                  <tr><th>Code</th><th>User</th><th>Status</th><th>Action</th></tr>
+                  <tr><th>Pos</th><th>Code</th><th>User</th><th>Slot</th><th>Status</th><th>Action</th></tr>
                 </thead>
                 <tbody>
                   {allTokens.map(t => (
                     <tr key={t._id}>
+                      <td style={{ fontWeight: 'bold', color: '#64748b' }}>{t.position ? `#${t.position}` : '-'}</td>
                       <td className="token-code-cell">{t.tokenCode}</td>
                       <td>{t.userName || "Guest"}</td>
+                      <td>{t.timeSlotLabel || "-"}</td>
                       <td><span className={`status-pill ${t.status.toLowerCase()}`}>{t.status}</span></td>
                       <td><button className="view-token-btn" onClick={() => { setInspectingTicket(t); setShowTokensModal(false); }}>Inspect</button></td>
                     </tr>
