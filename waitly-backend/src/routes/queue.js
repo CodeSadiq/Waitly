@@ -107,37 +107,54 @@ router.get("/ticket/:tokenId", async (req, res) => {
    🔥 MY ACTIVE TICKETS (WAITING ONLY)
    ===================================================== */
 router.get("/my-tickets", verifyUser, async (req, res) => {
-  const tokens = await Token.find({
-    user: req.user._id,
-    status: "Waiting"
-  })
-    .populate("place", "name address")
-    .sort({ createdAt: -1 });
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-  const enriched = await Promise.all(
-    tokens.map(async (token) => {
-      const peopleAhead = await Token.countDocuments({
-        place: token.place._id,
-        counterName: token.counterName,
-        status: "Waiting",
-        createdAt: { $lt: token.createdAt }
-      });
-
-      return {
-        _id: token._id,
-        tokenCode: token.tokenCode,
-        userName: token.userName,
-        counterName: token.counterName,
-        status: token.status,
-        createdAt: token.createdAt,
-        place: token.place,
-        peopleAhead,
-        estimatedWait: peopleAhead * 5
-      };
+    const tokens = await Token.find({
+      user: req.user._id,
+      $or: [
+        { status: { $in: ["Waiting", "Serving"] } },
+        { status: "Completed", createdAt: { $gte: today } }
+      ]
     })
-  );
+      .populate("place", "name address")
+      .sort({ createdAt: -1 });
 
-  res.json(enriched);
+    const enriched = await Promise.all(
+      tokens.map(async (token) => {
+        let peopleAhead = 0;
+        let estimatedWait = 0;
+
+        if (token.status === "Waiting") {
+          peopleAhead = await Token.countDocuments({
+            place: token.place._id,
+            counterName: token.counterName,
+            status: "Waiting",
+            createdAt: { $lt: token.createdAt }
+          });
+          estimatedWait = peopleAhead * 5;
+        }
+
+        return {
+          _id: token._id,
+          tokenCode: token.tokenCode,
+          userName: token.userName,
+          counterName: token.counterName,
+          status: token.status,
+          createdAt: token.createdAt,
+          place: token.place,
+          peopleAhead,
+          estimatedWait
+        };
+      })
+    );
+
+    res.json(enriched);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to fetch tickets" });
+  }
 });
 
 /* =====================================================

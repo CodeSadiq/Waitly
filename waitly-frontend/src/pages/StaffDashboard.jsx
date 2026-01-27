@@ -25,7 +25,7 @@ export default function StaffDashboard() {
 
   // Dashboard Status State
   const [currentTicket, setCurrentTicket] = useState(null);
-  const [queueStats, setQueueStats] = useState({ waiting: 0, completed: 0 });
+  const [queueStats, setQueueStats] = useState({ waiting: 0, completed: 0, skipped: 0 });
   const [nextTickets, setNextTickets] = useState([]);
   const [loading, setLoading] = useState(false);
   const [appliedPlace, setAppliedPlace] = useState(null);
@@ -207,7 +207,8 @@ export default function StaffDashboard() {
       setCurrentTicket(data.currentTicket);
       setQueueStats({
         waiting: data.waiting,
-        completed: data.completed
+        completed: data.completed,
+        skipped: data.skipped
       });
       setNextTickets(data.nextTickets || []);
     } catch (err) {
@@ -619,6 +620,7 @@ export default function StaffDashboard() {
               <div className="vc-stat-row"><span>Waiting</span><span className="vc-val blue">{queueStats.waiting}</span></div>
               <div className="vc-stat-row"><span>Near Service</span><span className="vc-val orange">{nextTickets.length}</span></div>
               <div className="vc-stat-row"><span>Completed</span><span className="vc-val green">{queueStats.completed}</span></div>
+              <div className="vc-stat-row"><span>Skipped</span><span className="vc-val red" style={{ color: '#ef4444' }}>{queueStats.skipped}</span></div>
             </div>
           </div>
 

@@ -1161,6 +1161,11 @@
     color: var(--staff-success);
 }
 
+.status-pill.skipped {
+    background: #fef2f2;
+    color: var(--staff-danger);
+}
+
 .view-token-btn {
     padding: 6px 12px;
     background: #f1f5f9;

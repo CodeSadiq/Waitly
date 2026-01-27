@@ -175,15 +175,22 @@ router.get("/status", verifyStaff, async (req, res) => {
         const waitingCount = await Token.countDocuments({
             place: req.user.placeId,
             counterName: counterName,
-            status: "Waiting"
+            status: "Waiting",
+            createdAt: { $gte: new Date(new Date().setHours(0, 0, 0, 0)) }
         });
 
         const completedCount = await Token.countDocuments({
             place: req.user.placeId,
             counterName: counterName,
             status: "Completed",
-            status: "Completed",
-            completedAt: { $gte: new Date(new Date().setHours(0, 0, 0, 0)) } // Today based on completedAt
+            completedAt: { $gte: new Date(new Date().setHours(0, 0, 0, 0)) }
+        });
+
+        const skippedCount = await Token.countDocuments({
+            place: req.user.placeId,
+            counterName: counterName,
+            status: "Skipped",
+            createdAt: { $gte: new Date(new Date().setHours(0, 0, 0, 0)) }
         });
 
         // 3. Upcoming List (Next 3)
@@ -201,6 +208,7 @@ router.get("/status", verifyStaff, async (req, res) => {
             currentTicket,
             waiting: waitingCount,
             completed: completedCount,
+            skipped: skippedCount,
             nextTickets
         });
 
@@ -221,8 +229,8 @@ router.get("/all-tokens", verifyStaff, async (req, res) => {
         const tokens = await Token.find({
             place: req.user.placeId,
             counterName: counterName,
-            status: { $in: ["Waiting", "Serving", "Completed"] },
-            createdAt: { $gte: new Date().setHours(0, 0, 0, 0) } // Filter for today
+            status: { $in: ["Waiting", "Serving", "Completed", "Skipped"] },
+            createdAt: { $gte: new Date(new Date().setHours(0, 0, 0, 0)) } // Filter for today
         }).sort({ createdAt: 1 });
 
         res.json({ tokens });

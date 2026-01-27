@@ -189,6 +189,11 @@
   color: #dc2626;
 }
 
+.status-badge.serving {
+  background: #e0e7ff;
+  color: #4338ca;
+}
+
 .ticket-date {
   font-size: 12px;
   color: #94a3b8;
@@ -306,6 +311,56 @@
 
 .primary-btn:hover {
   background: #1d4ed8;
+}
+
+@media print {
+
+  /* Hide everything by default when a specific ticket is targeted */
+  body.printing-active * {
+    visibility: hidden;
+  }
+
+  /* Show only the targeted ticket and its children */
+  body.printing-active .print-target,
+  body.printing-active .print-target * {
+    visibility: visible;
+  }
+
+  .print-target {
+    position: fixed !important;
+    left: 50% !important;
+    top: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    width: 350px !important;
+    border: 2px solid #000 !important;
+    border-radius: 12px !important;
+    padding: 20px !important;
+    box-shadow: none !important;
+    background: white !important;
+  }
+
+  .ticket-actions,
+  .dashboard-sidebar,
+  .content-header,
+  .navbar,
+  .tickets-section h2,
+  .profile-card,
+  .avatar,
+  .logout-btn-dash {
+    display: none !important;
+  }
+
+  .printable-stats {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr 1fr !important;
+    border-top: 1px solid #000 !important;
+    margin-top: 15px !important;
+    padding-top: 10px !important;
+  }
+
+  .qr-wrapper {
+    margin: 20px 0 !important;
+  }
 }
 
 @media (max-width: 768px) {
