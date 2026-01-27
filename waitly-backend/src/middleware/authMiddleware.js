@@ -32,12 +32,14 @@ export const protect = () => async (req, res, next) => {
       });
     }
 
-    // Query the correct model based on role
+    // Query the correct model based on role, with fallback to User model
     let user;
     if (decoded.role === "admin") {
       user = await Admin.findById(decoded.id).select("-password");
+      if (!user) user = await User.findById(decoded.id).select("-password");
     } else if (decoded.role === "staff") {
       user = await Staff.findById(decoded.id).select("-password");
+      if (!user) user = await User.findById(decoded.id).select("-password");
     } else {
       user = await User.findById(decoded.id).select("-password");
     }

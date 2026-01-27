@@ -20,7 +20,8 @@ export function AuthProvider({ children }) {
         setUser(null);
       }
     } catch (err) {
-      console.error("Auth load error:", err);
+      // Quietly set user to null if unauthorized - this is normal on first load
+      // console.error("Auth load error:", err); 
       setUser(null);
     } finally {
       setLoading(false);
@@ -47,26 +48,20 @@ export function AuthProvider({ children }) {
   };
 
   /* ================= LOGIN ================= */
-  const login = async (credentials, loginType = "user") => {
+  const login = async (credentials) => {
     try {
       setError(null);
-      let data;
 
-      if (loginType === "admin") {
-        data = await authAPI.adminLogin(credentials);
-      } else if (loginType === "staff") {
-        data = await authAPI.staffLogin(credentials);
-      } else {
-        data = await authAPI.login(credentials);
-      }
+      const data = await authAPI.unifiedLogin(credentials);
 
-      if (data.success && data.user) {
+      if (data && data.success && data.user) {
         setUser(data.user);
         return { success: true, user: data.user };
       }
 
       return { success: false, error: "Login failed" };
     } catch (err) {
+      console.warn("Login attempt failed:", err.message);
       setError(err.message);
       return { success: false, error: err.message };
     }

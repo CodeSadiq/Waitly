@@ -187,5 +187,22 @@ export const authAPI = {
         }
 
         return data;
+    },
+    // Unified Login
+    unifiedLogin: async (credentials) => {
+        const res = await fetch(`${API_BASE}/api/auth/login`, {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(credentials)
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+            throw new Error(data.message || "Login failed");
+        }
+
+        return data;
     }
 };

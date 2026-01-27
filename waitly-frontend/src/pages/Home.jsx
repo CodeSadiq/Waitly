@@ -187,15 +187,8 @@ export default function Home() {
       currentY = e.touches[0].clientY;
       const delta = currentY - startY;
 
-      // We apply smooth inline transform
-      // Note: We need to respect current state (expanded/collapsed) offset if we want perfection,
-      // but for now, we just visually move it relative to start.
-      // A simple approach is just translating Y.
+      // Apply smooth inline transform to list only
       listEl.style.transform = `translateY(${delta}px)`;
-
-      // 🔄 SYNC ADD BUTTON
-      const btnEl = document.querySelector(".add-place-btn");
-      if (btnEl) btnEl.style.transform = `translateY(${delta}px)`;
     };
 
 
@@ -211,8 +204,6 @@ export default function Home() {
 
       // Clear inline style so CSS class takes over
       listEl.style.transform = "";
-      const btnEl = document.querySelector(".add-place-btn");
-      if (btnEl) btnEl.style.transform = "";
 
       const endY = e.changedTouches[0].clientY;
       const diff = startY - endY;

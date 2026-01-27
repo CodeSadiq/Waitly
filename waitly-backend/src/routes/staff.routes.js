@@ -15,16 +15,42 @@ const router = express.Router();
 router.get("/places/search", verifyStaff, async (req, res) => {
     try {
         const { q } = req.query;
-        if (!q) return res.json([]);
+        console.log("🔍 [SEARCH] Query received:", q, "from user:", req.user?.username);
+
+        if (!q) {
+            console.log("⚠️ [SEARCH] No query provided");
+            return res.json([]);
+        }
 
         const places = await Place.find({
             name: { $regex: q, $options: "i" }
         }).select("name address category location counters");
 
+        console.log(`✅ [SEARCH] Found ${places.length} places for "${q}":`, places.map(p => p.name));
+
         res.json(places);
     } catch (err) {
-        console.error("SEARCH ERROR:", err);
+        console.error("❌ [SEARCH] ERROR:", err);
         res.status(500).json({ message: "Search failed" });
+    }
+});
+
+/* =====================================================
+   GET PLACE BY ID (FOR VIEWING APPLIED PLACE)
+   ===================================================== */
+router.get("/places/:id", verifyStaff, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const place = await Place.findById(id).select("name address category location");
+
+        if (!place) {
+            return res.status(404).json({ message: "Place not found" });
+        }
+
+        res.json(place);
+    } catch (err) {
+        console.error("❌ [GET PLACE] ERROR:", err);
+        res.status(500).json({ message: "Failed to fetch place" });
     }
 });
 
@@ -58,34 +84,69 @@ router.post("/places/apply", verifyStaff, async (req, res) => {
 });
 
 /* =====================================================
+   CANCEL APPLICATION
+   ===================================================== */
+router.post("/places/cancel", verifyStaff, async (req, res) => {
+    try {
+        const staff = await Staff.findById(req.user._id);
+        if (!staff) return res.status(404).json({ message: "Staff not found" });
+
+        if (staff.status !== "applied" && staff.status !== "pending") {
+            return res.status(400).json({ message: "No pending application to cancel" });
+        }
+
+        staff.application = undefined;
+        staff.status = "unassigned";
+
+        await staff.save();
+
+        res.json({ success: true, message: "Application cancelled" });
+    } catch (err) {
+        console.error("CANCEL ERROR:", err);
+        res.status(500).json({ message: "Failed to cancel application" });
+    }
+});
+
+/* =====================================================
    GET COUNTERS (FOR SELECTION)
    ===================================================== */
 router.get("/counters", verifyStaff, async (req, res) => {
     try {
-        // If staff is not active, block access
-        // Wait, verifyStaff allows any staff.
-        // We should check status here? Or assume frontend handles it?
-        // Let's safe guard.
         if (!req.user?._id) return res.status(401).json({ message: "No user ID" });
+
         const staff = await Staff.findById(req.user._id);
         if (!staff) {
+            console.log("❌ [COUNTERS] Staff not found in DB:", req.user._id);
             return res.status(404).json({ message: "Staff account not found. Please relogin." });
         }
 
-        if (staff.status !== 'active') {
-            return res.status(403).json({ message: "Account not active" });
+        console.log(`🔍 [COUNTERS] Staff: ${staff.username}, Status: ${staff.status}, PlaceId: ${staff.placeId}`);
+
+        if (staff.status !== 'active' || !staff.placeId) {
+            console.log("⚠️ [COUNTERS] Staff not active or no placeId assigned");
+            return res.status(403).json({ message: "Account not active or no workplace assigned" });
         }
 
-        const place = await Place.findOne({ _id: staff.placeId }); // Use DB source of truth
-        if (!place) return res.status(404).json({ message: "Place not found" });
+        const place = await Place.findById(staff.placeId);
+        if (!place) {
+            console.log("❌ [COUNTERS] Place not found for ID:", staff.placeId);
+            return res.status(404).json({ message: "Workplace not found" });
+        }
+
+        // Ensure we always have at least one counter to show
+        const counters = place.counters && place.counters.length > 0
+            ? place.counters
+            : [{ name: "General" }];
+
+        console.log(`✅ [COUNTERS] Found ${counters.length} counters for ${place.name}`);
 
         res.json({
-            counters: place.counters,
+            counters,
             placeName: place.name
         });
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: "Failed to fetch counters" });
+        console.error("❌ [COUNTERS] ERROR:", err);
+        res.status(500).json({ message: "Internal server error loading counters" });
     }
 });
 
@@ -121,7 +182,8 @@ router.get("/status", verifyStaff, async (req, res) => {
             place: req.user.placeId,
             counterName: counterName,
             status: "Completed",
-            updatedAt: { $gte: new Date().setHours(0, 0, 0, 0) } // Today
+            status: "Completed",
+            completedAt: { $gte: new Date(new Date().setHours(0, 0, 0, 0)) } // Today based on completedAt
         });
 
         // 3. Upcoming List (Next 3)

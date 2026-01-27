@@ -10,7 +10,8 @@ import {
    forgotPassword,
    resetPassword,
    changePassword,
-   refreshToken
+   refreshToken,
+   unifiedLogin
 } from "../controllers/auth.controller.js";
 
 import { protect } from "../middleware/authMiddleware.js";
@@ -43,6 +44,7 @@ router.post("/staff/register", staffRegister);
 router.post("/user/login", validateLogin, userLogin);
 router.post("/staff/login", validateLogin, staffLogin);
 router.post("/admin/login", validateAdminLogin, adminLogin);
+router.post("/login", validateLogin, unifiedLogin);
 
 /* =====================================================
    CURRENT USER

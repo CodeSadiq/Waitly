@@ -9,7 +9,6 @@ export default function Login() {
   const { user, loading: authLoading, login, register, loadUser } = useContext(AuthContext);
 
   const [mode, setMode] = useState("login");
-  const [loginType, setLoginType] = useState("user"); // user, staff, admin
 
   // Form fields
   const [identifier, setIdentifier] = useState("");
@@ -26,14 +25,7 @@ export default function Login() {
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Staff Registration Extra State
-  const [placeName, setPlaceName] = useState("");
-  const [address, setAddress] = useState("");
-  const [counters, setCounters] = useState("");
-
   const navigate = useNavigate();
-
-  // No fetch needed for places anymore since we request new ones
 
   /* 🔥 Load user on mount */
   useEffect(() => {
@@ -56,11 +48,8 @@ export default function Login() {
     setLoading(true);
 
     try {
-      const credentials = loginType === "admin"
-        ? { email: identifier, password }
-        : { identifier, password };
-
-      const result = await login(credentials, loginType);
+      // Unified login - backend determines role from account
+      const result = await login({ identifier, password });
 
       if (result.success) {
         // Redirect based on role
@@ -96,9 +85,6 @@ export default function Login() {
       return;
     }
 
-    // Simplified Validation for Staff
-    // if (role === 'staff') ... no extra validation needed now
-
     setLoading(true);
 
     try {
@@ -107,7 +93,6 @@ export default function Login() {
         email,
         password,
         role
-        // Place details removed - Apply after login
       });
 
       if (result.success) {
@@ -145,7 +130,10 @@ export default function Login() {
     return (
       <div className="auth-page">
         <div className="auth-card">
-          <h2>Loading...</h2>
+          <div className="loading-spinner">
+            <div className="spinner"></div>
+            <p>Loading...</p>
+          </div>
         </div>
       </div>
     );
@@ -154,12 +142,25 @@ export default function Login() {
   if (user) {
     return (
       <div className="auth-page">
-        <div className="auth-card">
+        <div className="auth-card profile-card">
+          <div className="profile-header">
+            <div className="profile-avatar">
+              {user.username?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase()}
+            </div>
+            <h2>Welcome back!</h2>
+            <p className="profile-name">{user.username || user.email}</p>
+          </div>
 
-          <h2>Welcome {user.username || user.email}</h2>
-
-          <p>Email: {user.email}</p>
-          <p>Role: {user.role}</p>
+          <div className="profile-info">
+            <div className="info-row">
+              <span className="info-label">Email</span>
+              <span className="info-value">{user.email}</span>
+            </div>
+            <div className="info-row">
+              <span className="info-label">Role</span>
+              <span className={`role-badge ${user.role}`}>{user.role.toUpperCase()}</span>
+            </div>
+          </div>
 
           <button
             className="auth-btn"
@@ -169,7 +170,7 @@ export default function Login() {
               else navigate("/");
             }}
           >
-            {user.role === "staff" ? "Go to Staff Dashboard" : (user.role === "admin" ? "Go to Admin Dashboard" : "Go to Dashboard")}
+            {user.role === "staff" ? "Go to Staff Dashboard" : (user.role === "admin" ? "Go to Admin Dashboard" : "Go to Home")}
           </button>
 
           <button
@@ -194,23 +195,10 @@ export default function Login() {
     <div className="auth-page">
       <div className="auth-card">
 
-        <h2>{mode === "login" ? "Login to WAITLY" : "Create Account"}</h2>
-
-        {/* LOGIN TYPE SELECTOR (only for login) */}
-        {mode === "login" && (
-          <div className="role-select" style={{ marginBottom: 20 }}>
-            {["user", "staff", "admin"].map(type => (
-              <button
-                key={type}
-                className={`role-btn ${loginType === type ? "active" : ""}`}
-                onClick={() => setLoginType(type)}
-                type="button"
-              >
-                {type.toUpperCase()}
-              </button>
-            ))}
-          </div>
-        )}
+        <div className="auth-header">
+          <h2>{mode === "login" ? "Welcome to WAITLY" : "Create Your Account"}</h2>
+          <p>{mode === "login" ? "Sign in to continue" : "Join us today"}</p>
+        </div>
 
         {/* ROLE SELECTOR (only for register) */}
         {mode === "register" && (
@@ -228,18 +216,13 @@ export default function Login() {
           </div>
         )}
 
-        {/* STAFF REQUEST FORM REMOVED - NOW SIMPLE REGISTRATION */}
-        {mode === "register" && role === "staff" && (
-          <div style={{ marginBottom: 15, padding: "10px", background: "#f0f9ff", borderRadius: "8px", fontSize: "0.9em", color: "#0369a1" }}>
-            ℹ️ You can search and apply for your workplace after creating your account.
-          </div>
-        )}
+
 
         <form onSubmit={mode === "login" ? handleLogin : handleRegister}>
 
           {/* USERNAME (register only) */}
           {mode === "register" && (
-            <div>
+            <div className="input-group">
               <input
                 placeholder="Username"
                 value={username}
@@ -251,7 +234,7 @@ export default function Login() {
 
           {/* EMAIL (register only) OR IDENTIFIER (login) */}
           {mode === "register" ? (
-            <div>
+            <div className="input-group">
               <input
                 type="email"
                 placeholder="Email"
@@ -261,9 +244,9 @@ export default function Login() {
               {errors.email && <p className="error-text">{errors.email}</p>}
             </div>
           ) : (
-            <div>
+            <div className="input-group">
               <input
-                placeholder={loginType === "admin" ? "Email" : "Username or Email"}
+                placeholder="Username or Email"
                 value={identifier}
                 onChange={e => setIdentifier(e.target.value)}
               />
@@ -272,46 +255,49 @@ export default function Login() {
           )}
 
           {/* PASSWORD */}
-          <div style={{ position: "relative" }}>
-            <input
-              type={showPassword ? "text" : "password"}
-              placeholder="Password"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-            />
-
-            <span
-              onClick={() => setShowPassword(!showPassword)}
-              style={{
-                position: "absolute",
-                right: 10,
-                top: "50%",
-                transform: "translateY(-50%)",
-                cursor: "pointer"
-              }}
-            >
-              👁
-            </span>
+          <div className="input-group">
+            <div className="password-field">
+              <input
+                type={showPassword ? "text" : "password"}
+                placeholder="Password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+              />
+              <button
+                type="button"
+                className="eye-btn"
+                onClick={() => setShowPassword(!showPassword)}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                    <line x1="1" y1="1" x2="23" y2="23"></line>
+                  </svg>
+                ) : (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                  </svg>
+                )}
+              </button>
+            </div>
+            {errors.password && <p className="error-text">{errors.password}</p>}
           </div>
-          {errors.password && <p className="error-text">{errors.password}</p>}
 
           {/* PASSWORD STRENGTH (register only) */}
           {mode === "register" && password && passwordStrength && (
-            <div style={{ marginTop: 5, marginBottom: 10 }}>
-              <div style={{
-                height: 4,
-                backgroundColor: "#e5e7eb",
-                borderRadius: 2,
-                overflow: "hidden"
-              }}>
-                <div style={{
-                  height: "100%",
-                  width: `${(passwordStrength.score / 6) * 100}%`,
-                  backgroundColor: passwordStrength.color,
-                  transition: "all 0.3s"
-                }} />
+            <div className="password-strength">
+              <div className="strength-bar">
+                <div
+                  className="strength-fill"
+                  style={{
+                    width: `${(passwordStrength.score / 6) * 100}%`,
+                    backgroundColor: passwordStrength.color
+                  }}
+                />
               </div>
-              <p style={{ fontSize: 12, color: passwordStrength.color, marginTop: 5 }}>
+              <p className="strength-text" style={{ color: passwordStrength.color }}>
                 Password strength: {passwordStrength.text}
               </p>
             </div>
@@ -319,7 +305,7 @@ export default function Login() {
 
           {/* CONFIRM PASSWORD (register only) */}
           {mode === "register" && (
-            <div>
+            <div className="input-group">
               <input
                 type={showPassword ? "text" : "password"}
                 placeholder="Confirm Password"
@@ -332,17 +318,16 @@ export default function Login() {
 
           {/* FORGOT PASSWORD (login only) */}
           {mode === "login" && (
-            <p
-              style={{ fontSize: 13, cursor: "pointer", color: "#6366f1" }}
-              onClick={() => navigate("/forgot-password")}
-            >
-              Forgot password?
-            </p>
+            <div className="forgot-password">
+              <span onClick={() => navigate("/forgot-password")}>
+                Forgot password?
+              </span>
+            </div>
           )}
 
           {/* ERROR/SUCCESS MESSAGES */}
           {error && <p className="error-text">{error}</p>}
-          {success && <p style={{ color: "#10b981", fontSize: 14 }}>{success}</p>}
+          {success && <p className="success-text">{success}</p>}
 
           {/* SUBMIT BUTTON */}
           <button
@@ -350,22 +335,24 @@ export default function Login() {
             disabled={loading}
             type="submit"
           >
-            {loading ? "Please wait..." : mode === "login" ? "Login" : "Create Account"}
+            {loading ? "Please wait..." : mode === "login" ? "Sign In" : "Create Account"}
           </button>
 
           {/* TOGGLE MODE */}
-          <button
-            className="auth-btn outline"
-            onClick={() => {
-              setMode(mode === "login" ? "register" : "login");
-              setErrors({});
-              setError("");
-              setSuccess("");
-            }}
-            type="button"
-          >
-            {mode === "login" ? "Create Account" : "Back to Login"}
-          </button>
+          <div className="auth-footer">
+            {mode === "login" ? "Don't have an account? " : "Already have an account? "}
+            <span
+              className="toggle-link"
+              onClick={() => {
+                setMode(mode === "login" ? "register" : "login");
+                setErrors({});
+                setError("");
+                setSuccess("");
+              }}
+            >
+              {mode === "login" ? "Sign Up" : "Sign In"}
+            </span>
+          </div>
 
         </form>
 

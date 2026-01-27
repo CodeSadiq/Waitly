@@ -1,5 +1,6 @@
 import Place from "../models/Place.js";
 import PendingPlace from "../models/PendingPlace.js";
+import Staff from "../models/Staff.js";
 
 /* =====================================================
    HELPER: BUILD COUNTERS (DB-SAFE FORMAT)
@@ -447,15 +448,17 @@ export const deletePlaceByAdmin = async (req, res) => {
 /* =====================================================
    STAFF REQUEST MANAGEMENT
    ===================================================== */
-import Staff from "../models/Staff.js";
 
 // 1. Get Pending Requests (Support both legacy Pending and new Applied)
 export const getPendingStaffRequests = async (req, res) => {
   try {
+    console.log("🔍 [ADMIN] Fetching pending staff requests...");
     const requests = await Staff.find({ status: { $in: ["pending", "applied"] } })
       .select("-password")
       .populate("application.placeId", "name address") // Fill place details if applied
       .sort({ createdAt: -1 });
+
+    console.log(`✅ [ADMIN] Found ${requests.length} staff requests`);
     res.json(requests);
   } catch (err) {
     console.error("FETCH STAFF REQUESTS ERROR:", err);
@@ -477,6 +480,7 @@ export const approveStaffRequest = async (req, res) => {
 
     // CASE A: NEW APPLICATION FLOW (Link to existing place)
     if (staff.status === "applied" && staff.application?.placeId) {
+      console.log(`✅ [APPROVE STAFF] Processing APPLIED staff: ${staff.username}`);
       staff.status = "active";
       staff.placeId = staff.application.placeId;
       staff.application = undefined; // Clear application
@@ -484,7 +488,7 @@ export const approveStaffRequest = async (req, res) => {
       return res.json({ success: true, staff });
     }
 
-    // CASE B: LEGACY REQUEST FLOW (Create new place)
+    console.log(`✅ [APPROVE STAFF] Processing LEGACY staff: ${staff.username}`);
     // Only if requestDetails exists
     const { placeName, address, counters } = staff.requestDetails || {};
 
@@ -517,12 +521,21 @@ export const approveStaffRequest = async (req, res) => {
   }
 };
 
-// 3. Reject Request
+// 3. Reject Request (Reset to unassigned)
 export const rejectStaffRequest = async (req, res) => {
   try {
     const { id } = req.params;
-    await Staff.findByIdAndDelete(id); // Or set status='rejected'
-    res.json({ success: true });
+    console.log(`🚫 [REJECT STAFF] Rejecting request for ID: ${id}`);
+    const staff = await Staff.findById(id);
+    if (!staff) return res.status(404).json({ message: "Staff not found" });
+
+    staff.status = "unassigned";
+    staff.application = undefined;
+    staff.requestDetails = undefined;
+    await staff.save();
+
+    console.log(`✅ [REJECT STAFF] Staff ${staff.username} reset to unassigned`);
+    res.json({ success: true, message: "Request rejected and staff reset to unassigned" });
   } catch (err) {
     console.error("REJECT STAFF ERROR:", err);
     res.status(500).json({ message: "Failed to reject request" });

@@ -13,7 +13,7 @@ const socket = io(API_BASE, {
 });
 
 export default function StaffDashboard() {
-  const { user, logout } = useContext(AuthContext);
+  const { user, logout, loadUser } = useContext(AuthContext);
   const navigate = useNavigate();
 
   const [counters, setCounters] = useState([]);
@@ -28,6 +28,8 @@ export default function StaffDashboard() {
   const [queueStats, setQueueStats] = useState({ waiting: 0, completed: 0 });
   const [nextTickets, setNextTickets] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [appliedPlace, setAppliedPlace] = useState(null);
+  const [loadingPlace, setLoadingPlace] = useState(false);
 
   // All Tokens Modal & Inspecting Mode
   const [showTokensModal, setShowTokensModal] = useState(false);
@@ -48,87 +50,95 @@ export default function StaffDashboard() {
     }
   };
 
-  // Redirect if not staff
+  // Redirect if not staff or not logged in
   useEffect(() => {
-    if (user && user.role !== "staff") {
+    if (!user) {
+      const timer = setTimeout(() => {
+        if (!user) navigate("/login");
+      }, 5000); // Give it some time to load session
+      return () => clearTimeout(timer);
+    }
+
+    if (user.role !== "staff") {
       navigate("/");
     }
   }, [user, navigate]);
 
-  // Fetch Counters on Load
-  useEffect(() => {
-    const fetchCounters = async () => {
-      try {
-        const res = await fetch(`${API_BASE}/api/staff/counters`, {
-          credentials: "include"
-        });
+  const [loadingCounters, setLoadingCounters] = useState(false);
 
-        if (!res.ok) {
-          const errData = await res.json().catch(() => ({}));
+  // Fetch Counters Logic
+  const fetchCounters = async () => {
+    if (!user?.placeId || user?.status !== "active") return;
 
-          if (res.status === 404 && (errData.message?.includes("Staff account not found") || errData.message?.includes("Staff not found"))) {
-            showNotification("Session expired. Please login again.", "error");
-            logout();
-            setTimeout(() => navigate("/login"), 2000);
-            return;
-          }
+    setLoadingCounters(true);
+    setFetchError("");
+    console.log("🔄 [DASHBOARD] Fetching counters for place:", user.placeId);
 
-          console.error("Fetch Counters Error:", res.status, errData);
-          setFetchError(`Error ${res.status}: ${errData.message || "Failed to load counters"}`);
+    try {
+      const res = await fetch(`${API_BASE}/api/staff/counters`, {
+        credentials: "include"
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        console.error("❌ [DASHBOARD] Fetch counters failed:", res.status, errData);
+
+        if (res.status === 401 || res.status === 403) {
+          setFetchError("Authentication failed. Please try logging in again.");
           return;
         }
 
-        const data = await res.json();
-        if (data.counters && data.counters.length > 0) {
-          setCounters(data.counters);
-          setPlaceName(data.placeName || "Workplace");
-        } else {
-          setFetchError("No counters configured for this place.");
-        }
-      } catch (err) {
-        console.error("Failed to fetch counters", err);
-        setFetchError("Network error. Check connection.");
+        setFetchError(`Error ${res.status}: ${errData.message || "Failed to load counters"}`);
+        return;
       }
-    };
 
-    if (user?.role === "staff") {
-      fetchCounters();
-    }
-  }, [user]);
-
-  // Fetch Queue Status
-  const fetchStatus = async () => {
-    if (!selectedCounter) return;
-
-    try {
-      const res = await fetch(`${API_BASE}/api/staff/status?counterName=${selectedCounter}`, {
-        credentials: "include"
-      });
       const data = await res.json();
+      console.log("✅ [DASHBOARD] Counters received:", data);
 
-      setCurrentTicket(data.currentTicket);
-      setQueueStats({
-        waiting: data.waiting,
-        completed: data.completed
-      });
-      setNextTickets(data.nextTickets || []);
+      const counterList = data.counters && data.counters.length > 0
+        ? data.counters
+        : [{ name: "General" }];
 
+      setCounters(counterList);
+      setPlaceName(data.placeName || "Workplace");
     } catch (err) {
-      console.error("Failed to fetch status", err);
+      console.error("❌ [DASHBOARD] Network error fetching counters:", err);
+      setFetchError("Network error. Please check your internet connection.");
+    } finally {
+      setLoadingCounters(false);
     }
   };
 
-  // Socket Listener for Real-time Updates
   useEffect(() => {
-    if (!selectedCounter) return;
+    if (user?.role === "staff" && user?.status === "active" && user?.placeId) {
+      fetchCounters();
+    }
+  }, [user?.status, user?.placeId, user?.role]);
 
-    fetchStatus(); // Initial fetch
+  // Fetch Applied Place Details
+  useEffect(() => {
+    const fetchAppliedPlace = async () => {
+      if ((user?.status === "applied" || user?.status === "pending") && user?.application?.placeId) {
+        setLoadingPlace(true);
+        try {
+          const res = await fetch(`${API_BASE}/api/staff/places/${user.application.placeId}`, {
+            credentials: "include"
+          });
+          if (res.ok) {
+            const data = await res.json();
+            setAppliedPlace(data);
+          }
+        } catch (e) {
+          console.error("Error fetching applied place:", e);
+        } finally {
+          setLoadingPlace(false);
+        }
+      }
+    };
+    fetchAppliedPlace();
+  }, [user?.status, user?.application?.placeId]);
 
-    socket.on("token-updated", fetchStatus);
-    return () => socket.off("token-updated");
-  }, [selectedCounter]);
-
-  // ACTIONS
+  // Actions
   const handleNextTicket = async () => {
     setLoading(true);
     try {
@@ -138,12 +148,10 @@ export default function StaffDashboard() {
         body: JSON.stringify({ counterName: selectedCounter }),
         credentials: "include"
       });
-
       if (!res.ok) {
         const err = await res.json();
         showNotification(err.message || "Failed to call next ticket", "error");
       } else {
-        // fetchStatus will run via socket or manually
         fetchStatus();
       }
     } catch (err) {
@@ -153,9 +161,12 @@ export default function StaffDashboard() {
     }
   };
 
+  /* ========================================================
+     AUTO-FLOW LOGIC
+     ======================================================== */
+  // 1. Mark as Completed -> Automatically Call Next
   const handleUpdateStatus = async (action) => {
     if (!currentTicket) return;
-
     setLoading(true);
     try {
       const res = await fetch(`${API_BASE}/api/staff/action`, {
@@ -166,110 +177,131 @@ export default function StaffDashboard() {
       });
 
       if (res.ok) {
-        setCurrentTicket(null); // Clear locally first
-        fetchStatus();
+        // Success! Now calling next immediately...
+        await handleNextTicket();
       }
     } catch (err) {
       console.error(err);
-    } finally {
       setLoading(false);
     }
   };
 
+  const fetchStatus = async () => {
+    if (!selectedCounter) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/staff/status?counterName=${selectedCounter}`, {
+        credentials: "include"
+      });
+      const data = await res.json();
+      setCurrentTicket(data.currentTicket);
+      setQueueStats({
+        waiting: data.waiting,
+        completed: data.completed
+      });
+      setNextTickets(data.nextTickets || []);
+    } catch (err) {
+      console.error("Failed to fetch status", err);
+    }
+  };
 
-  /* ================= NOTIFICATION SYSTEM ================= */
+  useEffect(() => {
+    if (!selectedCounter) return;
+    fetchStatus();
+    socket.on("token-updated", fetchStatus);
+    return () => socket.off("token-updated");
+  }, [selectedCounter]);
+
+  // 2. Initial Auto-Call on Load (only if no active ticket)
+  useEffect(() => {
+    if (selectedCounter && !currentTicket && !loading) {
+      // Optional: Could auto-call here if desired, but user might prefer manual start.
+      // For "first token is by default showing", let's check queue and call if needed.
+      // However, to avoid unwanted auto-calls on refresh, we might just rely on the 'No Tokens' UI state
+      // or check if queueStats.waiting > 0?
+      // Let's modify fetchStatus to handle "if no current ticket, fetch it?" 
+      // Actually user logic: "first token is by default showing" -> implied "get current serving OR call next if none serving"
+    }
+  }, [selectedCounter]);
+
+  // Enhanced fetchStatus to AUTO-CALL if we have waiting tokens but none serving?
+  // Or just keep it manual start but auto-next.
+  // The user asked "first token is by default showing when i select a counter".
+  // This implies if I enter dashboard, show me whom to serve.
+
+  // Let's modify handleNextTicket to be robust and reusable.
+
+  // New Effect: When entering dashboard, if no current ticket but queue has waiting, call next.
+  useEffect(() => {
+    if (selectedCounter && !currentTicket && queueStats.waiting > 0 && !loading) {
+      // CAUTION: This might loop if not careful. 
+      // Safest is to just show proper UI "No active token" and let user click once, 
+      // OR truly auto-call. User asked "first token is by default showing".
+      // Let's try to call next ticket once if none is present.
+      const autoStart = async () => {
+        // ensure we haven't already tried
+        if (sessionStorage.getItem(`autostart_${selectedCounter}`)) return;
+        await handleNextTicket();
+        sessionStorage.setItem(`autostart_${selectedCounter}`, 'true');
+      };
+      autoStart();
+    }
+  }, [selectedCounter, currentTicket, queueStats.waiting]);
+
   const [notification, setNotification] = useState({ message: "", type: "", visible: false });
   const [isVerified, setIsVerified] = useState(false);
-  const [verifiedHistory, setVerifiedHistory] = useState([]);
 
-  // Reset verified status when ticket or inspection target changes
   useEffect(() => {
     setIsVerified(false);
   }, [currentTicket, inspectingTicket]);
 
   const showNotification = (message, type = "success") => {
     setNotification({ message, type, visible: true });
-    setTimeout(() => {
-      setNotification(prev => ({ ...prev, visible: false }));
-    }, 3000);
+    setTimeout(() => setNotification(prev => ({ ...prev, visible: false })), 3000);
   };
 
   const handleScanSuccess = (decodedText) => {
     setShowScanner(false);
-
-    // Verify against inspected ticket if one is active, otherwise current ticket
     const targetTicket = inspectingTicket || currentTicket;
-
     if (!targetTicket) {
-      showNotification("No ticket selected for verification. Please call next or inspect a token from the list.", "error");
+      showNotification("No ticket selected for verification.", "error");
       return;
     }
-
-    // Log for debugging
-    console.log("Scanned:", decodedText);
-    console.log("Expected:", targetTicket.tokenCode);
-
-    // Check if scanned text matches or contains the token code
     const scannedText = decodedText.trim();
     const expectedCode = targetTicket.tokenCode.trim();
 
-    // Try exact match first, then check if the scanned text contains the token code
     if (scannedText === expectedCode || scannedText.includes(expectedCode)) {
       setIsVerified(true);
-
-      // Add to verified history
-      const verifiedEntry = {
-        tokenCode: targetTicket.tokenCode,
-        tokenId: targetTicket._id,
-        userName: targetTicket.userName,
-        verifiedAt: new Date(),
-        counterName: selectedCounter
-      };
-
-      setVerifiedHistory(prev => {
-        // Check if already exists
-        const exists = prev.find(v => v.tokenId === targetTicket._id);
-        if (exists) {
-          // Update timestamp
-          return prev.map(v =>
-            v.tokenId === targetTicket._id
-              ? { ...v, verifiedAt: new Date() }
-              : v
-          );
-        }
-        // Add new entry at the beginning
-        return [verifiedEntry, ...prev];
-      });
-
-      let successMsg = `Token Verified Successfully: ${expectedCode}`;
-      if (inspectingTicket) {
-        const isDone = targetTicket.status === "Completed";
-        successMsg = `Token ${expectedCode} match! This token is verifiable and ${isDone ? "already verified/completed" : "currently " + targetTicket.status.toLowerCase()} also.`;
-      }
-
-      showNotification(successMsg, "success");
+      showNotification(`Token Verified Successfully: ${expectedCode}`, "success");
     } else {
-      showNotification(`Scan Mismatch: Scanned "${scannedText}", Expected "${expectedCode}"`, "error");
+      showNotification(`Scan Mismatch: Expected "${expectedCode}"`, "error");
     }
   };
 
-
-  /* ================= STAFF APPLICATION LOGIC ================= */
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [applying, setApplying] = useState(null);
+  const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState("");
 
   const searchPlaces = async () => {
     if (!searchQuery.trim()) return;
+    setSearching(true);
+    setSearchError("");
     try {
-      const res = await fetch(`${API_BASE}/api/staff/places/search?q=${searchQuery}`, { credentials: "include" });
+      const res = await fetch(`${API_BASE}/api/staff/places/search?q=${searchQuery}`, {
+        credentials: "include"
+      });
       const data = await res.json();
       setSearchResults(Array.isArray(data) ? data : []);
-    } catch (e) { console.error(e); }
+      if (data.length === 0) setSearchError(`No places found matching "${searchQuery}"`);
+    } catch (e) {
+      setSearchError("Failed to search. Please try again.");
+    } finally {
+      setSearching(false);
+    }
   };
 
   const applyForPlace = async (placeId) => {
-    if (!window.confirm("Apply to manage this place?")) return;
     setApplying(placeId);
     try {
       const res = await fetch(`${API_BASE}/api/staff/places/apply`, {
@@ -280,62 +312,151 @@ export default function StaffDashboard() {
       });
       if (res.ok) {
         showNotification("Application sent! Waiting for admin approval.", "success");
-        setTimeout(() => window.location.reload(), 2000);
+        setTimeout(async () => await loadUser(), 1500);
       } else {
         const errData = await res.json().catch(() => ({}));
-        showNotification(`Application failed: ${errData.message || res.statusText}`, "error");
+        showNotification(errData.message || "Application failed", "error");
       }
     } catch (e) {
-      console.error(e);
-      showNotification("Network or Server Error", "error");
-    } finally { setApplying(null); }
+      showNotification("Server Error", "error");
+    } finally {
+      setApplying(null);
+    }
   };
 
-  /* ================= RENDER: UNASSIGNED STATE ================= */
-  if (user?.status === "unassigned") {
+  const cancelApplication = async () => {
+    if (!window.confirm("Are you sure you want to cancel your application?")) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/staff/places/cancel`, {
+        method: "POST",
+        credentials: "include"
+      });
+      if (res.ok) {
+        showNotification("Application cancelled.", "success");
+        await loadUser();
+      }
+    } catch (e) {
+      showNotification("Network error", "error");
+    }
+  };
+
+  /* ================= RENDER LOGIC ================= */
+  if (!user) {
+    return (
+      <div className="staff-dashboard-container">
+        <div className="loading-results" style={{ marginTop: '100px' }}>
+          <div className="spinner-dots"><div></div><div></div><div></div></div>
+          <p>Loading session...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 1. Join Workplace / Pending Flow
+  if (user.status === "unassigned" || user.status === "applied" || user.status === "pending" || !user.placeId) {
     return (
       <div className="staff-dashboard-container">
         <header className="staff-header">
           <div className="header-left">
-            <h2>Staff Portal</h2>
-            <p>Welcome, {user.username}</p>
-          </div>
-          <div className="header-right">
+            <div className="staff-brand">
+              <div className="brand-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+              </div>
+              <div>
+                <h2>Staff Portal</h2>
+                <p>Digital Queue Management</p>
+              </div>
+            </div>
           </div>
         </header>
-        <div className="counter-selection-screen">
-          <div className="selection-card wide">
 
-            <h2>Join a Workplace</h2>
-            <p>Search for your organization to request staff access.</p>
-
-            <div className="search-input-group">
-              <input
-                placeholder="Search workspace (e.g. City Hospital)..."
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && searchPlaces()}
-              />
-              <button onClick={searchPlaces}>Search</button>
+        <div className="dashboard-content-scroll">
+          <div className="workplace-container">
+            <div className="workplace-hero">
+              <div className="hero-icon-circle">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+              </div>
+              <h1>Setup Your Workspace</h1>
+              <p>Find your place below to request staff access. Once the admin approves your request, you can use this dashboard to manage live queues and serve customers in real-time.</p>
             </div>
 
-            <div className="results-list">
-              {searchResults.map(p => (
-                <div key={p._id} className="place-result-card">
-                  <div className="place-info">
-                    <h4>{p.name}</h4>
-                    <p>{p.address}</p>
-                  </div>
-                  <button
-                    className="apply-btn"
-                    disabled={applying === p._id}
-                    onClick={() => applyForPlace(p._id)}
-                  >
-                    {applying === p._id ? "Applying" : "Request Access"}
-                  </button>
+            {(user.status === "applied" || user.status === "pending") && (
+              <div className="active-request-section">
+                <div className="section-header">
+                  <span className="status-badge-pulse">Pending Approval</span>
+                  <h3>My Active Request</h3>
                 </div>
-              ))}
-              {searchResults.length === 0 && searchQuery && <p className="no-results-msg">No places found matching "{searchQuery}"</p>}
+                {loadingPlace ? (
+                  <div className="loading-msg-small">Connecting to workplace...</div>
+                ) : appliedPlace ? (
+                  <div className="applied-place-card-inline">
+                    <div className="place-basic-info">
+                      <h4>{appliedPlace.name}</h4>
+                      <p>{appliedPlace.address}</p>
+                    </div>
+                    <div className="place-actions-inline">
+                      <button className="refresh-status-btn" onClick={() => loadUser()} title="Refresh Status">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M23 4v6h-6"></path><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+                      </button>
+                      <button className="cancel-req-btn" onClick={cancelApplication}>Cancel Request</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="applied-place-card-inline error">
+                    <p>Request data not found. Please try refreshing.</p>
+                    <button onClick={() => loadUser()} className="mini-ref-btn">Refresh</button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="workplace-search-area">
+              <div className="search-box-wrapper">
+                <div className="search-icon-inside">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                </div>
+                <input
+                  placeholder="Enter place name or city..."
+                  value={searchQuery}
+                  onChange={e => { setSearchQuery(e.target.value); setSearchError(""); }}
+                  onKeyDown={e => e.key === 'Enter' && searchPlaces()}
+                />
+                <button className="search-trigger-btn" onClick={searchPlaces} disabled={searching}>
+                  {searching ? "Searching..." : "Find Workplace"}
+                </button>
+              </div>
+
+              {searchError && (
+                <div className="search-error-banner">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                  {searchError}
+                </div>
+              )}
+
+              <div className="search-results-grid">
+                {searching ? (
+                  <div className="loading-results">
+                    <div className="spinner-dots"><div></div><div></div><div></div></div>
+                    <p>Scanning directory...</p>
+                  </div>
+                ) : (
+                  searchResults.map(p => (
+                    <div key={p._id} className="place-result-tile">
+                      <div className="tile-content">
+                        <h4>{p.name}</h4>
+                        <p>{p.address}</p>
+                      </div>
+                      <button
+                        className="join-req-btn"
+                        disabled={applying === p._id || user.status === "applied"}
+                        onClick={() => applyForPlace(p._id)}
+                      >
+                        {applying === p._id ? "Processing..." : (user.status === "applied" ? "Request Active" : "Request Access")}
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -343,97 +464,75 @@ export default function StaffDashboard() {
     );
   }
 
-  /* ================= RENDER: APPLIED / PENDING STATE ================= */
-  if (user?.status === "applied" || user?.status === "pending") {
-    // pending is legacy status, treat as applied
-    return (
-      <div className="staff-dashboard-container">
-        <header className="staff-header">
-          <div className="header-left">
-            <h2>Staff Portal</h2>
-            <p>Account Status</p>
-          </div>
-          <div className="header-right">
-          </div>
-        </header>
-        <div className="counter-selection-screen">
-          <div className="selection-card centered">
-            <h2 className="status-pending-title">⏳ Application Sent</h2>
-            <p className="status-pending-text">
-              Your application to join a workplace is pending admin approval.
-              <br />
-              Please check back later.
-            </p>
-            <button
-              className="continue-btn"
-              onClick={() => window.location.reload()}
-            >
-              Check Status Again
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  /* ================= RENDER: COUNTER SELECTION ================= */
+  // 2. Counter Selection Flow
   if (!selectedCounter) {
     return (
       <div className="staff-dashboard-container">
         <header className="staff-header">
           <div className="header-left">
-            <h2>Staff Portal</h2>
-            <p>Please select your station</p>
+            <div className="staff-brand">
+              <div className="brand-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+              </div>
+              <div>
+                <h2>Staff Portal</h2>
+                <p>Digital Queue Management</p>
+              </div>
+            </div>
           </div>
-          <div className="header-right">
-          </div>
+
         </header>
 
-        <div className="counter-selection-screen">
-          <div className="selection-card">
-            <h2>Select Counter</h2>
-            <p>Choose the counter you are managing today.</p>
+        <div className="session-setup-layout">
+          {/* Staff Profile Section */}
+          <div className="staff-profile-summary">
+            <div className="profile-avatar-large">
+              {user?.username?.[0]?.toUpperCase() || "S"}
+            </div>
+            <div className="profile-info-block">
+              <h2>Welcome, {user?.username}</h2>
+              <p className="email-text">{user?.email}</p>
+            </div>
+          </div>
 
-            <div className="counters-grid">
-              {fetchError ? (
-                <div style={{ gridColumn: "1/-1", color: "#ef4444", textAlign: 'center' }}>
-                  <p>{fetchError}</p>
-                  <div style={{ marginTop: 10, padding: 10, background: '#fee2e2', borderRadius: 6, fontSize: '0.8em', color: '#b91c1c' }}>
-                    <strong>Debug Info:</strong><br />
-                    User: {user?.username}<br />
-                    Role: {user?.role}<br />
-                    PlaceID: {user?.placeId || "NULL (Check Admin Approval)"}
-                  </div>
-                </div>
-              ) : counters.length === 0 ? (
-                <p style={{ gridColumn: "1/-1", color: "#64748b" }}>Loading counters...</p>
-              ) : (
-                counters.map(c => (
-                  <div
-                    key={c.name}
-                    className={`counter-option ${selectedCounter === c.name ? "selected" : ""}`}
-                    onClick={() => setSelectedCounter(c.name)}
-                  >
-                    {c.name}
-                  </div>
+          {/* Workplace Info */}
+          <div className="workplace-context-card">
+            <div className="wp-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18"></path><path d="M5 21V7l8-4 8 4v14"></path><path d="M9 10a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2"></path></svg>
+            </div>
+            <div className="wp-details">
+              <span className="wp-label">MANAGING QUEUE AT</span>
+              <h3 className="wp-name">{placeName || "Loading Place..."}</h3>
+            </div>
+          </div>
+
+          {/* Counter Selection */}
+          <div className="counter-select-container">
+            <h3 className="cs-title">Select Your Active Counter</h3>
+            <div className="counters-grid-simple">
+              {counters.length > 0 ? (
+                counters.map((counter, i) => (
+                  <button key={i} className="counter-btn-simple" onClick={() => setSelectedCounter(counter.name)}>
+                    {counter.name}
+                  </button>
                 ))
+              ) : (
+                <div className="loading-results">
+                  <div className="spinner-dots"><div></div><div></div><div></div></div>
+                  <p>{loadingCounters ? "Fetching available counters..." : "Preparing selection..."}</p>
+                  {!loadingCounters && counters.length === 0 && (
+                    <button onClick={fetchCounters} className="mini-ref-btn" style={{ marginTop: '10px' }}>Load Counters</button>
+                  )}
+                </div>
               )}
             </div>
-
-            <button
-              className="continue-btn"
-              disabled={!selectedCounter}
-              onClick={() => { /* State is already set, just need to re-render main view */ }}
-            >
-              Start Session
-            </button>
           </div>
         </div>
       </div>
     );
   }
 
-  /* ================= RENDER: DASHBOARD ================= */
+  // 3. Main Dashboard
   const displayTicket = inspectingTicket || currentTicket;
 
   return (
@@ -445,28 +544,40 @@ export default function StaffDashboard() {
               <h1 className="vc-place-name">{placeName}</h1>
               <div className="vc-session-controls">
                 <span className="counter-tag">{selectedCounter}</span>
-                <button className="vc-text-btn" onClick={() => { fetchAllTokens(); setShowTokensModal(true); }}>
-                  All Tokens
-                </button>
-                <button className="vc-text-btn danger" onClick={() => window.location.reload()}>
-                  Change Counter
-                </button>
+                <button className="vc-text-btn" onClick={() => { fetchAllTokens(); setShowTokensModal(true); }}>All Tokens</button>
+                <button className="vc-text-btn danger" onClick={() => window.location.reload()}>Change Counter</button>
               </div>
             </div>
             <p className="vc-sub">Managing {queueStats.waiting + queueStats.completed + (currentTicket ? 1 : 0)} Tokens Today</p>
           </div>
 
           <div className="vc-grid">
-            {/* LEFT: CURRENT TOKEN */}
             <div className="vc-col-left">
               <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center', marginBottom: '10px' }}>
                 <span className="vc-label">{inspectingTicket ? "INSPECTING TOKEN" : "CURRENT TOKEN"}</span>
-                {inspectingTicket && (
-                  <button className="return-queue-btn" onClick={() => setInspectingTicket(null)}>Back to Queue</button>
+                {inspectingTicket && <button className="return-queue-btn" onClick={() => setInspectingTicket(null)}>Back to Queue</button>}
+              </div>
+              <div className="vc-token-code">
+                {loading ? (
+                  <div className="clean-message">
+                    <span>Calling Next...</span>
+                    <div className="spinner-small" style={{ margin: '10px 0 0', width: '24px', height: '24px', borderWidth: '2px' }}></div>
+                  </div>
+                ) : displayTicket ? (
+                  displayTicket.tokenCode
+                ) : queueStats.waiting > 0 ? (
+                  <div className="clean-message">
+                    <span>Ready to Serve</span>
+                    <button className="vc-btn-call" onClick={handleNextTicket} style={{ marginTop: '16px', width: 'auto', padding: '10px 32px', fontSize: '1rem', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>Start Queue</button>
+                  </div>
+                ) : (
+                  <div className="clean-message">
+                    <span>No Tokens in Queue</span>
+                    <span className="clean-subtext">You're all caught up!</span>
+                  </div>
                 )}
               </div>
-              <div className="vc-token-code">{displayTicket ? displayTicket.tokenCode : "--"}</div>
-              <div className={`vc-qr-area ${isVerified ? "verified-border" : ""}`}>
+              <div className={`vc-qr-area ${isVerified ? "verified-border" : ""} ${!displayTicket ? "clean" : ""}`}>
                 {displayTicket ? (
                   isVerified ? (
                     <div className="verified-status-panel">
@@ -474,54 +585,44 @@ export default function StaffDashboard() {
                       <h3>{displayTicket.status === "Completed" ? "ALREADY VERIFIED" : "TOKEN VERIFIED"}</h3>
                       <p>{displayTicket.status === "Completed" ? "This token was previously completed" : "Client is cleared for service"}</p>
                     </div>
-                  ) : (
-                    <QRCode value={displayTicket.tokenCode} size={150} />
-                  )
+                  ) : <QRCode value={displayTicket.tokenCode} size={150} />
                 ) : (
-                  <div style={{ color: '#cbd5e1', fontWeight: 600 }}>Waiting</div>
+                  <div className="empty-state-icon">
+                    {/* Coffee/Relax Icon */}
+                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M18 8h1a4 4 0 0 1 0 8h-1"></path>
+                      <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path>
+                      <line x1="6" y1="1" x2="6" y2="4"></line>
+                      <line x1="10" y1="1" x2="10" y2="4"></line>
+                      <line x1="14" y1="1" x2="14" y2="4"></line>
+                    </svg>
+                  </div>
                 )}
               </div>
             </div>
 
-            {/* RIGHT: QUEUE */}
             <div className="vc-col-right">
               <span className="vc-label">QUEUE STATUS</span>
-              <div className="vc-stat-row">
-                <span>Waiting</span>
-                <span className="vc-val blue">{queueStats.waiting}</span>
-              </div>
-              <div className="vc-stat-row">
-                <span>Near Service</span>
-                <span className="vc-val orange">{nextTickets.length}</span>
-              </div>
-              <div className="vc-stat-row">
-                <span>Completed</span>
-                <span className="vc-val green">{queueStats.completed}</span>
-              </div>
+              <div className="vc-stat-row"><span>Waiting</span><span className="vc-val blue">{queueStats.waiting}</span></div>
+              <div className="vc-stat-row"><span>Near Service</span><span className="vc-val orange">{nextTickets.length}</span></div>
+              <div className="vc-stat-row"><span>Completed</span><span className="vc-val green">{queueStats.completed}</span></div>
             </div>
           </div>
 
           <div className="vc-actions">
             {displayTicket ? (
-              <>
-                {!inspectingTicket ? (
-                  <>
-                    <button className="vc-btn-complete" onClick={() => handleUpdateStatus("Completed")}>Mark as Completed</button>
-                    <button className="vc-btn-skip" onClick={() => handleUpdateStatus("Skipped")}>Skip</button>
-                  </>
-                ) : (
-                  <div className="inspect-warning-msg">Queue actions disabled in inspect mode</div>
-                )}
-              </>
-            ) : (
-              <button className="vc-btn-call" onClick={handleNextTicket} disabled={loading}>{loading ? "Calling..." : "Call Next Token"}</button>
-            )}
+              !inspectingTicket ? (
+                <>
+                  <button className="vc-btn-complete" onClick={() => handleUpdateStatus("Completed")}>Mark as Completed</button>
+                  <button className="vc-btn-skip" onClick={() => handleUpdateStatus("Skipped")}>Skip</button>
+                </>
+              ) : <div className="inspect-warning-msg">Queue actions disabled in inspect mode</div>
+            ) : null /* Hide buttons if no ticket, the main area shows 'Start Queue' or 'No Tokens' */}
             <button className="vc-btn-scan" onClick={() => setShowScanner(true)}>Scan Token</button>
           </div>
         </div>
       </div>
 
-      {/* ALL TOKENS MODAL */}
       {showTokensModal && (
         <div className="profile-modal-overlay" onClick={() => setShowTokensModal(false)}>
           <div className="profile-card tokens-list-modal" onClick={e => e.stopPropagation()}>
@@ -530,41 +631,18 @@ export default function StaffDashboard() {
             <div className="tokens-table-container">
               <table className="tokens-table">
                 <thead>
-                  <tr>
-                    <th>Code</th>
-                    <th>User</th>
-                    <th>Status</th>
-                    <th>Action</th>
-                  </tr>
+                  <tr><th>Code</th><th>User</th><th>Status</th><th>Action</th></tr>
                 </thead>
                 <tbody>
                   {allTokens.map(t => (
                     <tr key={t._id}>
                       <td className="token-code-cell">{t.tokenCode}</td>
                       <td>{t.userName || "Guest"}</td>
-                      <td>
-                        <span className={`status-pill ${t.status.toLowerCase()}`}>
-                          {t.status}
-                        </span>
-                      </td>
-                      <td>
-                        <button
-                          className="view-token-btn"
-                          onClick={() => {
-                            setInspectingTicket(t);
-                            setShowTokensModal(false);
-                          }}
-                        >
-                          Inspect
-                        </button>
-                      </td>
+                      <td><span className={`status-pill ${t.status.toLowerCase()}`}>{t.status}</span></td>
+                      <td><button className="view-token-btn" onClick={() => { setInspectingTicket(t); setShowTokensModal(false); }}>Inspect</button></td>
                     </tr>
                   ))}
-                  {allTokens.length === 0 && (
-                    <tr>
-                      <td colSpan="4" style={{ textAlign: 'center', padding: '20px', color: '#64748b' }}>No tokens found for today.</td>
-                    </tr>
-                  )}
+                  {allTokens.length === 0 && <tr><td colSpan="4" style={{ textAlign: 'center', padding: '20px', color: '#64748b' }}>No tokens found for today.</td></tr>}
                 </tbody>
               </table>
             </div>
@@ -572,77 +650,38 @@ export default function StaffDashboard() {
         </div>
       )}
 
-      {/* PROFILE MODAL */}
       {showProfile && (
         <div className="profile-modal-overlay" onClick={() => setShowProfile(false)}>
           <div className="profile-card" onClick={e => e.stopPropagation()}>
             <button className="close-profile-btn" onClick={() => setShowProfile(false)}>×</button>
-            <div className="profile-avatar">
-              {user.username ? user.username.charAt(0).toUpperCase() : "U"}
-            </div>
-            <h2 className="profile-name">{user.username}</h2>
-            <p className="profile-role">{user.role} Account</p>
-
+            <div className="profile-avatar">{user?.username ? user.username.charAt(0).toUpperCase() : "U"}</div>
+            <h2 className="profile-name">{user?.username}</h2>
+            <p className="profile-role">{user?.role} Account</p>
             <div style={{ marginTop: '20px' }}>
-              <div className="profile-detail-row">
-                <span className="profile-detail-label">Email</span>
-                <span className="profile-detail-value">{user.email}</span>
-              </div>
-              <div className="profile-detail-row">
-                <span className="profile-detail-label">Status</span>
-                <span className="profile-detail-value" style={{ textTransform: 'capitalize', color: '#16a34a' }}>{user.status}</span>
-              </div>
-              <div className="profile-detail-row">
-                <span className="profile-detail-label">ID</span>
-                <span className="profile-detail-value" style={{ fontSize: '0.8em' }}>{user._id}</span>
-              </div>
+              <div className="profile-detail-row"><span className="profile-detail-label">Email</span><span className="profile-detail-value">{user?.email}</span></div>
+              <div className="profile-detail-row"><span className="profile-detail-label">Status</span><span className="profile-detail-value" style={{ textTransform: 'capitalize', color: '#16a34a' }}>{user?.status}</span></div>
             </div>
           </div>
         </div>
       )}
 
-      {/* SCANNER MODAL */}
-      {showScanner && (
-        <ScannerModal onClose={() => setShowScanner(false)} onScan={handleScanSuccess} />
-      )}
+      {showScanner && <ScannerModal onClose={() => setShowScanner(false)} onScan={handleScanSuccess} />}
 
-      {/* NOTIFICATION TOAST */}
       <div className={`notification-toast ${notification.visible ? "show" : ""} ${notification.type}`}>
-        {notification.type === "success" && <span className="icon">✅</span>}
-        {notification.type === "error" && <span className="icon">⚠️</span>}
+        {notification.type === "success" ? <span className="icon">✅</span> : <span className="icon">⚠️</span>}
         <span className="msg">{notification.message}</span>
       </div>
-
     </div>
   );
 }
 
-// Scanner Component to handle lifecycle
 function ScannerModal({ onClose, onScan }) {
   useEffect(() => {
-    // Check if element exists before init
-    if (!document.getElementById("qr-reader")) return;
-
-    const scanner = new Html5QrcodeScanner(
-      "qr-reader",
-      { fps: 10, qrbox: { width: 250, height: 250 } },
-      false
-    );
-
+    const scanner = new Html5QrcodeScanner("qr-reader", { fps: 10, qrbox: { width: 250, height: 250 } }, false);
     scanner.render((decodedText) => {
-      // Pause or clear? For now just callback
-      scanner.clear().then(() => {
-        onScan(decodedText);
-      }).catch(err => console.error(err));
-    }, (err) => {
-      // ignore
-    });
-
-    return () => {
-      try {
-        scanner.clear().catch(() => { });
-      } catch (e) { /* ignore */ }
-    };
+      scanner.clear().then(() => onScan(decodedText)).catch(err => console.error(err));
+    }, () => { });
+    return () => { try { scanner.clear().catch(() => { }); } catch (e) { } };
   }, []);
 
   return (
@@ -651,9 +690,7 @@ function ScannerModal({ onClose, onScan }) {
         <button className="close-profile-btn" onClick={onClose}>×</button>
         <h2 style={{ marginBottom: '20px' }}>Scan User Token</h2>
         <div id="qr-reader" style={{ width: '100%' }}></div>
-        <p style={{ fontSize: '0.9em', color: '#64748b', marginTop: '10px' }}>
-          Place QR code within the frame
-        </p>
+        <p style={{ fontSize: '0.9em', color: '#64748b', marginTop: '10px' }}>Place QR code within the frame</p>
       </div>
     </div>
   );

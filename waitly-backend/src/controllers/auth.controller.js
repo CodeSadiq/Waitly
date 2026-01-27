@@ -284,6 +284,95 @@ export const staffLogin = async (req, res) => {
 };
 
 /* =====================================================
+   UNIFIED LOGIN (PROPER SEQUENTIAL CHECK)
+===================================================== */
+export const unifiedLogin = async (req, res) => {
+  try {
+    const { identifier, password } = req.body;
+
+    if (!identifier || !password) {
+      return res.status(400).json({ success: false, message: "Missing credentials" });
+    }
+
+    let account = null;
+    let role = "";
+
+    // 1. Try User
+    account = await User.findOne({ $or: [{ email: identifier }, { username: identifier }] });
+    if (account) {
+      role = account.role;
+    } else {
+      // 2. Try Staff
+      account = await Staff.findOne({ $or: [{ email: identifier }, { username: identifier }] });
+      if (account) {
+        role = "staff";
+      } else {
+        // 3. Try Admin (email only usually)
+        account = await Admin.findOne({ email: identifier });
+        if (account) {
+          role = "admin";
+        }
+      }
+    }
+
+    if (!account) {
+      return res.status(401).json({ success: false, message: "Invalid username or email" });
+    }
+
+    // Verify Password
+    const isPasswordValid = await account.comparePassword(password);
+    if (!isPasswordValid) {
+      return res.status(401).json({ success: false, message: "Invalid password" });
+    }
+
+    // Update last login
+    account.lastLogin = new Date();
+    await account.save();
+
+    // Create Tokens
+    const payload = {
+      id: account._id.toString(),
+      role,
+      ...(role === "staff" && { placeId: account.placeId })
+    };
+
+    const token = createAccessToken(payload);
+    const refreshToken = createRefreshToken(payload);
+
+    // Set Cookies
+    res.cookie("token", token, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      path: "/"
+    });
+
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      path: "/"
+    });
+
+    res.json({
+      success: true,
+      message: "Login successful",
+      user: {
+        id: account._id,
+        username: account.username || account.email,
+        email: account.email,
+        role: role,
+        ...(role === "staff" && { placeId: account.placeId, status: account.status })
+      }
+    });
+
+  } catch (err) {
+    console.error("UNIFIED LOGIN ERROR:", err);
+    res.status(500).json({ success: false, message: "Internal server error during login" });
+  }
+};
+
+/* =====================================================
    ADMIN LOGIN
 ===================================================== */
 export const adminLogin = async (req, res) => {

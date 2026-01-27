@@ -18,7 +18,12 @@ import {
   rejectStaffRequest
 } from "../controllers/waitlyAdminController.js";
 
+import { protect, requireRole } from "../middleware/authMiddleware.js";
+
 const router = express.Router();
+
+// Apply protection to all admin routes
+router.use(protect(), requireRole("admin"));
 
 /* ================= ADMIN FETCH ================= */
 router.post("/fetch/osm", fetchFromOSM);
