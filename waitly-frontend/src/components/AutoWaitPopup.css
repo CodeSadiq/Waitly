@@ -156,3 +156,32 @@
   border: 1px solid #d1d5db;
   margin-bottom: 10px;
 }
+
+/* 🔥 Mobile: Remove Dark Overlay but KEEP Centering */
+@media (max-width: 768px) {
+  .modal-overlay {
+    background: transparent !important;
+    backdrop-filter: none !important;
+    pointer-events: none;
+    /* Let map interaction pass through outside box */
+    /* Ensure flex centering still works */
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 20px;
+    /* Prevent edge touching */
+  }
+
+  .modal-box {
+    pointer-events: auto;
+    /* Re-enable clicks on the box */
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    border: 1px solid #e5e7eb;
+    margin: 0 auto;
+    /* Ensure no weird margins */
+    width: 90%;
+    max-width: 380px;
+    position: relative;
+    /* Ensure it respects flex flow */
+  }
+}

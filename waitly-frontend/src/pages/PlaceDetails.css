@@ -244,6 +244,26 @@
 }
 
 /* ======================================================
+   TABLET VIEW (768px - 1024px)
+====================================================== */
+
+@media (min-width: 769px) and (max-width: 1024px) {
+
+  /* Show close button on tablets */
+  .close-details-btn {
+    display: flex;
+  }
+
+  .place-details {
+    padding: 20px;
+  }
+
+  .place-details-header h2 {
+    font-size: 20px;
+  }
+}
+
+/* ======================================================
    MOBILE BOTTOM SHEET
 ====================================================== */
 

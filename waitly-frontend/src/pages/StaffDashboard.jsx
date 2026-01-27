@@ -609,7 +609,7 @@ export default function StaffDashboard() {
             </div>
           </div>
 
-          <div className="vc-actions">
+          <div className={`vc-actions ${inspectingTicket ? 'inspect-mode' : ''}`}>
             {displayTicket ? (
               !inspectingTicket ? (
                 <>

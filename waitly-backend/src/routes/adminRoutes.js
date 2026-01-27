@@ -49,11 +49,7 @@ router.post(
 /* ================= DATABASE PLACES ================= */
 router.get("/places", getAllPlaces);
 router.post("/place/update/:id", updatePlaceByAdmin);
-
-
-router.get("/places", getAllPlaces);
-router.post("/place/update/:id", updatePlaceByAdmin);
-router.delete("/place/:id", deletePlaceByAdmin); // ✅ THIS FIXES 404
+router.delete("/place/:id", deletePlaceByAdmin);
 
 /* ================= STAFF REQUESTS ================= */
 router.get("/staff-requests", getPendingStaffRequests);

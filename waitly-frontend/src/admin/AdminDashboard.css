@@ -21,7 +21,10 @@
 /* ================= LAYOUT ================= */
 .admin-layout {
   display: flex;
-  min-height: 100vh;
+  height: 100vh;
+  /* Fixed height */
+  overflow: hidden;
+  /* Prevent body scroll */
   background-color: var(--admin-bg);
   color: var(--text-main);
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
@@ -34,11 +37,14 @@
   border-right: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
-  position: fixed;
-  height: 100vh;
+  position: static;
+  /* Let flexbox handle layout */
+  height: 100%;
+  /* Full height of parent */
   z-index: 50;
   transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
+
 
 .sidebar-header {
   padding: 24px;
@@ -165,11 +171,13 @@
 /* ================= MAIN CONTENT ================= */
 .admin-main {
   flex: 1;
-  margin-left: var(--sidebar-width);
-  height: 100vh;
+  /* margin-left: var(--sidebar-width); REMOVE THIS as we use flexbox now */
+  height: 100%;
+  /* Match parent height */
   display: flex;
   flex-direction: column;
-  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow-y: auto;
+  /* Enable vertical scroll for main content */
   overflow-x: hidden;
 }
 
@@ -1329,6 +1337,7 @@
   }
 }
 
+/* ================= RESPONSIVE DESIGN (MOBILE & TABLET) ================= */
 @media (max-width: 1024px) {
   .admin-sidebar {
     width: var(--sidebar-collapsed-width);
@@ -1350,31 +1359,72 @@
     justify-content: center;
     padding: 16px;
   }
+
+  /* Tooltip hover for collapsed sidebar could be added here */
 }
 
-/* ================= MOBILE RESPONSIVENESS ================= */
 @media (max-width: 768px) {
+  :root {
+    --header-height: 60px;
+  }
+
+  /* --- LAYOUT & SCROLLING FIXES --- */
   .admin-layout {
     flex-direction: column;
+    height: 100vh;
+    /* Use viewport height */
+    overflow: hidden;
+    /* Prevent body scroll, handle internally */
   }
 
   .admin-sidebar {
     width: 100%;
     height: auto;
-    position: sticky;
-    top: 0;
+    /* Allow content to dictate height */
+    max-height: 60px;
+    /* Restrict height */
+    position: relative;
+    /* Not fixed/sticky for layout flow */
     border-right: none;
     border-bottom: 1px solid var(--border-color);
     flex-direction: row;
-    overflow-x: auto;
     align-items: center;
-    padding: 10px 16px;
+    padding: 0 12px;
     z-index: 60;
+    overflow-x: auto;
+    /* Allow horizontal scrolling of nav items */
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+    flex-shrink: 0;
+    /* Keep size stable */
+    display: flex;
+    /* Ensure flex layout */
   }
 
+  .admin-main {
+    margin-left: 0;
+    width: 100%;
+    height: calc(100vh - 60px);
+    /* Fill remaining space */
+    overflow-y: auto;
+    /* ENABLE MAIN SCROLLING */
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .content-scroll {
+    padding: 16px;
+    /* Reduced padding */
+    padding-bottom: 80px;
+    /* Extra space for bottom safe area */
+  }
+
+  /* --- SIDEBAR COMPONENTS --- */
   .sidebar-header {
     border-bottom: none;
-    padding: 0 16px 0 0;
+    padding: 0;
+    margin-right: 12px;
+    display: flex;
+    align-items: center;
   }
 
   .logo-area {
@@ -1382,26 +1432,30 @@
   }
 
   .logo-icon {
-    width: 32px;
-    height: 32px;
-    font-size: 1rem;
-    border-radius: 8px;
+    width: 28px;
+    height: 28px;
+    font-size: 0.9rem;
+    border-radius: 6px;
   }
 
   .logo-text {
-    font-size: 1.1rem;
-    white-space: nowrap;
+    display: none;
+    /* Hide text on mobile for space */
   }
 
   .sidebar-nav {
     display: flex;
-    padding: 0;
-    overflow-y: visible;
+    flex-direction: row;
+    padding: 8px 0;
     gap: 8px;
+    overflow: visible;
+    /* Handled by parent */
+    align-items: center;
+    flex: 1;
   }
 
   .nav-group {
-    margin-bottom: 0;
+    margin: 0;
     display: flex;
     gap: 8px;
   }
@@ -1412,19 +1466,12 @@
 
   .nav-item {
     width: auto;
-    padding: 8px 14px;
-    white-space: nowrap;
-    border-radius: 99px;
-    font-size: 0.8rem;
+    padding: 6px 10px;
+    border-radius: 20px;
     background: #f1f5f9;
-  }
-
-  .nav-item span {
-    display: block;
-  }
-
-  .nav-item.active::after {
-    display: none;
+    color: var(--text-muted);
+    justify-content: center;
+    height: 36px;
   }
 
   .nav-item.active {
@@ -1432,167 +1479,143 @@
     color: white;
   }
 
+  .nav-item svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  /* Hide logout on mobile nav bar to save space, maybe add elsewhere */
   .sidebar-footer {
     display: none;
   }
 
-  /* Main Area adjustments */
-  .admin-main {
-    margin-left: 0;
-  }
-
+  /* --- HEADERS & TYPOGRAPHY SIZE REDUCTIONS --- */
   .main-header {
-    padding: 0 20px;
-    height: 70px;
+    height: 60px;
+    padding: 0 16px;
   }
 
   .header-info h1 {
+    font-size: 1.1rem;
+    /* Smaller H1 */
+  }
+
+  .subtitle {
+    font-size: 0.75rem;
+    display: none;
+    /* Hide subtitle to save vertical space */
+  }
+
+  .section-header-styled h2 {
+    font-size: 1rem;
+  }
+
+  .section-header-styled p {
+    font-size: 0.8rem;
+  }
+
+  /* --- CARDS & GRIDS --- */
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    /* 2 columns for stats if possible */
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .stat-card {
+    padding: 12px;
+    flex-direction: column;
+    /* Stack icon and text */
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .stat-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+  }
+
+  .stat-icon svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .stat-info h3 {
     font-size: 1.25rem;
   }
 
-  .content-scroll {
-    padding: 20px;
+  .stat-info p {
+    font-size: 0.7rem;
   }
 
-  /* Grid stacking */
-  .stats-grid {
-    grid-template-columns: 1fr;
-    gap: 16px;
-  }
-
+  /* --- MANAGEMENT CARDS --- */
   .management-card {
-    padding: 24px 16px;
-    width: 100%;
+    padding: 16px;
+    border-radius: 12px;
   }
 
   .section-header-styled {
-    flex-direction: column;
-    align-items: flex-start;
+    margin-bottom: 20px;
     gap: 12px;
   }
 
-  /* Form and search stacking */
-  .search-filter-bar {
-    flex-direction: column;
+  .icon-box {
+    width: 36px;
+    height: 36px;
   }
 
-  .search-input-group {
-    width: 100%;
-    min-width: unset;
+  .icon-box svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  /* --- SEARCH & FILTERS --- */
+  .search-filter-bar {
+    gap: 10px;
+  }
+
+  .search-input-group input {
+    font-size: 0.85rem;
+    padding: 10px 10px 10px 36px;
+    height: 40px;
+  }
+
+  .search-input-group svg {
+    width: 16px;
+    height: 16px;
+    left: 10px;
   }
 
   .coord-filters {
+    gap: 6px;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
     width: 100%;
   }
 
   .coord-filters input {
-    flex: 1;
-    width: 0;
-    min-width: 70px;
+    height: 40px;
+    width: 100%;
+    padding: 8px;
+    font-size: 0.8rem;
   }
 
   .btn-load-db {
+    height: 40px;
+    font-size: 0.85rem;
     width: 100%;
+    margin-top: 4px;
   }
 
-  /* Fetch form stacking */
-  .fetch-form-grid {
+  /* --- DATABASE RESULTS --- */
+  .db-results-grid {
     grid-template-columns: 1fr;
-    padding: 20px;
-  }
-
-  .fetch-inputs {
-    grid-template-columns: 1fr;
-  }
-
-  /* Wizard stacking */
-  .place-preview-banner {
-    flex-direction: column;
-    text-align: center;
     gap: 12px;
   }
 
-  .wizard-footer {
-    flex-direction: column;
-    padding: 20px;
-  }
-
-  .wizard-footer button {
-    width: 100%;
-  }
-
-  /* Modal responsive */
-  .modal-content.large {
-    max-height: 95vh;
-    border-radius: 12px;
-  }
-
-  .modal-header,
-  .modal-footer,
-  .modal-body {
-    padding: 20px;
-  }
-
-  /* Manual form stacking */
-  .form-row-2 {
-    grid-template-columns: 1fr;
-  }
-
-  /* Staff Detail cards */
-  .staff-grid-large {
-    grid-template-columns: 1fr;
-  }
-
-  .staff-card-detailed {
-    padding: 20px;
-  }
-
-  /* Fix Database Places overflow */
-  .db-results-grid {
-    grid-template-columns: 1fr;
-  }
-
   .db-place-tile {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 16px;
-  }
-
-  .tile-actions {
-    width: 100%;
-    justify-content: flex-end;
-  }
-}
-
-@media (max-width: 480px) {
-  .logo-text {
-    display: none;
-  }
-
-  .header-info p {
-    display: none;
-  }
-
-  .section-header-styled {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
-
-  .stat-card {
-    padding: 16px;
-  }
-
-  .stat-info h3 {
-    font-size: 1.5rem;
-  }
-
-  .db-results-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .db-place-tile {
-    padding: 16px;
+    padding: 12px;
     gap: 12px;
   }
 
@@ -1600,7 +1623,170 @@
     font-size: 0.9rem;
   }
 
-  .preset-badges {
-    justify-content: center;
+  .tile-actions .tile-edit-btn,
+  .tile-actions .tile-delete-btn {
+    width: 32px;
+    height: 32px;
   }
+
+  /* --- STAFF REQUESTS --- */
+  .staff-grid-large {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .staff-card-detailed {
+    padding: 16px;
+  }
+
+  .staff-info-header h3 {
+    font-size: 0.95rem;
+  }
+
+  .staff-info-header p {
+    font-size: 0.75rem;
+  }
+
+  .staff-avatar-large {
+    width: 40px;
+    height: 40px;
+    font-size: 1rem;
+  }
+
+  .btn-approve-large {
+    padding: 10px;
+    font-size: 0.85rem;
+  }
+
+  /* --- FETCH FORMS --- */
+  .fetch-form-grid {
+    grid-template-columns: 1fr;
+    padding: 16px;
+  }
+
+  .fetch-inputs {
+    grid-template-columns: 1fr;
+  }
+
+  .input-with-label label {
+    font-size: 0.75rem;
+  }
+
+  .input-with-label input,
+  .input-with-label select {
+    padding: 10px;
+    font-size: 0.85rem;
+  }
+
+  /* --- WIZARD --- */
+  .wizard-header {
+    padding: 16px;
+  }
+
+  .wizard-header h2 {
+    font-size: 1.1rem;
+  }
+
+  .wizard-body {
+    padding: 16px;
+  }
+
+  .wizard-inputs {
+    gap: 20px;
+  }
+
+  .place-preview-banner {
+    padding: 12px;
+  }
+
+  .p-icon {
+    width: 36px;
+    height: 36px;
+  }
+
+  .wizard-footer {
+    padding: 16px;
+    flex-direction: column-reverse;
+    /* Save on top */
+  }
+
+  .btn-save-wizard,
+  .btn-cancel-wizard {
+    width: 100%;
+    padding: 12px;
+  }
+
+  /* --- MODALS --- */
+  .modal-overlay {
+    align-items: flex-end;
+    /* Sheet style on mobile */
+    padding: 0;
+  }
+
+  .modal-content.large {
+    border-radius: 20px 20px 0 0;
+    max-height: 85vh;
+  }
+
+  .btn-close-modal {
+    padding: 8px;
+  }
+
+  /* --- MANUAL FORM FIXES --- */
+  .manual-form-stack {
+    max-width: 100%;
+    /* Ensure it doesn't overflow */
+    width: 100%;
+    margin-top: 16px;
+  }
+
+  .form-row-2 {
+    grid-template-columns: 1fr;
+    /* Stack lat/lng */
+    gap: 12px;
+  }
+
+  .manual-counter-setup {
+    padding: 12px;
+    overflow: hidden;
+    /* Prevent spill */
+  }
+
+  .custom-counter-box {
+    flex-direction: column;
+    /* Stack input and add button */
+    gap: 8px;
+  }
+
+  .custom-counter-box input {
+    width: 100%;
+  }
+
+  .btn-add-counter {
+    width: 100%;
+    height: 40px;
+  }
+
+  .btn-submit-manual {
+    width: 100%;
+    margin-top: 16px;
+    padding: 14px;
+  }
+}
+
+/* Extra small devices */
+@media (max-width: 380px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+    /* Stack stats on very small screens */
+  }
+
+  .nav-item {
+    padding: 6px 8px;
+  }
+}
+
+.preset-badges {
+  justify-content: center;
+}
 }

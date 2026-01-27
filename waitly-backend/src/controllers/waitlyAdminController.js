@@ -428,16 +428,20 @@ export const approveEditedPendingPlace = async (req, res) => {
 
 
 /* ================= DELETE DB PLACE (ADMIN) ================= */
+/* ================= DELETE DB PLACE (ADMIN) ================= */
 export const deletePlaceByAdmin = async (req, res) => {
   try {
     const { id } = req.params;
+    console.log(`🗑 [ADMIN] Deleting place with ID: ${id}`);
 
     const deleted = await Place.findByIdAndDelete(id);
 
     if (!deleted) {
+      console.warn(`⚠️ [ADMIN] Place not found for deletion: ${id}`);
       return res.status(404).json({ message: "Place not found" });
     }
 
+    console.log(`✅ [ADMIN] Place deleted successfully: ${id}`);
     res.json({ success: true });
   } catch (err) {
     console.error("DELETE PLACE ERROR:", err);

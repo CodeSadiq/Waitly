@@ -15,16 +15,25 @@
 }
 
 /* ================= MAIN CONTAINER ================= */
+/* ================= MAIN CONTAINER ================= */
 .staff-dashboard-container {
     display: flex;
     flex-direction: column;
-    height: calc(100vh - 72px);
+    /* Use min-height to allow content to grow on mobile */
+    min-height: 100vh;
     width: 100%;
-    overflow: hidden;
     background-color: #f1f5f9;
-    /* Slightly darker to contrast with white cards */
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
     position: relative;
+    /* Remove overflow:hidden to let body scroll on mobile naturally */
+}
+
+/* Desktop override: Keep fixed layout for large screens */
+@media (min-width: 1024px) {
+    .staff-dashboard-container {
+        height: 100vh;
+        overflow: hidden;
+    }
 }
 
 /* ================= HEADER ================= */
@@ -194,13 +203,23 @@
 }
 
 /* ================= CONTENT AREA ================= */
+/* ================= CONTENT AREA ================= */
 .dashboard-content-wrapper {
     flex: 1;
     padding: 24px;
-    overflow: hidden;
     display: flex;
     justify-content: center;
-    align-items: stretch;
+    align-items: flex-start;
+    /* changed from stretch to avoid full height forcing */
+    width: 100%;
+}
+
+@media (min-width: 1024px) {
+    .dashboard-content-wrapper {
+        overflow-y: auto;
+        /* Internal scroll on desktop */
+        height: 100%;
+    }
 }
 
 .verification-card {
@@ -235,8 +254,15 @@
     display: grid;
     grid-template-columns: 1.2fr 0.8fr;
     gap: 24px;
-    flex: 1;
-    min-height: 0;
+    width: 100%;
+}
+
+@media (max-width: 1024px) {
+    .vc-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
 }
 
 .vc-col-left,
@@ -1312,9 +1338,15 @@
 
 .dashboard-content-scroll {
     flex: 1;
-    overflow-y: auto;
     padding: 40px 20px;
     background-color: var(--staff-bg);
+    width: 100%;
+}
+
+@media (min-width: 1024px) {
+    .dashboard-content-scroll {
+        overflow-y: auto;
+    }
 }
 
 .workplace-container {
@@ -1712,61 +1744,263 @@
     }
 }
 
-@media (max-width: 600px) {
-    .staff-header {
-        padding: 12px 16px;
+/* ================= TABLET VIEW (769px - 1024px) ================= */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .dashboard-content-wrapper {
+        padding: 16px;
     }
 
-    .brand-icon {
-        width: 36px;
-        height: 36px;
-        font-size: 18px;
-    }
-
-    .staff-brand h2 {
-        font-size: 1.1rem;
-    }
-
-    .staff-brand p {
-        font-size: 0.75rem;
+    .verification-card {
+        gap: 14px;
     }
 
     .vc-place-name {
-        font-size: 1.5rem;
-        word-break: break-word;
+        font-size: 1.4rem;
+        text-align: center;
+        width: 100%;
+        display: block;
+    }
+
+    .vc-sub {
+        font-size: 0.85rem;
         text-align: center;
     }
 
+    .counter-tag {
+        font-size: 0.8rem;
+        padding: 6px 14px;
+    }
+
+    .vc-text-btn {
+        font-size: 0.8rem;
+        padding: 6px 14px;
+    }
+
+    .vc-session-controls {
+        gap: 10px;
+    }
+}
+
+/* ================= MOBILE: SCROLLABLE LAYOUT (ALL CONTENT VISIBLE) ================= */
+@media (max-width: 768px) {
+    .staff-dashboard-container {
+        min-height: 100vh;
+        height: auto;
+        overflow-y: auto;
+    }
+
+    .staff-header {
+        padding: 6px 12px;
+        min-height: 48px;
+    }
+
+    .brand-icon {
+        width: 32px;
+        height: 32px;
+        font-size: 16px;
+    }
+
+    .staff-brand h2 {
+        font-size: 0.95rem;
+    }
+
+    .staff-brand p {
+        font-size: 0.7rem;
+    }
+
+    .logout-btn {
+        padding: 6px 10px;
+        font-size: 0.75rem;
+    }
+
+    .dashboard-content-wrapper {
+        padding: 12px;
+        min-height: auto;
+        overflow: visible;
+    }
+
+    .verification-card {
+        gap: 12px;
+        padding-bottom: 16px;
+        min-height: auto;
+    }
+
     .vc-header-info {
+        margin-bottom: 12px;
+        padding: 0 8px;
         text-align: center;
     }
 
     .vc-header-main {
-        align-items: center;
+        flex-direction: column;
+        gap: 8px;
+        text-align: center;
     }
 
     .vc-session-controls {
+        width: 100%;
         justify-content: center;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 12px;
+    }
+
+    .vc-place-name {
+        font-size: 1.25rem;
+        text-align: center;
+        margin: 0 0 10px 0;
+        line-height: 1.3;
+        font-weight: 700;
+        color: var(--staff-text-main);
+        width: 100%;
+        display: block;
+    }
+
+    .vc-sub {
+        font-size: 0.8rem;
+        margin-top: 6px;
+        color: var(--staff-text-sub);
+        font-weight: 500;
     }
 
     .counter-tag {
-        font-size: 0.7rem;
-        padding: 4px 10px;
+        font-size: 0.75rem;
+        padding: 6px 12px;
+        font-weight: 600;
+        min-width: 80px;
+        text-align: center;
+    }
+
+    .vc-text-btn {
+        font-size: 0.75rem;
+        padding: 6px 12px;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    .vc-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        overflow: visible;
     }
 
     .vc-col-left,
     .vc-col-right {
-        padding: 20px;
+        padding: 14px;
+        min-height: auto;
+    }
+
+    .vc-label {
+        font-size: 0.65rem;
+        margin-bottom: 6px;
     }
 
     .vc-token-code {
-        font-size: 3rem;
-        /* Reduced from 3.5rem to prevent potential overflow */
+        font-size: 2.2rem;
+        margin: 6px 0;
     }
 
     .vc-qr-area {
-        width: 120px;
-        /* Reduced specific size */
-        height: 120px;
+        width: 110px;
+        height: 110px;
+        padding: 8px;
+    }
+
+    .vc-stat-row {
+        padding: 8px 12px;
+    }
+
+    .vc-stat-row span:first-child {
+        font-size: 0.8rem;
+    }
+
+    .vc-val {
+        font-size: 1.2rem;
+    }
+
+    /* Visible Footer Actions */
+    .vc-actions {
+        gap: 8px;
+        margin-top: 12px;
+        flex-wrap: wrap;
+        padding-bottom: 12px;
+    }
+
+    .vc-actions button {
+        height: 46px;
+        font-size: 0.88rem;
+        padding: 0 14px;
+        border-radius: 10px;
+    }
+
+    .clean-message {
+        font-size: 1.2rem !important;
+    }
+
+    .clean-subtext {
+        font-size: 0.85rem;
+    }
+
+    .empty-state-icon svg {
+        width: 48px;
+        height: 48px;
+    }
+
+    .verified-icon {
+        font-size: 2rem;
+    }
+
+    .verified-status-panel h3 {
+        font-size: 0.9rem;
+    }
+
+    .verified-status-panel p {
+        font-size: 0.7rem;
+    }
+
+    /* Inspect Mode Mobile Styles */
+    .inspect-warning-msg {
+        flex: none;
+        width: 100%;
+        padding: 10px;
+        font-size: 0.75rem;
+        margin-bottom: 8px;
+        text-align: center;
+    }
+
+    .vc-actions.inspect-mode {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .vc-actions.inspect-mode .inspect-warning-msg {
+        order: -1;
+        /* Place warning above button */
+    }
+}
+
+@media (max-width: 480px) {
+    .vc-token-code {
+        font-size: 2rem;
+    }
+
+    .vc-actions {
+        gap: 6px;
+    }
+
+    .vc-actions button {
+        height: 40px;
+        font-size: 0.75rem;
+        padding: 0 8px;
+    }
+
+    .vc-qr-area {
+        width: 100px;
+        height: 100px;
+    }
+
+    .vc-place-name {
+        font-size: 1rem;
     }
 }
