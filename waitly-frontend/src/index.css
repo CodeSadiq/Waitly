@@ -10,5 +10,5 @@ body,
   width: 100%;
   min-height: 100%;
   font-family: "Inter", system-ui, sans-serif;
+  overflow-x: hidden;
 }
-

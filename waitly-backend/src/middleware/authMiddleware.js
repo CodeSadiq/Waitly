@@ -1,29 +1,94 @@
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
+import Staff from "../models/Staff.js";
+import Admin from "../models/Admin.js";
 
 export const protect = () => async (req, res, next) => {
   try {
     const token = req.cookies?.token;
 
-    if (!token) return res.status(401).json({ message: "No token" });
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required. Please login."
+      });
+    }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+    } catch (err) {
+      if (err.name === "TokenExpiredError") {
+        return res.status(401).json({
+          success: false,
+          message: "Session expired. Please login again.",
+          expired: true
+        });
+      }
 
-    const user = await User.findById(decoded.id).select("-password");
+      return res.status(401).json({
+        success: false,
+        message: "Invalid authentication token"
+      });
+    }
 
-    if (!user) return res.status(401).json({ message: "User not found" });
+    // Query the correct model based on role
+    let user;
+    if (decoded.role === "admin") {
+      user = await Admin.findById(decoded.id).select("-password");
+    } else if (decoded.role === "staff") {
+      user = await Staff.findById(decoded.id).select("-password");
+    } else {
+      user = await User.findById(decoded.id).select("-password");
+    }
 
-    req.user = user;
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: "User not found. Please login again."
+      });
+    }
+
+    req.user = user.toObject();
     req.user.role = decoded.role;
+
+    // Add placeId if it exists in token (for staff)
+    if (decoded.placeId) {
+      req.user.placeId = decoded.placeId;
+    }
 
     next();
   } catch (err) {
-    console.log("AUTH FAIL:", err.message);
-    res.status(401).json({ message: "Auth failed" });
+    console.error("AUTH MIDDLEWARE ERROR:", err.message);
+    res.status(401).json({
+      success: false,
+      message: "Authentication failed"
+    });
   }
 };
 
+/* ================= ROLE-BASED MIDDLEWARE ================= */
+export const requireRole = (...roles) => {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required"
+      });
+    }
 
-export const verifyUser = protect(["user"]);
-export const verifyStaff = protect(["staff"]);
-export const verifyAdmin = protect(["admin"]);
+    if (!roles.includes(req.user.role)) {
+      return res.status(403).json({
+        success: false,
+        message: "You don't have permission to access this resource"
+      });
+    }
+
+    next();
+  };
+};
+
+/* ================= LEGACY EXPORTS (FOR BACKWARD COMPATIBILITY) ================= */
+export const verifyUser = protect();
+export const verifyStaff = protect();
+export const verifyAdmin = protect();

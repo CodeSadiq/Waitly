@@ -27,7 +27,8 @@
     0 10px 25px rgba(0, 0, 0, 0.08),
     0 2px 6px rgba(0, 0, 0, 0.04);
 }
-.admin-card input{
+
+.admin-card input {
   margin: 8px;
 
 }
@@ -187,13 +188,13 @@ button:disabled {
 }
 
 
-.preset-counters{
+.preset-counters {
   display: flex;
 
   flex-wrap: wrap;
   gap: 10px;
   margin-bottom: 8px;
-  
+
 }
 
 /* ================= JSON EDITOR ================= */

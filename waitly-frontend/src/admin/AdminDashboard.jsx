@@ -6,6 +6,7 @@ import { adminFetch } from "../utils/adminFetch";
 export default function AdminDashboard() {
   /* ================= STATE ================= */
   const [pending, setPending] = useState([]);
+  const [staffRequests, setStaffRequests] = useState([]); // ✅ NEW
   const [osmResults, setOsmResults] = useState([]);
   const [fetchMessage, setFetchMessage] = useState("");
 
@@ -76,7 +77,6 @@ export default function AdminDashboard() {
     "Reception",
     "Information Desk",
     "Payment Counter",
-
   ];
 
   const addPresetCounter = (name) => {
@@ -88,25 +88,54 @@ export default function AdminDashboard() {
   const logout = async () => {
     try {
       await adminFetch("/api/auth/logout", { method: "POST" });
-    } catch {}
+    } catch { }
     localStorage.removeItem("waitly_role");
     window.location.href = "/login";
   };
 
-  /* ================= LOAD PENDING ================= */
+  /* ================= LOAD DATA ================= */
   const loadPending = async () => {
     try {
       const res = await adminFetch("/api/admin/pending");
       const data = await res.json();
       setPending(Array.isArray(data) ? data : []);
-    } catch (err) {
-      console.error("Failed to load pending", err);
-    }
+    } catch { setPending([]); }
+  };
+
+  const loadStaffRequests = async () => { // ✅ NEW
+    try {
+      const res = await adminFetch("/api/admin/staff-requests");
+      const data = await res.json();
+      setStaffRequests(Array.isArray(data) ? data : []);
+    } catch { setStaffRequests([]); }
   };
 
   useEffect(() => {
     loadPending();
+    loadStaffRequests();
   }, []);
+
+  /* ================= STAFF REQUEST ACTIONS ================= */
+  const approveStaff = async (id) => {
+    if (!window.confirm("Approve this staff and create their place?")) return;
+    try {
+      const res = await adminFetch(`/api/admin/staff-requests/approve/${id}`, { method: "POST" });
+      if (res.ok) {
+        alert("Staff approved & Place created!");
+        loadStaffRequests();
+      } else {
+        alert("Failed to approve");
+      }
+    } catch (e) { console.error(e); alert("Error"); }
+  };
+
+  const rejectStaff = async (id) => {
+    if (!window.confirm("Reject this request?")) return;
+    try {
+      await adminFetch(`/api/admin/staff-requests/reject/${id}`, { method: "POST" });
+      loadStaffRequests();
+    } catch { alert("Error"); }
+  };
 
   /* ================= FETCH FROM OSM ================= */
   const fetchOSM = async () => {
@@ -275,10 +304,10 @@ export default function AdminDashboard() {
     }
 
     await adminFetch(`/api/admin/pending/approve-edited/${editingPlace._id}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(parsed)
-      }
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(parsed)
+    }
     );
 
     setEditingPlace(null);
@@ -303,28 +332,28 @@ export default function AdminDashboard() {
   };
 
   /* ================= SAVE DB EDIT ================= */
-const saveDbEdit = async () => {
-  let parsed;
+  const saveDbEdit = async () => {
+    let parsed;
 
-  try {
-    parsed = JSON.parse(dbJsonText);
+    try {
+      parsed = JSON.parse(dbJsonText);
 
-    await adminFetch(`/api/admin/place/update/${editingDbPlace._id}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(parsed),
-    });
+      await adminFetch(`/api/admin/place/update/${editingDbPlace._id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(parsed),
+      });
 
-    alert("Database place updated");
-    setEditingDbPlace(null);
-    setDbJsonText("");
-    loadDbPlaces();
+      alert("Database place updated");
+      setEditingDbPlace(null);
+      setDbJsonText("");
+      loadDbPlaces();
 
-  } catch (error) {
-    console.error(error);
-    alert("Update API not available or invalid JSON");
-  }
-};
+    } catch (error) {
+      console.error(error);
+      alert("Update API not available or invalid JSON");
+    }
+  };
 
 
   /* ================= DELETE DB PLACE ================= */
@@ -563,6 +592,36 @@ const saveDbEdit = async () => {
             Add Place
           </button>
         </div>
+      </section>
+
+      {/* ================= STAFF REQUESTS ================= */}
+      <section className="admin-card">
+        <h2>👨‍💼 Pending Staff Requests</h2>
+        {staffRequests.length === 0 && <p className="muted">No pending staff requests</p>}
+
+        {staffRequests.map(s => (
+          <div key={s._id} className="result-item" style={{ borderLeft: "4px solid #3b82f6" }}>
+            <div>
+              <strong>{s.username}</strong> ({s.email})
+              {s.application?.placeId ? (
+                <div style={{ fontSize: "0.9em", color: "#007bff", marginTop: "5px" }}>
+                  Requesting Access to: <strong>{s.application.placeId.name}</strong><br />
+                  <span style={{ color: '#666' }}>{s.application.placeId.address}</span>
+                </div>
+              ) : (
+                <div style={{ fontSize: "0.9em", color: "#555", marginTop: "5px" }}>
+                  Requesting NEW Place: <strong>{s.requestDetails?.placeName}</strong><br />
+                  Address: {s.requestDetails?.address}<br />
+                  Counters: {s.requestDetails?.counters?.join(", ") || "General"}
+                </div>
+              )}
+            </div>
+            <div className="actions">
+              <button className="approve" onClick={() => approveStaff(s._id)}>Approve</button>
+              <button className="reject" onClick={() => rejectStaff(s._id)}>Reject</button>
+            </div>
+          </div>
+        ))}
       </section>
 
       {/* ================= PENDING ================= */}

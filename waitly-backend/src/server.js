@@ -14,6 +14,7 @@ import authRoutes from "./routes/auth.routes.js"; // ✅ ADD
 import locationRoutes from "./routes/locationRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import queueRoutes from "./routes/queue.js";
+import staffRoutes from "./routes/staff.routes.js";
 
 
 console.log("JWT SECRET:", process.env.JWT_SECRET);
@@ -49,6 +50,7 @@ app.use("/api/auth", authRoutes);        // 🔐 AUTH ROUTES
 app.use("/api/location", locationRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/queue", queueRoutes);
+app.use("/api/staff", staffRoutes);
 
 /* ================= TEST ================= */
 app.get("/", (req, res) => {

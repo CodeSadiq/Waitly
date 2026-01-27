@@ -12,7 +12,10 @@ import {
   getAllPlaces,              // ✅ existing
   updatePlaceByAdmin,        // ✅ existing
   approveEditedPendingPlace,  // ✅ ADD THIS
-  deletePlaceByAdmin
+  deletePlaceByAdmin,
+  getPendingStaffRequests,
+  approveStaffRequest,
+  rejectStaffRequest
 } from "../controllers/waitlyAdminController.js";
 
 const router = express.Router();
@@ -46,5 +49,10 @@ router.post("/place/update/:id", updatePlaceByAdmin);
 router.get("/places", getAllPlaces);
 router.post("/place/update/:id", updatePlaceByAdmin);
 router.delete("/place/:id", deletePlaceByAdmin); // ✅ THIS FIXES 404
+
+/* ================= STAFF REQUESTS ================= */
+router.get("/staff-requests", getPendingStaffRequests);
+router.post("/staff-requests/approve/:id", approveStaffRequest);
+router.post("/staff-requests/reject/:id", rejectStaffRequest);
 
 export default router;

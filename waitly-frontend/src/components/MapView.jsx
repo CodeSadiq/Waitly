@@ -51,18 +51,67 @@ function MapClickHandler({ addMode, onMapSelect }) {
 /* =========================
    🔥 Fly to selected place
    ========================= */
+/* =========================
+   🔥 Fly to selected place
+   ========================= */
 function FlyToPlace({ place }) {
   const map = useMap();
 
   useEffect(() => {
     if (!place?.location) return;
 
-    map.flyTo(
-      [place.location.lat, place.location.lng],
-      17,
-      { duration: 1.2 }
-    );
+    const isMobile = window.innerWidth <= 1024;
+    const isUserLoc = place.isUserLocation;
+    const targetZoom = 17;
+
+    if (isMobile && isUserLoc) {
+      // 📱 MOBILE + USER LOCATION: Offset center to account for bottom sheet
+      // Sheet is ~40% height. Visible map is top 60%. Visual center is at 30%.
+      // Map center is at 50%. So we need to shift center DOWN by 20% of height.
+      const latlng = [place.location.lat, place.location.lng];
+      const point = map.project(latlng, targetZoom);
+      const offsetY = window.innerHeight * 0.20;
+      const targetPoint = point.add([0, offsetY]); // Shift center down so point appears up
+      const targetLatLng = map.unproject(targetPoint, targetZoom);
+
+      map.flyTo(targetLatLng, targetZoom, { duration: 1.2 });
+    } else {
+      // 💻 DESKTOP or DETAILS OPEN: Standard center
+      map.flyTo(
+        [place.location.lat, place.location.lng],
+        targetZoom,
+        { duration: 1.2 }
+      );
+    }
   }, [place, map]);
+
+  return null;
+}
+
+/* =========================
+   🔄 RESIZE HANDLER
+   ========================= */
+function ResizeHandler({ selectedPlace }) {
+  const map = useMap();
+
+  useEffect(() => {
+    // When selectedPlace changes (or nulls), the container resizes via CSS.
+    // We need to tell Leaflet to check its size after the transition (approx 350-400ms).
+    const timer = setTimeout(() => {
+      map.invalidateSize();
+
+      // Only re-pan if it's NOT the user location (as FlyToPlace handles the offset for UserLoc)
+      // And only if we have a valid location.
+      if (selectedPlace?.location && !selectedPlace.isUserLocation) {
+        map.panTo(
+          [selectedPlace.location.lat, selectedPlace.location.lng],
+          { animate: true, duration: 0.5 }
+        );
+      }
+    }, 450);
+
+    return () => clearTimeout(timer);
+  }, [selectedPlace, map]);
 
   return null;
 }
@@ -76,7 +125,24 @@ export default function MapView({
   onMapSelect
 }) {
   if (!userLocation) {
-    return <p style={{ padding: 20 }}>Loading map…</p>;
+    return (
+      <div style={{
+        height: "100%",
+        width: "100%",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        textAlign: "center",
+        padding: "20px",
+        paddingBottom: "40vh", // Push it up visually on mobile
+        color: "#6b7280",
+        fontFamily: "inherit"
+      }}>
+        <p style={{ marginBottom: "8px", fontWeight: 500 }}>Map is loading...</p>
+        <p style={{ fontSize: "0.9em", opacity: 0.8 }}>Please turn on location access.</p>
+      </div>
+    );
   }
 
   return (
@@ -89,6 +155,8 @@ export default function MapView({
         attribution="&copy; OpenStreetMap & CARTO"
         url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
       />
+
+      <ResizeHandler selectedPlace={selectedPlace} />
 
       {/* 🔥 CLICK HANDLER */}
       <MapClickHandler
@@ -130,4 +198,3 @@ export default function MapView({
     </MapContainer>
   );
 }
-

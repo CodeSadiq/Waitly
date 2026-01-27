@@ -44,7 +44,7 @@ const OSM_CATEGORY_MAP = {
   cafe: { key: "amenity", value: "cafe" },
   bus_station: { key: "amenity", value: "bus_station" },
 
-   // 🔥 FIXED ONES
+  // 🔥 FIXED ONES
   courthouse: { key: "amenity", value: "courthouse" },
   gas_agency: { key: "amenity", value: "fuel" },
   government: { key: "office", value: "government" },
@@ -441,5 +441,90 @@ export const deletePlaceByAdmin = async (req, res) => {
   } catch (err) {
     console.error("DELETE PLACE ERROR:", err);
     res.status(500).json({ message: "Failed to delete place" });
+  }
+};
+
+/* =====================================================
+   STAFF REQUEST MANAGEMENT
+   ===================================================== */
+import Staff from "../models/Staff.js";
+
+// 1. Get Pending Requests (Support both legacy Pending and new Applied)
+export const getPendingStaffRequests = async (req, res) => {
+  try {
+    const requests = await Staff.find({ status: { $in: ["pending", "applied"] } })
+      .select("-password")
+      .populate("application.placeId", "name address") // Fill place details if applied
+      .sort({ createdAt: -1 });
+    res.json(requests);
+  } catch (err) {
+    console.error("FETCH STAFF REQUESTS ERROR:", err);
+    res.status(500).json({ message: "Failed to fetch requests" });
+  }
+};
+
+// 2. Approve Request
+export const approveStaffRequest = async (req, res) => {
+  try {
+    const { id } = req.params; // Staff ID
+
+    const staff = await Staff.findById(id);
+    if (!staff) return res.status(404).json({ message: "Request not found" });
+
+    if (staff.status === "active") {
+      return res.status(400).json({ message: "Staff already active" });
+    }
+
+    // CASE A: NEW APPLICATION FLOW (Link to existing place)
+    if (staff.status === "applied" && staff.application?.placeId) {
+      staff.status = "active";
+      staff.placeId = staff.application.placeId;
+      staff.application = undefined; // Clear application
+      await staff.save();
+      return res.json({ success: true, staff });
+    }
+
+    // CASE B: LEGACY REQUEST FLOW (Create new place)
+    // Only if requestDetails exists
+    const { placeName, address, counters } = staff.requestDetails || {};
+
+    if (!placeName && !staff.application?.placeId) {
+      return res.status(400).json({ message: "No place application found" });
+    }
+
+    // Create the Place (Legacy)
+    const newPlace = await Place.create({
+      externalPlaceId: `staff-request-${staff._id}`,
+      name: placeName,
+      address: address,
+      category: "General",
+      location: { lat: 0, lng: 0 },
+      counters: buildCounters(counters),
+      metadata: { source: "staff-request", approvedAt: new Date(), createdByStaff: staff._id }
+    });
+
+    // Update Staff
+    staff.status = "active";
+    staff.placeId = newPlace._id;
+    staff.requestDetails = undefined;
+    await staff.save();
+
+    res.json({ success: true, place: newPlace, staff });
+
+  } catch (err) {
+    console.error("APPROVE STAFF ERROR:", err);
+    res.status(500).json({ message: "Failed to approve request" });
+  }
+};
+
+// 3. Reject Request
+export const rejectStaffRequest = async (req, res) => {
+  try {
+    const { id } = req.params;
+    await Staff.findByIdAndDelete(id); // Or set status='rejected'
+    res.json({ success: true });
+  } catch (err) {
+    console.error("REJECT STAFF ERROR:", err);
+    res.status(500).json({ message: "Failed to reject request" });
   }
 };

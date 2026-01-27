@@ -6,7 +6,7 @@
 
 /* ================= PAGE ================= */
 .auth-page {
-  min-height: 100vh;
+  min-height: calc(100vh - 72px);
   background: linear-gradient(135deg, #eef2ff, #f9fafb);
   display: flex;
   align-items: center;
@@ -190,6 +190,7 @@
     opacity: 0;
     transform: translateY(6px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);

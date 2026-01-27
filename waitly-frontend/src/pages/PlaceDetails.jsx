@@ -74,9 +74,9 @@ export default function PlaceDetails({ place, onWaitUpdated }) {
   if (place.isUserLocation || place._id === "my-location") {
     return (
       <div className="place-details-my-location">
-        <div className="my-location-title" style={{ display: "flex", justifyContent:"center", alignItems: "center", gap: 6 }}>
+        <div className="my-location-title" style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 6 }}>
           <svg width="30" height="30" viewBox="0 0 24 24" fill="#ec4899">
-            <path d="M12 2c-3.87 0-7 3.13-7 7 0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z"/>
+            <path d="M12 2c-3.87 0-7 3.13-7 7 0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z" />
           </svg>
           You are here
         </div>
@@ -90,8 +90,19 @@ export default function PlaceDetails({ place, onWaitUpdated }) {
   return (
     <div className="place-details">
       <div className="place-details-header">
-        <h2>{place.name}</h2>
-        <span className="rating">⭐ N/A</span>
+        <div className="header-info">
+          <h2>{place.name}</h2>
+          <span className="rating">⭐ {place.rating || "4.8 (120)"}</span>
+        </div>
+        <button
+          className="close-details-btn"
+          onClick={() =>
+            window.dispatchEvent(new Event("close-place-details"))
+          }
+          aria-label="Close details"
+        >
+          ✕
+        </button>
       </div>
 
       <p className="place-address">
@@ -109,17 +120,17 @@ export default function PlaceDetails({ place, onWaitUpdated }) {
               avg <= 10
                 ? "wait-low"
                 : avg <= 30
-                ? "wait-medium"
-                : "wait-high";
+                  ? "wait-medium"
+                  : "wait-high";
 
             return (
               <div key={index} className="wait-row">
                 <span className="wait-label">
                   <span className="counter-icon">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                      <rect x="3" y="10" width="18" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.5"/>
-                      <rect x="6" y="5" width="12" height="5" rx="1" stroke="currentColor" strokeWidth="1.5"/>
-                      <circle cx="12" cy="8" r="1.2" fill="currentColor"/>
+                      <rect x="3" y="10" width="18" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.5" />
+                      <rect x="6" y="5" width="12" height="5" rx="1" stroke="currentColor" strokeWidth="1.5" />
+                      <circle cx="12" cy="8" r="1.2" fill="currentColor" />
                     </svg>
                   </span>
                   {counter.name}
@@ -154,15 +165,6 @@ export default function PlaceDetails({ place, onWaitUpdated }) {
       >
         Update Wait Time
       </button>
-
-      <div
-        className="mobile-back-btn"
-        onClick={() =>
-          window.dispatchEvent(new Event("close-place-details"))
-        }
-      >
-        ← Back
-      </div>
 
       {showWaitPopup && (
         <AutoWaitPopup

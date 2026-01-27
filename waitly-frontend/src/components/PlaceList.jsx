@@ -127,35 +127,17 @@ const CategoryIcon = ({ category }) => {
 /* ================= COMPONENT ================= */
 
 export default function PlaceList({ places, selectedPlace, onSelect }) {
-  const [search, setSearch] = useState("");
-
   // 🛡️ HARD GUARD
   const safePlaces = Array.isArray(places) ? places : [];
 
-  const filteredPlaces = safePlaces.filter((place) =>
-    place.name?.toLowerCase().includes(search.toLowerCase())
-  );
-
   return (
     <div className="place-list">
-      {/* DRAG HANDLE */}
-      <div className="sheet-handle" style={{ color: "red" }} />
-
-      {/* SEARCH */}
-      <input
-        className="place-search"
-        type="text"
-        placeholder="Search places"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-      />
-
-      <h3 className="place-list-title" style={{ margin: "20px 0px" }}>
+      <h3 className="place-list-title" style={{ margin: "10px 0px 20px" }}>
         Nearby Locations
       </h3>
 
       {/* PLACE ITEMS */}
-      {filteredPlaces.map((place) => {
+      {safePlaces.map((place) => {
         const isActive = selectedPlace?._id === place._id;
         const category = place.category?.toLowerCase();
         const waitTime = place.counters?.[0]?.normalWait?.avgTime;
@@ -177,13 +159,13 @@ export default function PlaceList({ places, selectedPlace, onSelect }) {
               <div className="place-meta">{place.category}</div>
             </div>
 
-           
+
           </div>
         );
       })}
 
       {/* EMPTY STATE */}
-      {filteredPlaces.length === 0 && (
+      {safePlaces.length === 0 && (
         <div className="no-results">No places found</div>
       )}
     </div>

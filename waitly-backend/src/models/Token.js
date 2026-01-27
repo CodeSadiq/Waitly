@@ -39,6 +39,26 @@ const tokenSchema = new mongoose.Schema(
     userDob: Date,
 
     /* =====================
+       SCHEDULING
+       ===================== */
+    scheduledTime: {
+      type: Date,
+      default: null, // If null, it's a walk-in
+      index: true
+    },
+
+    timeSlotLabel: String, // e.g., "10:00 AM - 10:15 AM"
+
+    /* =====================
+       STAFF ASSIGNMENT
+       ===================== */
+    servedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Staff",
+      default: null
+    },
+
+    /* =====================
        TOKEN DETAILS
        ===================== */
     tokenCode: {
