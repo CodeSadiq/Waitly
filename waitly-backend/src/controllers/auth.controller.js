@@ -188,6 +188,8 @@ export const userLogin = async (req, res) => {
     res.json({
       success: true,
       message: "Login successful",
+      token,
+      refreshToken,
       user: {
         id: user._id,
         username: user.username,
@@ -265,6 +267,8 @@ export const staffLogin = async (req, res) => {
     res.json({
       success: true,
       message: "Login successful",
+      token,
+      refreshToken,
       user: {
         id: staff._id,
         username: staff.username,
@@ -357,6 +361,8 @@ export const unifiedLogin = async (req, res) => {
     res.json({
       success: true,
       message: "Login successful",
+      token,
+      refreshToken,
       user: {
         id: account._id,
         username: account.username || account.email,
@@ -428,6 +434,8 @@ export const adminLogin = async (req, res) => {
     res.json({
       success: true,
       message: "Login successful",
+      token,
+      refreshToken,
       user: {
         id: admin._id,
         email: admin.email,

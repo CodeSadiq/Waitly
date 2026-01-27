@@ -5,7 +5,14 @@ import Admin from "../models/Admin.js";
 
 export const protect = () => async (req, res, next) => {
   try {
-    const token = req.cookies?.token;
+    // Check for token in Authorization header first, then fall back to cookies
+    let token = null;
+
+    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+      token = req.headers.authorization.substring(7);
+    } else {
+      token = req.cookies?.token;
+    }
 
     if (!token) {
       return res.status(401).json({

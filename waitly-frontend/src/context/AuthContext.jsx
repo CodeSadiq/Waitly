@@ -57,6 +57,14 @@ export function AuthProvider({ children }) {
       const data = await authAPI.unifiedLogin(credentials);
 
       if (data && data.success && data.user) {
+        // Store tokens in localStorage for cross-site compatibility
+        if (data.token) {
+          localStorage.setItem('waitly_token', data.token);
+        }
+        if (data.refreshToken) {
+          localStorage.setItem('waitly_refresh_token', data.refreshToken);
+        }
+
         setUser(data.user);
         return { success: true, user: data.user };
       }
@@ -73,12 +81,19 @@ export function AuthProvider({ children }) {
   const logout = async () => {
     try {
       await authAPI.logout();
+
+      // Clear tokens from localStorage
+      localStorage.removeItem('waitly_token');
+      localStorage.removeItem('waitly_refresh_token');
+
       setUser(null);
       setError(null);
       return { success: true };
     } catch (err) {
       console.error("Logout error:", err);
-      // Clear user anyway
+      // Clear user and tokens anyway
+      localStorage.removeItem('waitly_token');
+      localStorage.removeItem('waitly_refresh_token');
       setUser(null);
       return { success: false, error: err.message };
     }

@@ -1,5 +1,17 @@
 import API_BASE from "../config/api";
 
+/* ================= HELPER: GET AUTH HEADERS ================= */
+const getAuthHeaders = () => {
+    const token = localStorage.getItem('waitly_token');
+    const headers = { "Content-Type": "application/json" };
+
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    return headers;
+};
+
 /* ================= AUTH API SERVICE ================= */
 export const authAPI = {
     // Register
@@ -93,7 +105,8 @@ export const authAPI = {
     // Get Current User
     getUser: async () => {
         const res = await fetch(`${API_BASE}/api/auth/user`, {
-            credentials: "include"
+            credentials: "include",
+            headers: getAuthHeaders()
         });
 
         const data = await res.json();
