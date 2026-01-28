@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import API_BASE from "../config/api";
 import { io } from "socket.io-client";
 import QRCode from 'react-qr-code';
-import { Html5QrcodeScanner } from "html5-qrcode";
+import { Html5Qrcode } from "html5-qrcode";
 import "./StaffDashboard.css";
 
 // Single socket instance
@@ -498,74 +498,81 @@ export default function StaffDashboard() {
   // 2. Counter Selection Flow
   if (!selectedCounter) {
     return (
-      <div className="staff-dashboard-container">
-        <header className="staff-header">
-          <div className="header-left">
-            <div className="staff-brand">
-              <div className="brand-icon">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-              </div>
-              <div>
-                <h2>Staff Portal</h2>
-                <p>Digital Queue Management</p>
-              </div>
+      <div className="staff-setup-page">
+        <div className="setup-container">
+          <div className="setup-header-section">
+            <div className="glass-brand">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+              <span>Staff Portal</span>
             </div>
+            <h1>Welcome back, {user?.username}</h1>
+            <p>Initialize your session for <strong>{placeName}</strong></p>
           </div>
 
-        </header>
-
-        <div className="session-setup-layout">
-          {/* Staff Profile Summary */}
-          <div className="staff-profile-summary">
-            <div className="profile-context">
-              <h2>Hello, {user?.username}</h2>
-              <p>Welcome to <strong>{placeName || "your workplace"}</strong></p>
-            </div>
-          </div>
-
-          {/* Counter Selection Card */}
-          <div className="counter-select-container">
-            <div className="select-card">
-              <div className="card-header" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
-                <div className="header-icon-container" style={{
-                  width: '64px',
-                  height: '64px',
-                  background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
-                  borderRadius: '16px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  margin: '0 auto 24px auto',
-                  color: '#2563eb'
-                }}>
-                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
-                    <line x1="8" y1="21" x2="16" y2="21"></line>
-                    <line x1="12" y1="17" x2="12" y2="21"></line>
-                  </svg>
+          <div className="setup-main-card">
+            <div className="setup-sidebar">
+              <div className="protocol-section">
+                <div className="p-header">
+                  <span className="p-badge">Service Protocol</span>
                 </div>
-                <h3 style={{ fontSize: '1.5rem', marginBottom: '12px', color: '#0f172a', display: 'block', width: '100%' }}>Select Your Counter</h3>
-                <p style={{ maxWidth: '400px', margin: '0 auto', lineHeight: '1.6', color: '#64748b', display: 'block' }}>
-                  Choose the counter you will be managing today. This will connect you to the live queue for that specific service.
-                </p>
-              </div>
-
-              <div className="counters-grid-simple">
-                {counters.length > 0 ? (
-                  counters.map((counter, i) => (
-                    <button key={i} className="counter-btn-modern" onClick={() => setSelectedCounter(counter.name)}>
-                      <span className="counter-name">{counter.name}</span>
-                      <span className="counter-arrow">→</span>
-                    </button>
-                  ))
-                ) : (
-                  <div className="loading-simple">
-                    {loadingCounters ? "Loading counters..." : "No counters found."}
-                    {!loadingCounters && <button onClick={fetchCounters} className="link-btn">Retry</button>}
+                <h3>Quality Standards</h3>
+                <div className="protocol-steps">
+                  <div className="p-step">
+                    <div className="p-num">01</div>
+                    <div className="p-info">
+                      <strong>Verify First</strong>
+                      <p>Scan QR or match code before starting any service.</p>
+                    </div>
                   </div>
-                )}
+                  <div className="p-step">
+                    <div className="p-num">02</div>
+                    <div className="p-info">
+                      <strong>Complete Last</strong>
+                      <p>Only mark 'Complete' after work is fully finished.</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="strict-warning">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                  <span>Strict adherence to queue integrity is required.</span>
+                </div>
               </div>
             </div>
+
+            <div className="setup-content">
+              <div className="selection-area">
+                <div className="s-header">
+                  <h2>Select Counter</h2>
+                  <p>Choose your workspace for today</p>
+                </div>
+
+                <div className="counter-options-grid">
+                  {counters.length > 0 ? (
+                    counters.map((counter, i) => (
+                      <button key={i} className="modern-counter-chip" onClick={() => setSelectedCounter(counter.name)}>
+                        <div className="chip-icon">
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+                        </div>
+                        <div className="chip-details">
+                          <span className="chip-name">{counter.name}</span>
+                          <span className="chip-status">Ready for service</span>
+                        </div>
+                        <div className="chip-arrow">→</div>
+                      </button>
+                    ))
+                  ) : (
+                    <div className="no-counters-setup">
+                      {loadingCounters ? "Loading workspace..." : "No active counters available."}
+                      {!loadingCounters && <button onClick={fetchCounters} className="refresh-link">Retry Connection</button>}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="setup-footer">
+            <p>© 2026 Waitly Digital Systems. All terminal actions are logged.</p>
           </div>
         </div>
       </div>
@@ -885,21 +892,106 @@ function ScheduleModal({ onClose, counterName, getAuthHeaders, currentConfig }) 
 }
 
 function ScannerModal({ onClose, onScan }) {
+  const [error, setError] = useState(null);
+
   useEffect(() => {
-    const scanner = new Html5QrcodeScanner("qr-reader", { fps: 10, qrbox: { width: 250, height: 250 } }, false);
-    scanner.render((decodedText) => {
-      scanner.clear().then(() => onScan(decodedText)).catch(err => console.error(err));
-    }, () => { });
-    return () => { try { scanner.clear().catch(() => { }); } catch (e) { } };
+    const html5QrCode = new Html5Qrcode("qr-reader");
+    const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+
+    const startCamera = async () => {
+      try {
+        await html5QrCode.start(
+          { facingMode: "environment" },
+          config,
+          (decodedText) => {
+            html5QrCode.stop().then(() => onScan(decodedText)).catch(err => console.error(err));
+          },
+          () => { }
+        );
+      } catch (err) {
+        console.error("Back camera failed, trying front...", err);
+        try {
+          await html5QrCode.start(
+            { facingMode: "user" },
+            config,
+            (decodedText) => {
+              html5QrCode.stop().then(() => onScan(decodedText)).catch(err => console.error(err));
+            },
+            () => { }
+          );
+        } catch (err2) {
+          console.error("All cameras failed", err2);
+          const errMsg = err2.toString().toLowerCase();
+          if (errMsg.includes("notallowederror") || errMsg.includes("permission denied")) {
+            setError("PermissionDenied");
+          } else {
+            setError("NotFound");
+          }
+        }
+      }
+    };
+
+    startCamera();
+
+    return () => {
+      try {
+        if (html5QrCode.isScanning) {
+          html5QrCode.stop().catch(() => { });
+        }
+      } catch (e) { }
+    };
   }, []);
 
   return (
     <div className="profile-modal-overlay" onClick={onClose}>
-      <div className="profile-card" onClick={e => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+      <div className="profile-card scanner-modal-card" onClick={e => e.stopPropagation()}>
         <button className="close-profile-btn" onClick={onClose}>×</button>
-        <h2 style={{ marginBottom: '20px' }}>Scan User Token</h2>
-        <div id="qr-reader" style={{ width: '100%' }}></div>
-        <p style={{ fontSize: '0.9em', color: '#64748b', marginTop: '10px' }}>Place QR code within the frame</p>
+        <h2 style={{ marginBottom: '20px' }}>Verify Token</h2>
+
+        {error === "PermissionDenied" ? (
+          <div className="camera-error-container">
+            <div className="error-visual">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M11 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-5" /><line x1="18" y1="9" x2="22" y2="5" /><line x1="22" y1="9" x2="18" y2="5" /><path d="M12 13a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
+              </svg>
+            </div>
+            <h3>Camera Access Blocked</h3>
+            <p>Waitly cannot access your camera to scan tokens.</p>
+
+            <div className="instruction-guide">
+              <p className="guide-title">How to enable:</p>
+              <div className="guide-step">
+                <span className="step-num">1</span>
+                <span>Click the <strong>Lock (<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'middle', marginBottom: '2px' }}><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>)</strong> or <strong>Settings</strong> icon in the address bar.</span>
+              </div>
+              <div className="guide-step">
+                <span className="step-num">2</span>
+                <span>Find <strong>Camera</strong> and toggle it to <strong>Allow</strong>.</span>
+              </div>
+              <div className="guide-step">
+                <span className="step-num">3</span>
+                <span>Close this modal and try scanning again.</span>
+              </div>
+            </div>
+            <button className="vc-btn-call" onClick={onClose} style={{ width: '100%', marginTop: '10px' }}>Close</button>
+          </div>
+        ) : error === "NotFound" ? (
+          <div className="camera-error-container">
+            <div className="error-visual">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+            </div>
+            <h3>No Camera Detected</h3>
+            <p>We couldn't find a camera on this device.</p>
+            <button className="vc-btn-call" onClick={onClose} style={{ width: '100%', marginTop: '20px' }}>Close</button>
+          </div>
+        ) : (
+          <>
+            <div id="qr-reader" style={{ width: '100%', borderRadius: '12px', overflow: 'hidden', border: '2px solid #f1f5f9' }}></div>
+            <p style={{ textAlign: 'center', fontSize: '0.85rem', color: '#64748b', marginTop: '15px', fontWeight: '500' }}>
+              Position the token QR code within the frame
+            </p>
+          </>
+        )}
       </div>
     </div>
   );
