@@ -168,10 +168,9 @@ export default function Home() {
 
       holdTimer = setTimeout(() => {
         isHolding = true;
-        // Optionally add a visual cue class here
         document.body.classList.add("dragging-active");
         if (navigator.vibrate) navigator.vibrate(50); // Haptic feedback
-      }, 250); // 250ms hold required
+      }, 50); // 50ms (0.05s) hold required
     };
 
     const onTouchMove = (e) => {
@@ -254,7 +253,7 @@ export default function Home() {
         isHolding = true;
         document.body.classList.add("dragging-details");
         if (navigator.vibrate) navigator.vibrate(50);
-      }, 250); // 0.25s hold time
+      }, 50); // 50ms (0.05s) hold time
     };
 
     const onDetailsTouchMove = (e) => {
@@ -319,13 +318,16 @@ export default function Home() {
       <aside className="home-left">
         {/* DESKTOP SEARCH (Inside List Panel) */}
         <div className="search-container desktop-only">
-          <input
-            className="place-search"
-            type="text"
-            placeholder="Search places..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+          <div className="search-input-wrapper">
+            <svg className="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <input
+              className="place-search"
+              type="text"
+              placeholder="Search places..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
         </div>
         <PlaceList
           places={filteredPlaces}
@@ -334,15 +336,18 @@ export default function Home() {
         />
       </aside>
 
-      <main className="home-center" style={{ position: "relative" }}>
+      <main className="home-center">
         {/* MOBILE SEARCH (Floating on Map) */}
-        <input
-          className="place-search mobile-only"
-          type="text"
-          placeholder="Search places..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+        <div className="search-input-wrapper mobile-only">
+          <svg className="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <input
+            className="place-search"
+            type="text"
+            placeholder="Search places..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
         {(!user || (user.role !== "admin")) && (
           <button
             className={`add-place-btn ${addMode ? "active" : ""}`}
@@ -390,7 +395,7 @@ export default function Home() {
       </main>
 
       <aside className="home-right">
-        <PlaceDetails place={selectedPlace} />
+        <PlaceDetails place={selectedPlace} userLocation={userLocation} />
       </aside>
 
       {newPlaceCoords && (

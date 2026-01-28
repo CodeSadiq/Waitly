@@ -140,7 +140,12 @@ export default function PlaceList({ places, selectedPlace, onSelect }) {
       {safePlaces.map((place) => {
         const isActive = selectedPlace?._id === place._id;
         const category = place.category?.toLowerCase();
-        const waitTime = place.counters?.[0]?.normalWait?.avgTime;
+
+        // 🏠 SHORT ADDRESS LOGIC (Everything after first comma)
+        const parts = place.address ? place.address.split(',') : [];
+        const shortAddress = parts.length > 1
+          ? parts.slice(1).join(',').trim()
+          : (place.address || "Address not available");
 
         return (
           <div
@@ -156,10 +161,14 @@ export default function PlaceList({ places, selectedPlace, onSelect }) {
             {/* INFO */}
             <div className="place-info">
               <div className="place-name">{place.name}</div>
-              <div className="place-meta">{place.category}</div>
+              {!place.isUserLocation && (
+                <div className="place-meta">
+                  <span className="place-category">{place.category}</span>
+                  <span className="dot-separator">•</span>
+                  <span className="place-address">{shortAddress}</span>
+                </div>
+              )}
             </div>
-
-
           </div>
         );
       })}

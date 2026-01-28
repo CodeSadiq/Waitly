@@ -68,10 +68,14 @@ export default function Navbar() {
           {/* MOBILE ONLY: LOGGED IN OPTIONS */}
           {user && (
             <div className="mobile-only-links">
-              <div className="mobile-divider"></div>
-              <div className="mobile-user-info">
-                <span className="mobile-welcome">Hi, {user.username}</span>
+              <div className="mobile-user-info" data-initial={user.username?.charAt(0).toUpperCase()}>
+                <div className="mobile-welcome">
+                  <span>Active Profile</span>
+                  <span>@{user.username}</span>
+                </div>
               </div>
+
+              <div className="mobile-divider"></div>
 
               {role === "user" && (
                 <NavLink to="/user/dashboard">User Dashboard</NavLink>
@@ -84,7 +88,7 @@ export default function Navbar() {
               )}
 
               <button className="mobile-logout-btn" onClick={handleLogout}>
-                Logout
+                Log Out
               </button>
             </div>
           )}

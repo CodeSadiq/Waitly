@@ -724,10 +724,6 @@ export default function StaffDashboard() {
 
       {showScanner && <ScannerModal onClose={() => setShowScanner(false)} onScan={handleScanSuccess} />}
 
-      <div className={`notification-toast ${notification.visible ? "show" : ""} ${notification.type}`}>
-        {notification.type === "success" ? <span className="icon">✅</span> : <span className="icon">⚠️</span>}
-        <span className="msg">{notification.message}</span>
-      </div>
     </div>
   );
 }

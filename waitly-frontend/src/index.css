@@ -11,7 +11,7 @@ body,
   min-height: 100%;
   font-family: "Inter", system-ui, sans-serif;
   overflow-x: hidden;
-  /* Fix Stacking: Isolate app from portals */
+  overflow-y: auto;
   position: relative;
   isolation: isolate;
   z-index: 0;

@@ -136,44 +136,46 @@ export default function Login() {
   if (user) {
     return (
       <div className="auth-page">
-        <div className="auth-card profile-card">
+        <div className="auth-card profile-card modern">
           <div className="profile-header">
-            <div className="profile-avatar">
+            <div className="profile-avatar-modern">
               {user.username?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase()}
             </div>
-            <h2>Welcome back!</h2>
-            <p className="profile-name">{user.username || user.email}</p>
+            <div className="profile-badge-row">
+              <span className={`role-pill ${user.role}`}>{user.role}</span>
+            </div>
+            <h2>Active Profile</h2>
+            <p className="profile-handle">@{user.username || user.email.split('@')[0]}</p>
           </div>
 
-          <div className="profile-info">
-            <div className="info-row">
-              <span className="info-label">Email</span>
-              <span className="info-value">{user.email}</span>
-            </div>
-            <div className="info-row">
-              <span className="info-label">Role</span>
-              <span className={`role-badge ${user.role}`}>{user.role.toUpperCase()}</span>
+          <div className="profile-details-minimal">
+            <div className="detail-item">
+              <span className="label">Primary Email</span>
+              <span className="value">{user.email}</span>
             </div>
           </div>
 
-          <button
-            className="auth-btn"
-            onClick={() => {
-              if (user.role === "admin") navigate("/admin/dashboard");
-              else if (user.role === "staff") navigate("/staff/dashboard");
-              else navigate("/");
-            }}
-          >
-            {user.role === "staff" ? "Go to Staff Dashboard" : (user.role === "admin" ? "Go to Admin Dashboard" : "Go to Home")}
-          </button>
+          <div className="profile-actions-group">
+            <button
+              className="action-btn-primary"
+              onClick={() => {
+                if (user.role === "admin") navigate("/admin/dashboard");
+                else if (user.role === "staff") navigate("/staff/dashboard");
+                else navigate("/user/dashboard");
+              }}
+            >
+              {user.role === "user" ? "Go to Dashboard" : "Open Dashboard"}
+            </button>
 
-          <button
-            className="auth-btn outline"
-            onClick={handleLogout}
-          >
-            Logout
-          </button>
-
+            <div className="secondary-actions">
+              <button className="action-btn-sub" onClick={() => navigate("/")}>
+                Return Home
+              </button>
+              <button className="action-btn-sub danger" onClick={handleLogout}>
+                Sign Out
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     );

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import Modal from "../components/Modal";
 import { usePlace } from "../context/PlaceContext";
+import { formatWaitTime } from "../utils/timeFormat";
 
 function Feedback({ onClose }) {
   const { selectedPlace, waitEntries, setWaitEntries } = usePlace();
@@ -37,13 +38,13 @@ function Feedback({ onClose }) {
       <input
         type="range"
         min="5"
-        max="120"
+        max="300"
         step="5"
         value={wait}
         onChange={e => setWait(Number(e.target.value))}
         style={{ width: "100%" }}
       />
-      <strong>{wait} min</strong>
+      <strong>{formatWaitTime(wait)}</strong>
 
       <textarea
         placeholder="Comment (optional)"

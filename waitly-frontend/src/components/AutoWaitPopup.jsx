@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
-import { dismissPopup } from "../utils/waitStorage.js";
+import { dismissPopup, saveWaitFeedback, isCounterThrottled } from "../utils/waitStorage.js";
+import { formatWaitTime } from "../utils/timeFormat.js";
 import "./AutoWaitPopup.css";
 import API_BASE from "../config/api";
 
@@ -39,6 +40,12 @@ export default function AutoWaitPopup({ place, onClose, onWaitUpdated }) {
         ? otherCounter.trim() || "Other"
         : counter;
 
+    const throttle = isCounterThrottled(place._id, selectedCounter);
+    if (throttle.throttled) {
+      alert(`Slow down! You already updated "${selectedCounter}" recently.`);
+      return;
+    }
+
     try {
       await fetch(`${API_BASE}/api/location/update-wait`, {
         method: "POST",
@@ -57,6 +64,13 @@ export default function AutoWaitPopup({ place, onClose, onWaitUpdated }) {
     } catch (err) {
       console.error("Failed to update wait time", err);
     }
+
+    // 💾 Save feedback so auto-popup doesn't trigger again
+    saveWaitFeedback({
+      placeId: place._id,
+      counter: selectedCounter,
+      waitTime: wait
+    });
 
     onClose();
   };
@@ -91,13 +105,13 @@ export default function AutoWaitPopup({ place, onClose, onWaitUpdated }) {
             <input
               type="range"
               min="5"
-              max="120"
+              max="300"
               step="5"
               value={wait}
               onChange={(e) => setWait(Number(e.target.value))}
             />
 
-            <div className="wait-value">{wait} min</div>
+            <div className="wait-value">{formatWaitTime(wait)}</div>
 
             <div className="modal-actions">
               <button className="solid-btn" onClick={goNext}>
@@ -144,10 +158,31 @@ export default function AutoWaitPopup({ place, onClose, onWaitUpdated }) {
               />
             )}
 
+            {counter && (
+              <div className="throttle-check">
+                {(() => {
+                  const selectedName = counter === "other" ? (otherCounter.trim() || "Other") : counter;
+                  const { throttled, timeLeftMs } = isCounterThrottled(place._id, selectedName);
+                  if (throttled) {
+                    const mins = Math.ceil(timeLeftMs / 60000);
+                    return (
+                      <div className="throttle-msg">
+                        <svg className="throttle-icon" viewBox="0 0 24 24" fill="none">
+                          <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                        <span>Already updated recently. Please wait <strong>{mins} min</strong>.</span>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
+              </div>
+            )}
+
             <div className="modal-actions">
               <button
                 className="solid-btn"
-                disabled={!counter}
+                disabled={!counter || (counter === "other" && !otherCounter.trim()) || isCounterThrottled(place._id, counter === "other" ? (otherCounter.trim() || "Other") : counter).throttled}
                 onClick={submitWait}
               >
                 Submit

@@ -140,6 +140,7 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 20px;
+  width: 100%;
 }
 
 /* TICKET CARD */
@@ -392,21 +393,76 @@
 @media (max-width: 768px) {
   .user-dashboard-layout {
     flex-direction: column;
-    padding: 15px;
+    padding: 0;
+    /* Remove padding for edge-to-edge feel */
+    gap: 0;
+    overflow-x: hidden;
   }
 
   .dashboard-sidebar {
     width: 100%;
+    padding: 20px;
+    background: white;
+    border-bottom: 1px solid #f1f5f9;
   }
 
-  .ticket-actions {
-    flex-wrap: wrap;
-    /* Ensure buttons wrap if tight */
+  .dashboard-content {
+    padding: 24px 20px 80px;
+    /* Space for scroll */
+    width: 100%;
+    background: #f8fafc;
   }
 
-  .action-btn {
-    flex: 1 1 45% !important;
-    /* Grow and shrink, basis 45% for 2-column look on mobile */
+  .dashboard-ticket-grid {
+    display: flex;
+    /* Horizontal scroll on mobile */
+    overflow-x: auto;
+    padding: 10px 4px 20px;
+    gap: 16px;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    /* Hide scrollbar */
+    -ms-overflow-style: none;
+  }
+
+  .dashboard-ticket-grid::-webkit-scrollbar {
+    display: none;
+  }
+
+  .dash-ticket-card {
+    min-width: 280px;
+    /* Fixed width for swipe */
+    max-width: 320px;
+    margin: 0;
+    scroll-snap-align: center;
+    flex-shrink: 0;
+  }
+
+  .tickets-section h2 {
+    justify-content: center;
+    text-align: center;
+  }
+
+  .ticket-header-modern {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 8px;
+  }
+
+  .place-info-modern {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .place-addr {
+    max-width: 100%;
+  }
+
+  .actions-footer-modern {
+    justify-content: center;
+    gap: 20px;
   }
 }
 

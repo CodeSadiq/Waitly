@@ -2,15 +2,32 @@ import { useNavigate } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import AutoWaitPopup from "../components/AutoWaitPopup";
+import { canShowPopup, hasGivenFeedback } from "../utils/waitStorage";
+import { formatWaitTime } from "../utils/timeFormat";
 import { io } from "socket.io-client";
 import "./PlaceDetails.css";
+
+/* 📏 HELPER: Haversine Distance (km) */
+function calculateDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371; // km
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+    Math.cos((lat2 * Math.PI) / 180) *
+    Math.sin(dLon / 2) *
+    Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
 
 /* 🔥 SOCKET (SINGLE INSTANCE) */
 const socket = io(import.meta.env.VITE_API_BASE || "http://localhost:5000", {
   transports: ["websocket"]
 });
 
-export default function PlaceDetails({ place, onWaitUpdated }) {
+export default function PlaceDetails({ place, onWaitUpdated, userLocation }) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [showWaitPopup, setShowWaitPopup] = useState(false);
@@ -45,29 +62,53 @@ export default function PlaceDetails({ place, onWaitUpdated }) {
   /* =========================
      ⏳ AUTO POPUP (LONG STAY)
      ========================= */
+  /* =========================
+     ⏳ SMART AUTO POPUP
+     ========================= */
   useEffect(() => {
+    // Cleanup previous timer
     if (autoTimerRef.current) {
       clearTimeout(autoTimerRef.current);
       autoTimerRef.current = null;
     }
 
-    if (!place) return;
+    // 1. Basic Checks
+    if (!place || !place.location || !userLocation) return;
     if (place.isUserLocation || place._id === "my-location") return;
-
-    // Disable auto popup for staff and admin
     if (user && (user.role === 'staff' || user.role === 'admin')) return;
 
+    // 2. Check Local Storage (Cooldown & Already Submitted)
+    if (!canShowPopup(place._id)) return;
+    if (hasGivenFeedback(place._id)) return;
+
+    // 3. 🌍 Geo-Fence Check (Haversine)
+    const dist = calculateDistance(
+      userLocation.lat,
+      userLocation.lng,
+      place.location.lat,
+      place.location.lng
+    );
+
+    // 🌍 PROJECT SUBMISSION NOTE: 0.5 km (500m) is standard.
+    // Change `0.5` to `50.0` to test from far away.
+    if (dist > 0.5) {
+      console.log(`📍 User too far (${dist.toFixed(2)}km). Popup suppressed.`);
+      return;
+    }
+
+    // 4. Start Timer if all checks pass
+    // 🕒 PROJECT SUBMISSION NOTE: 20000ms (20s) is standard.
+    // Change to 5000 (5s) for quicker testing.
     autoTimerRef.current = setTimeout(() => {
+      // 🛡️ Double check: User might have manually submitted while timer was running
+      if (hasGivenFeedback(place._id)) return;
       setShowWaitPopup(true);
     }, 20000);
 
     return () => {
-      if (autoTimerRef.current) {
-        clearTimeout(autoTimerRef.current);
-        autoTimerRef.current = null;
-      }
+      if (autoTimerRef.current) clearTimeout(autoTimerRef.current);
     };
-  }, [place?._id, user]);
+  }, [place, userLocation, user]);
 
   if (!place) {
     return (
@@ -143,7 +184,7 @@ export default function PlaceDetails({ place, onWaitUpdated }) {
                 </span>
 
                 <strong className={`wait-value ${waitClass}`}>
-                  {avg > 0 ? `${avg} min` : "No data"}
+                  {avg > 0 ? formatWaitTime(avg) : "No data"}
                 </strong>
               </div>
             );

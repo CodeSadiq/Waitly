@@ -9,6 +9,7 @@ export default function AdminDashboard() {
   const [staffRequests, setStaffRequests] = useState([]); // ✅ NEW
   const [osmResults, setOsmResults] = useState([]);
   const [fetchMessage, setFetchMessage] = useState("");
+  const [lastFetchSource, setLastFetchSource] = useState("");
   const [notification, setNotification] = useState({ message: "", type: "", visible: false });
 
   const showNotification = (msg, type = "success") => {
@@ -28,9 +29,6 @@ export default function AdminDashboard() {
   const [dbPlaces, setDbPlaces] = useState([]);
   const [loadingDb, setLoadingDb] = useState(false);
   const [dbError, setDbError] = useState("");
-  const [editingDbPlace, setEditingDbPlace] = useState(null);
-  const [dbJsonText, setDbJsonText] = useState("");
-
   /* ================= NAVIGATION ================= */
   const [activeTab, setActiveTab] = useState("dashboard"); // dashboard, staff, places, fetch
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -56,12 +54,144 @@ export default function AdminDashboard() {
     lng: ""
   });
 
-  /* ================= JSON EDITOR (PENDING) ================= */
+  /* ================= FORM EDITOR (REPLACES JSON) ================= */
   const [editingPlace, setEditingPlace] = useState(null);
-  const [jsonText, setJsonText] = useState("");
+  const [editingDbPlace, setEditingDbPlace] = useState(null);
+  const [editFormData, setEditFormData] = useState({
+    name: "",
+    category: "",
+    address: "",
+    lat: "",
+    lng: "",
+    counters: []
+  });
 
   /* ================= API SELECTED PLACE ================= */
   const [pendingAddPlace, setPendingAddPlace] = useState(null);
+
+  /* ================= FORM EDITOR HELPERS ================= */
+  const openFormEditor = (place, type) => {
+    const data = {
+      name: place.name || "",
+      category: place.category || "bank",
+      address: place.address || "",
+      lat: place.location?.lat || "",
+      lng: place.location?.lng || "",
+      counters: (place.counters || []).map(c => typeof c === 'string' ? c : c.name)
+    };
+    setEditFormData(data);
+    if (type === 'pending') setEditingPlace(place);
+    else setEditingDbPlace(place);
+  };
+
+  const updateFormField = (field, value) => {
+    setEditFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const addEditCounter = (name) => {
+    if (!name.trim() || editFormData.counters.includes(name.trim())) return;
+    setEditFormData(prev => ({ ...prev, counters: [...prev.counters, name.trim()] }));
+  };
+
+  const removeEditCounter = (index) => {
+    setEditFormData(prev => ({ ...prev, counters: prev.counters.filter((_, i) => i !== index) }));
+  };
+
+  const renderPlaceForm = () => (
+    <div className="manual-form-stack">
+      <div className="form-group">
+        <label>Place Name <span className="req">*</span></label>
+        <input
+          value={editFormData.name}
+          onChange={e => updateFormField('name', e.target.value)}
+          placeholder="e.g. City Bank"
+        />
+      </div>
+      <div className="form-group">
+        <label>Category <span className="req">*</span></label>
+        <select
+          value={editFormData.category}
+          onChange={e => updateFormField('category', e.target.value)}
+        >
+          <option value="bank">Bank</option>
+          <option value="hospital">Hospital</option>
+          <option value="government">Government Office</option>
+          <option value="courthouse">Courthouse</option>
+          <option value="police">Police Station</option>
+          <option value="college">College</option>
+          <option value="school">School</option>
+          <option value="post_office">Post Office</option>
+          <option value="passport_office">Passport Office</option>
+          <option value="railway_station">Railway Station</option>
+          <option value="bus_station">Bus Station</option>
+          <option value="restaurant">Restaurant</option>
+          <option value="cafe">Cafe</option>
+          <option value="mall">Mall</option>
+          <option value="electricity_office">Electricity Office</option>
+          <option value="water_office">Water Office</option>
+          <option value="gas_agency">Gas Agency</option>
+          <option value="telecom_office">Telecom Office</option>
+        </select>
+      </div>
+      <div className="form-group">
+        <label>Address <span className="req">*</span></label>
+        <input
+          value={editFormData.address}
+          onChange={e => updateFormField('address', e.target.value)}
+          placeholder="Full address"
+        />
+      </div>
+      <div className="form-row-2">
+        <div className="form-group">
+          <label>Latitude <span className="req">*</span></label>
+          <input
+            value={editFormData.lat}
+            onChange={e => updateFormField('lat', e.target.value)}
+            placeholder="0.0000"
+          />
+        </div>
+        <div className="form-group">
+          <label>Longitude <span className="req">*</span></label>
+          <input
+            value={editFormData.lng}
+            onChange={e => updateFormField('lng', e.target.value)}
+            placeholder="0.0000"
+          />
+        </div>
+      </div>
+
+      <div className="manual-counter-setup">
+        <label>Service Counters <span className="req">*</span></label>
+        <div className="active-counters-list">
+          {editFormData.counters.map((c, i) => (
+            <div key={i} className="active-counter-chip">
+              <span>{c}</span>
+              <button onClick={() => removeEditCounter(i)}>&times;</button>
+            </div>
+          ))}
+        </div>
+        <div className="preset-badges">
+          {presetCounters.map(c => (
+            <button
+              key={c}
+              className={`preset-badge ${editFormData.counters.includes(c) ? "active" : ""}`}
+              onClick={() => addEditCounter(c)}
+            >
+              {c}
+            </button>
+          ))}
+        </div>
+        <div className="custom-counter-box compact">
+          <input
+            placeholder="Add custom counter..."
+            value={counterInput}
+            onChange={(e) => setCounterInput(e.target.value)}
+          />
+          <button className="btn-add-counter" onClick={() => { addEditCounter(counterInput); setCounterInput(""); }}>Add</button>
+        </div>
+      </div>
+    </div>
+  );
 
   /* ================= COUNTER HELPERS ================= */
   const addCounter = () => {
@@ -208,6 +338,7 @@ export default function AdminDashboard() {
     setLoadingOSM(true);
     setOsmResults([]);
     setFetchMessage("");
+    setLastFetchSource("OpenStreetMap (OSM)");
 
     try {
       const res = await adminFetch("/api/admin/fetch/osm", {
@@ -240,6 +371,7 @@ export default function AdminDashboard() {
     setLoadingGoogle(true);
     setOsmResults([]);
     setFetchMessage("");
+    setLastFetchSource("Google Places (Upcoming)");
 
     try {
       const res = await adminFetch("/api/admin/fetch/google", {
@@ -319,25 +451,46 @@ export default function AdminDashboard() {
 
   /* ================= MANUAL ADD ================= */
   const addManual = async () => {
-    if (!manualForm.name || !manualForm.lat || !manualForm.lng) {
-      alert("Name & location required");
+    // 1. Validation for ALL fields
+    if (!manualForm.name.trim()) {
+      showNotification("Place Name is required", "error");
       return;
     }
-
+    if (!manualForm.category) {
+      showNotification("Please select a Category", "error");
+      return;
+    }
+    if (!manualForm.address.trim()) {
+      showNotification("Address is required", "error");
+      return;
+    }
+    if (!manualForm.lat || !manualForm.lng) {
+      showNotification("Coordinates (Lat/Lng) are required", "error");
+      return;
+    }
     if (counters.length === 0) {
-      alert("Add at least one counter");
+      showNotification("Please add at least one Service Counter", "error");
       return;
     }
 
-    await adminFetch("/api/admin/place/manual", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...manualForm, counters })
-    });
+    try {
+      const res = await adminFetch("/api/admin/place/manual", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...manualForm, counters })
+      });
 
-    alert("Place added successfully");
-    setManualForm({ name: "", category: "bank", address: "", lat: "", lng: "" });
-    setCounters([]);
+      if (res.ok) {
+        showNotification("Place registered successfully!", "success");
+        setManualForm({ name: "", category: "bank", address: "", lat: "", lng: "" });
+        setCounters([]);
+      } else {
+        const data = await res.json();
+        showNotification(data.message || "Failed to register place", "error");
+      }
+    } catch (err) {
+      showNotification("Server error. Please try again.", "error");
+    }
   };
 
   /* ================= APPROVE / REJECT ================= */
@@ -353,23 +506,43 @@ export default function AdminDashboard() {
 
   /* ================= APPROVE EDITED PENDING ================= */
   const approveEdited = async () => {
-    let parsed;
+    // 1. Validation
+    if (!editFormData.name.trim()) return showNotification("Place Name is required", "error");
+    if (!editFormData.category) return showNotification("Category is required", "error");
+    if (!editFormData.address.trim()) return showNotification("Address is required", "error");
+    if (!editFormData.lat || !editFormData.lng) return showNotification("Coordinates (Lat/Lng) are required", "error");
+    if (editFormData.counters.length === 0) return showNotification("At least one counter is required", "error");
+
+    const payload = {
+      ...editingPlace,
+      name: editFormData.name,
+      category: editFormData.category,
+      address: editFormData.address,
+      location: {
+        lat: Number(editFormData.lat),
+        lng: Number(editFormData.lng)
+      },
+      counters: editFormData.counters.map(c => ({ name: c }))
+    };
+
     try {
-      parsed = JSON.parse(jsonText);
-    } catch {
-      alert("Invalid JSON format");
-      return;
+      const res = await adminFetch(`/api/admin/pending/approve-edited/${editingPlace._id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      if (res.ok) {
+        showNotification("Place approved and saved!", "success");
+        setEditingPlace(null);
+        loadPending();
+      } else {
+        const data = await res.json();
+        showNotification(data.message || "Failed to approve place", "error");
+      }
+    } catch (err) {
+      showNotification("Server error. Please try again.", "error");
     }
-
-    await adminFetch(`/api/admin/pending/approve-edited/${editingPlace._id}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(parsed)
-    });
-
-    setEditingPlace(null);
-    setJsonText("");
-    loadPending();
   };
 
   /* ================= LOAD DB PLACES ================= */
@@ -390,23 +563,43 @@ export default function AdminDashboard() {
 
   /* ================= SAVE DB EDIT ================= */
   const saveDbEdit = async () => {
-    let parsed;
+    // 1. Validation
+    if (!editFormData.name.trim()) return showNotification("Place Name is required", "error");
+    if (!editFormData.category) return showNotification("Category is required", "error");
+    if (!editFormData.address.trim()) return showNotification("Address is required", "error");
+    if (!editFormData.lat || !editFormData.lng) return showNotification("Coordinates (Lat/Lng) are required", "error");
+    if (editFormData.counters.length === 0) return showNotification("At least one counter is required", "error");
+
+    const payload = {
+      ...editingDbPlace,
+      name: editFormData.name,
+      category: editFormData.category,
+      address: editFormData.address,
+      location: {
+        lat: Number(editFormData.lat),
+        lng: Number(editFormData.lng)
+      },
+      counters: editFormData.counters.map(c => ({ name: c }))
+    };
+
     try {
-      parsed = JSON.parse(dbJsonText);
-      await adminFetch(`/api/admin/place/update/${editingDbPlace._id}`, {
+      const res = await adminFetch(`/api/admin/place/update/${editingDbPlace._id}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(parsed),
+        body: JSON.stringify(payload),
       });
 
-      alert("Database place updated");
-      setEditingDbPlace(null);
-      setDbJsonText("");
-      loadDbPlaces();
-
+      if (res.ok) {
+        showNotification("Database place updated successfully", "success");
+        setEditingDbPlace(null);
+        loadDbPlaces();
+      } else {
+        const data = await res.json();
+        showNotification(data.message || "Failed to update place", "error");
+      }
     } catch (error) {
       console.error(error);
-      alert("Update API not available or invalid JSON");
+      showNotification("Update failed. Server error.", "error");
     }
   };
 
@@ -461,316 +654,477 @@ export default function AdminDashboard() {
   const getNavClass = (tab) => `nav-item ${activeTab === tab ? "active" : ""}`;
 
   return (
-    <div className={`admin-layout ${sidebarOpen ? "" : "sidebar-collapsed"}`}>
-      {/* ================= SIDEBAR ================= */}
-      <aside className="admin-sidebar">
-        <div className="sidebar-header">
-          <div className="logo-area">
-            <div className="logo-icon">W</div>
-            <span className="logo-text">Waitly<span>Admin</span></span>
-          </div>
-        </div>
-
-        <nav className="sidebar-nav">
-          <div className="nav-group">
-            <span className="group-label">Overview</span>
-            <button className={getNavClass("dashboard")} onClick={() => setActiveTab("dashboard")}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
-              <span>Dashboard</span>
-            </button>
-          </div>
-
-          <div className="nav-group">
-            <span className="group-label">Management</span>
-            <button className={getNavClass("staff")} onClick={() => setActiveTab("staff")}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-              <span>Place Staff Requests</span>
-              {staffRequests.length > 0 && <span className="badge">{staffRequests.length}</span>}
-            </button>
-            <button className={getNavClass("places")} onClick={() => setActiveTab("places")}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
-              <span>Database Places</span>
-            </button>
-          </div>
-
-          <div className="nav-group">
-            <span className="group-label">Data</span>
-            <button className={getNavClass("pending")} onClick={() => setActiveTab("pending")}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-              <span>Pending Approvals</span>
-              {pending.length > 0 && <span className="badge warning">{pending.length}</span>}
-            </button>
-            <button className={getNavClass("fetch")} onClick={() => setActiveTab("fetch")}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
-              <span>Fetch Data</span>
-            </button>
-            <button className={getNavClass("manual")} onClick={() => setActiveTab("manual")}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-              <span>Manual Add</span>
-            </button>
-          </div>
-        </nav>
-
-
-      </aside>
-
-      {/* ================= MAIN CONTENT ================= */}
-      <main className="admin-main">
-        <header className="main-header">
-          <div className="header-info">
-            <h1>Admin Console</h1>
-            <p className="subtitle">Welcome back. Here's what's happening today.</p>
-          </div>
-          <div className="header-actions">
-            <div className="header-actions">
-              {activeTab === "dashboard" && (
-                <button className={`refresh-btn ${refreshing ? "spinning" : ""}`} onClick={handleRefresh} disabled={refreshing} title="Refresh Dashboard Stats">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M23 4v6h-6"></path><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
-                </button>
-              )}
+    <>
+      <div className={`admin-layout ${sidebarOpen ? "" : "sidebar-collapsed"}`}>
+        {/* ================= SIDEBAR ================= */}
+        <aside className="admin-sidebar">
+          <div className="sidebar-header">
+            <div className="logo-area">
+              <div className="logo-icon">W</div>
+              <span className="logo-text">Waitly<span>Admin</span></span>
             </div>
           </div>
-        </header>
 
-        <div className="content-scroll">
-          {activeTab === "dashboard" && (
-            <div className="tab-pane dashboard-overview">
-              <div className="stats-grid">
-                <div className="stat-card blue">
-                  <div className="stat-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg></div>
-                  <div className="stat-info">
-                    <h3>{staffRequests.length}</h3>
-                    <p>New Place Staff Requests</p>
+          <nav className="sidebar-nav">
+            <div className="nav-group">
+              <span className="group-label">Overview</span>
+              <button className={getNavClass("dashboard")} onClick={() => setActiveTab("dashboard")}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                <span>Dashboard</span>
+              </button>
+            </div>
+
+            <div className="nav-group">
+              <span className="group-label">Management</span>
+              <button className={getNavClass("staff")} onClick={() => setActiveTab("staff")}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                <span>Place Staff Requests</span>
+                {staffRequests.length > 0 && <span className="badge">{staffRequests.length}</span>}
+              </button>
+              <button className={getNavClass("places")} onClick={() => setActiveTab("places")}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                <span>See all places in Database</span>
+              </button>
+            </div>
+
+            <div className="nav-group">
+              <span className="group-label">Data</span>
+              <button className={getNavClass("pending")} onClick={() => setActiveTab("pending")}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                <span>Pending Places</span>
+                {pending.length > 0 && <span className="badge warning">{pending.length}</span>}
+              </button>
+              <button className={getNavClass("fetch")} onClick={() => setActiveTab("fetch")}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                <span> Add places using API </span>
+              </button>
+              <button className={getNavClass("manual")} onClick={() => setActiveTab("manual")}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                <span>Manual Add</span>
+              </button>
+            </div>
+          </nav>
+
+
+        </aside>
+
+        {/* ================= MAIN CONTENT ================= */}
+        <main className="admin-main">
+          <header className="main-header">
+            <div className="header-info">
+              <h1>Admin Console</h1>
+              <p className="subtitle">Welcome back. Here's what's happening today.</p>
+            </div>
+            <div className="header-actions">
+              <div className="header-actions">
+                {activeTab === "dashboard" && (
+                  <button className={`refresh-btn ${refreshing ? "spinning" : ""}`} onClick={handleRefresh} disabled={refreshing} title="Refresh Dashboard Stats">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M23 4v6h-6"></path><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+                  </button>
+                )}
+              </div>
+            </div>
+          </header>
+
+          <div className="content-scroll">
+            {activeTab === "dashboard" && (
+              <div className="tab-pane dashboard-overview">
+                <div className="stats-grid">
+                  <div className="stat-card blue">
+                    <div className="stat-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg></div>
+                    <div className="stat-info">
+                      <h3>{staffRequests.length}</h3>
+                      <p>New Place Staff Requests</p>
+                    </div>
+                  </div>
+                  <div className="stat-card green">
+                    <div className="stat-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg></div>
+                    <div className="stat-info">
+                      <h3>{dbPlaces.length || "--"}</h3>
+                      <p>Total Managed Places</p>
+                    </div>
+                  </div>
+                  <div className="stat-card orange">
+                    <div className="stat-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg></div>
+                    <div className="stat-info">
+                      <h3>{pending.length}</h3>
+                      <p>Pending Place Approvals</p>
+                    </div>
                   </div>
                 </div>
-                <div className="stat-card green">
-                  <div className="stat-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg></div>
-                  <div className="stat-info">
-                    <h3>{dbPlaces.length || "--"}</h3>
-                    <p>Total Managed Places</p>
-                  </div>
-                </div>
-                <div className="stat-card orange">
-                  <div className="stat-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg></div>
-                  <div className="stat-info">
-                    <h3>{pending.length}</h3>
-                    <p>Pending Place Approvals</p>
-                  </div>
+
+                {/* Quick View Sections */}
+                <div className="dashboard-sections">
+                  <section className="dashboard-section compact">
+                    <div className="section-head">
+                      <h2>Recent Place Staff Requests</h2>
+                      <button className="text-link" onClick={() => setActiveTab("staff")}>View All</button>
+                    </div>
+                    <div className="staff-list-mini">
+                      {staffRequests.slice(0, 3).map(s => (
+                        <div key={s._id} className="staff-mini-card">
+                          <div className="staff-avatar">{s.username.charAt(0).toUpperCase()}</div>
+                          <div className="staff-details">
+                            <strong>{s.username}</strong>
+                            <span>{s.email}</span>
+                          </div>
+                          <div className="mini-actions">
+                            <button className="icon-btn check" onClick={() => approveStaff(s._id)} title="Approve">
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                            </button>
+                            <button className="icon-btn close" onClick={() => rejectStaff(s._id)} title="Reject">
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                      {staffRequests.length === 0 && <p className="empty-msg">No pending requests</p>}
+                    </div>
+                  </section>
                 </div>
               </div>
+            )}
 
-              {/* Quick View Sections */}
-              <div className="dashboard-sections">
-                <section className="dashboard-section compact">
-                  <div className="section-head">
-                    <h2>Recent Place Staff Requests</h2>
-                    <button className="text-link" onClick={() => setActiveTab("staff")}>View All</button>
+            {activeTab === "staff" && (
+              <div className="tab-pane">
+                <section className="management-card">
+                  <div className="section-header-styled">
+                    <div className="icon-box blue"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg></div>
+                    <div>
+                      <h2>Place Staff Onboarding</h2>
+                      <p>Manage applications from employees and places</p>
+                    </div>
                   </div>
-                  <div className="staff-list-mini">
-                    {staffRequests.slice(0, 3).map(s => (
-                      <div key={s._id} className="staff-mini-card">
-                        <div className="staff-avatar">{s.username.charAt(0).toUpperCase()}</div>
-                        <div className="staff-details">
-                          <strong>{s.username}</strong>
-                          <span>{s.email}</span>
+
+                  <div className="staff-grid-large">
+                    {staffRequests.map(s => (
+                      <div key={s._id} className="staff-card-detailed">
+                        <div className="staff-card-top">
+                          <div className="staff-info-header">
+                            <div className="staff-avatar-large">{s.username.charAt(0).toUpperCase()}</div>
+                            <div>
+                              <h3>{s.username}</h3>
+                              <p>{s.email}</p>
+                            </div>
+                          </div>
+                          <div className="staff-tag pending">Incoming Request</div>
                         </div>
-                        <div className="mini-actions">
-                          <button className="icon-btn check" onClick={() => approveStaff(s._id)} title="Approve">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                          </button>
-                          <button className="icon-btn close" onClick={() => rejectStaff(s._id)} title="Reject">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+
+                        <div className="staff-request-context">
+                          {s.application?.placeId ? (
+                            <div className="workplace-link-card">
+                              <span className="context-label">Requesting Access To:</span>
+                              <h4>{s.application.placeId.name}</h4>
+                              <p>{s.application.placeId.address}</p>
+                            </div>
+                          ) : (
+                            <div className="workplace-link-card new">
+                              <span className="context-label">Requesting NEW Workplace:</span>
+                              <h4>{s.requestDetails?.placeName}</h4>
+                              <p>{s.requestDetails?.address}</p>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="staff-card-actions">
+                          <button className="btn-approve-large" onClick={() => approveStaff(s._id)}>Approve Application</button>
+                          <button className="btn-reject-icon" onClick={() => rejectStaff(s._id)}>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                           </button>
                         </div>
                       </div>
                     ))}
-                    {staffRequests.length === 0 && <p className="empty-msg">No pending requests</p>}
+                    {staffRequests.length === 0 && (
+                      <div className="hero-empty">
+                        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><polyline points="16 11 18 13 22 9"></polyline></svg>
+                        <p>All place staff requests have been processed.</p>
+                      </div>
+                    )}
                   </div>
                 </section>
               </div>
-            </div>
-          )}
+            )}
 
-          {activeTab === "staff" && (
-            <div className="tab-pane">
-              <section className="management-card">
-                <div className="section-header-styled">
-                  <div className="icon-box blue"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg></div>
-                  <div>
-                    <h2>Place Staff Onboarding</h2>
-                    <p>Manage applications from employees and places</p>
+            {activeTab === "places" && (
+              <div className="tab-pane">
+                <section className="management-card">
+                  <div className="section-header-styled">
+                    <div className="icon-box green"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg></div>
+                    <div>
+                      <h2>Managed Database</h2>
+                      <p>Search and manage all places in the Waitly network</p>
+                    </div>
                   </div>
-                </div>
 
-                <div className="staff-grid-large">
-                  {staffRequests.map(s => (
-                    <div key={s._id} className="staff-card-detailed">
-                      <div className="staff-card-top">
-                        <div className="staff-info-header">
-                          <div className="staff-avatar-large">{s.username.charAt(0).toUpperCase()}</div>
-                          <div>
-                            <h3>{s.username}</h3>
-                            <p>{s.email}</p>
-                          </div>
+                  <div className="search-filter-bar">
+                    <div className="search-input-group">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                      <input placeholder=" Search by name..." value={dbSearch} onChange={(e) => setDbSearch(e.target.value)} />
+                    </div>
+                    <div className="coord-filters">
+                      <input placeholder="Lat" value={dbLat} onChange={(e) => setDbLat(e.target.value)} />
+                      <input placeholder="Lng" value={dbLng} onChange={(e) => setDbLng(e.target.value)} />
+                      <input placeholder="KM" value={dbRadius} onChange={(e) => setDbRadius(e.target.value)} />
+                    </div>
+                    <button className="btn-load-db" onClick={loadDbPlaces} disabled={loadingDb}>
+                      {loadingDb ? "Loading..." : "Filter Results"}
+                    </button>
+                  </div>
+
+                  <div className="db-results-grid">
+                    {filteredDbPlaces.map(p => (
+                      <div key={p._id} className="db-place-tile">
+                        <div className="tile-main">
+                          <h4>{p.name}</h4>
+                          <span className="place-tag">{p.category}</span>
                         </div>
-                        <div className="staff-tag pending">Incoming Request</div>
+                        <div className="tile-actions">
+                          <button className="tile-edit-btn" onClick={() => openFormEditor(p, 'db')}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                          </button>
+                          <button className="tile-delete-btn" onClick={(e) => deleteDbPlace(e, p._id)}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                          </button>
+                        </div>
                       </div>
+                    ))}
+                    {filteredDbPlaces.length === 0 && <p className="no-db-results">No places found matching filters.</p>}
+                  </div>
+                </section>
+              </div>
+            )}
 
-                      <div className="staff-request-context">
-                        {s.application?.placeId ? (
-                          <div className="workplace-link-card">
-                            <span className="context-label">Requesting Access To:</span>
-                            <h4>{s.application.placeId.name}</h4>
-                            <p>{s.application.placeId.address}</p>
+            {activeTab === "pending" && (
+              <div className="tab-pane">
+                <section className="management-card">
+                  <div className="section-header-styled">
+                    <div className="icon-box orange"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></div>
+                    <div>
+                      <h2>Pending Places</h2>
+                      <p>Review places submitted by users</p>
+                    </div>
+                  </div>
+
+                  <div className="staff-grid-large">
+                    {pending.map(p => (
+                      <div key={p._id} className="staff-card-detailed">
+                        <div className="staff-card-top">
+                          <div className="staff-info-header">
+                            <div className="staff-avatar-large" style={{ background: '#f97316' }}>{p.name.charAt(0).toUpperCase()}</div>
+                            <div>
+                              <h3>{p.name}</h3>
+                              <p>{p.category} • {p.source || 'User Submission'}</p>
+                            </div>
                           </div>
-                        ) : (
+                          <div className="staff-tag pending">Verification Needed</div>
+                        </div>
+
+                        <div className="staff-request-context">
                           <div className="workplace-link-card new">
-                            <span className="context-label">Requesting NEW Workplace:</span>
-                            <h4>{s.requestDetails?.placeName}</h4>
-                            <p>{s.requestDetails?.address}</p>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="staff-card-actions">
-                        <button className="btn-approve-large" onClick={() => approveStaff(s._id)}>Approve Application</button>
-                        <button className="btn-reject-icon" onClick={() => rejectStaff(s._id)}>
-                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                  {staffRequests.length === 0 && (
-                    <div className="hero-empty">
-                      <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><polyline points="16 11 18 13 22 9"></polyline></svg>
-                      <p>All place staff requests have been processed.</p>
-                    </div>
-                  )}
-                </div>
-              </section>
-            </div>
-          )}
-
-          {activeTab === "places" && (
-            <div className="tab-pane">
-              <section className="management-card">
-                <div className="section-header-styled">
-                  <div className="icon-box green"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg></div>
-                  <div>
-                    <h2>Managed Database</h2>
-                    <p>Search and manage all places in the Waitly network</p>
-                  </div>
-                </div>
-
-                <div className="search-filter-bar">
-                  <div className="search-input-group">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                    <input placeholder=" Search by name..." value={dbSearch} onChange={(e) => setDbSearch(e.target.value)} />
-                  </div>
-                  <div className="coord-filters">
-                    <input placeholder="Lat" value={dbLat} onChange={(e) => setDbLat(e.target.value)} />
-                    <input placeholder="Lng" value={dbLng} onChange={(e) => setDbLng(e.target.value)} />
-                    <input placeholder="KM" value={dbRadius} onChange={(e) => setDbRadius(e.target.value)} />
-                  </div>
-                  <button className="btn-load-db" onClick={loadDbPlaces} disabled={loadingDb}>
-                    {loadingDb ? "Loading..." : "Filter Results"}
-                  </button>
-                </div>
-
-                <div className="db-results-grid">
-                  {filteredDbPlaces.map(p => (
-                    <div key={p._id} className="db-place-tile">
-                      <div className="tile-main">
-                        <h4>{p.name}</h4>
-                        <span className="place-tag">{p.category}</span>
-                      </div>
-                      <div className="tile-actions">
-                        <button className="tile-edit-btn" onClick={() => { setEditingDbPlace(p); setDbJsonText(JSON.stringify(p, null, 2)); }}>
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-                        </button>
-                        <button className="tile-delete-btn" onClick={(e) => deleteDbPlace(e, p._id)}>
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                  {filteredDbPlaces.length === 0 && <p className="no-db-results">No places found matching filters.</p>}
-                </div>
-              </section>
-            </div>
-          )}
-
-          {activeTab === "pending" && (
-            <div className="tab-pane">
-              <section className="management-card">
-                <div className="section-header-styled">
-                  <div className="icon-box orange"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></div>
-                  <div>
-                    <h2>Pending Approvals</h2>
-                    <p>Review places submitted by users</p>
-                  </div>
-                </div>
-
-                <div className="staff-grid-large">
-                  {pending.map(p => (
-                    <div key={p._id} className="staff-card-detailed">
-                      <div className="staff-card-top">
-                        <div className="staff-info-header">
-                          <div className="staff-avatar-large" style={{ background: '#f97316' }}>{p.name.charAt(0).toUpperCase()}</div>
-                          <div>
-                            <h3>{p.name}</h3>
-                            <p>{p.category} • {p.source || 'User Submission'}</p>
+                            <span className="context-label">Location Details:</span>
+                            <h4>{p.address || "No address provided"}</h4>
+                            <p>Lat: {p.location?.lat}, Lng: {p.location?.lng}</p>
                           </div>
                         </div>
-                        <div className="staff-tag pending">Verification Needed</div>
+
+                        <div className="staff-card-actions">
+                          <button className="btn-approve-large" onClick={() => approve(p._id)}>Approve Place</button>
+                          <button className="btn-reject-icon" onClick={() => reject(p._id)}>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                          </button>
+                          <button className="btn-reject-icon" title="Edit Place" onClick={() => openFormEditor(p, 'pending')}>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                    {pending.length === 0 && (
+                      <div className="hero-empty">
+                        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                        <p>No pending place submissions.</p>
+                      </div>
+                    )}
+                  </div>
+                </section>
+              </div>
+            )}
+
+            {activeTab === "fetch" && (
+              <div className="tab-pane">
+                <section className="management-card">
+                  <div className="section-header-styled">
+                    <div className="icon-box purple"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg></div>
+                    <div>
+                      <h2>API Sync</h2>
+                      <p>Add places using API fetch</p>
+                    </div>
+                  </div>
+
+                  {fetchMessage && (
+                    <div className="fetch-error-container">
+                      <div className="error-main-info">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                        {fetchMessage}
                       </div>
 
-                      <div className="staff-request-context">
-                        <div className="workplace-link-card new">
-                          <span className="context-label">Location Details:</span>
-                          <h4>{p.address || "No address provided"}</h4>
-                          <p>Lat: {p.location?.lat}, Lng: {p.location?.lng}</p>
+                      <div className="error-details-grid">
+                        <div className="error-field">
+                          <label>Category</label>
+                          <span>{osmForm.category || "Bank"}</span>
+                        </div>
+                        <div className="error-field">
+                          <label>Latitude</label>
+                          <span>{osmForm.lat || "e.g. 24.8607"}</span>
+                        </div>
+                        <div className="error-field">
+                          <label>Longitude</label>
+                          <span>{osmForm.lng || "e.g. 67.0011"}</span>
                         </div>
                       </div>
 
-                      <div className="staff-card-actions">
-                        <button className="btn-approve-large" onClick={() => approve(p._id)}>Approve Place</button>
-                        <button className="btn-reject-icon" onClick={() => reject(p._id)}>
-                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                        </button>
-                        <button className="btn-reject-icon" title="Edit JSON" onClick={() => { setEditingPlace(p); setJsonText(JSON.stringify(p, null, 2)); }}>
-                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-                        </button>
+                      <div className="error-actions-summary">
+                        <span className="source-label">API Attempted: {lastFetchSource}</span>
                       </div>
                     </div>
-                  ))}
-                  {pending.length === 0 && (
-                    <div className="hero-empty">
-                      <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
-                      <p>No pending place submissions.</p>
+                  )}
+
+                  <div className="fetch-form-grid">
+                    <div className="fetch-inputs">
+                      <div className="input-with-label">
+                        <label>Category</label>
+                        <select value={osmForm.category} onChange={(e) => setOsmForm({ ...osmForm, category: e.target.value })}>
+                          <option value="bank">Bank</option>
+                          <option value="hospital">Hospital</option>
+                          <option value="government">Government Office</option>
+                          <option value="courthouse">Courthouse</option>
+                          <option value="police">Police Station</option>
+                          <option value="college">College</option>
+                          <option value="school">School</option>
+                          <option value="post_office">Post Office</option>
+                          <option value="passport_office">Passport Office</option>
+                          <option value="railway_station">Railway Station</option>
+                          <option value="bus_station">Bus Station</option>
+                          <option value="restaurant">Restaurant</option>
+                          <option value="cafe">Cafe</option>
+                          <option value="mall">Mall</option>
+                          <option value="electricity_office">Electricity Office</option>
+                          <option value="water_office">Water Office</option>
+                          <option value="gas_agency">Gas Agency</option>
+                          <option value="telecom_office">Telecom Office</option>
+                        </select>
+                      </div>
+                      <div className="input-with-label">
+                        <label>Latitude</label>
+                        <input placeholder="e.g. 24.8607" value={osmForm.lat} onChange={(e) => setOsmForm({ ...osmForm, lat: e.target.value })} />
+                      </div>
+                      <div className="input-with-label">
+                        <label>Longitude</label>
+                        <input placeholder="e.g. 67.0011" value={osmForm.lng} onChange={(e) => setOsmForm({ ...osmForm, lng: e.target.value })} />
+                      </div>
+                    </div>
+                    <div className="fetch-actions-modern">
+                      <button onClick={fetchOSM} disabled={loadingOSM} className="btn-fetch-osm">
+                        {loadingOSM ? "Searching OSM..." : "Fetch from OSM"}
+                      </button>
+                      <button onClick={fetchGoogle} disabled={loadingGoogle} className="btn-fetch-google">
+                        {loadingGoogle ? "Connecting..." : "Fetch from Google (Upcoming)"}
+                      </button>
+                    </div>
+                  </div>
+
+                  {osmResults.length > 0 && (
+                    <div className="osm-results-pane">
+                      <h3>Search Results ({osmResults.length})</h3>
+                      <div className="osm-results-list">
+                        {osmResults.map((p, i) => (
+                          <div key={i} className="osm-result-row">
+                            <div className="osm-info">
+                              <strong>{p.name}</strong>
+                              <span>{p.lat}, {p.lng}</span>
+                            </div>
+                            <button className="btn-add-mini" onClick={() => addPlaceDirect(p)}>Add to DB</button>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
-                </div>
-              </section>
-            </div>
-          )}
+                </section>
 
-          {activeTab === "fetch" && (
-            <div className="tab-pane">
-              <section className="management-card">
-                <div className="section-header-styled">
-                  <div className="icon-box purple"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg></div>
-                  <div>
-                    <h2>External Import</h2>
-                    <p>Pull new places into the database</p>
+                {pendingAddPlace && (
+                  <section className="selection-wizard-card">
+                    <div className="wizard-header">
+                      <span className="wizard-step">Final Step</span>
+                      <h2>Configure Workplace</h2>
+                    </div>
+
+                    <div className="wizard-body">
+                      <div className="place-preview-banner">
+                        <div className="p-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg></div>
+                        <div className="p-text">
+                          <h4>{pendingAddPlace.name}</h4>
+                          <p>{pendingAddPlace.address || "No address provided"}</p>
+                        </div>
+                      </div>
+
+                      <div className="wizard-inputs">
+                        <div className="input-group-full">
+                          <label>Confirm Address</label>
+                          <input value={pendingAddPlace.address} onChange={(e) => setPendingAddPlace({ ...pendingAddPlace, address: e.target.value })} placeholder="Edit address if needed" />
+                        </div>
+
+                        <div className="counter-config-section">
+                          <label>Assign Service Counters</label>
+                          <div className="preset-badges">
+                            {presetCounters.map(c => (
+                              <button key={c} className={`preset-badge ${counters.includes(c) ? "active" : ""}`} onClick={() => addPresetCounter(c)}>{c}</button>
+                            ))}
+                          </div>
+
+                          <div className="custom-counter-box">
+                            <input placeholder="Add custom counter name..." value={counterInput} onChange={(e) => setCounterInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && addCounter()} />
+                            <button className="btn-add-counter" onClick={addCounter}>Add</button>
+                          </div>
+
+                          <div className="active-counters-list">
+                            {counters.map((c, i) => (
+                              <div key={i} className="active-counter-chip">
+                                <span>{c}</span>
+                                <button onClick={() => removeCounter(i)}>&times;</button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="wizard-footer">
+                      <button className="btn-cancel-wizard" onClick={() => setPendingAddPlace(null)}>Discard</button>
+                      <button className="btn-save-wizard" onClick={confirmAddPlace}>Deploy Workplace</button>
+                    </div>
+                  </section>
+                )}
+              </div>
+            )}
+
+            {activeTab === "manual" && (
+              <div className="tab-pane">
+                <section className="management-card narrow">
+                  <div className="section-header-styled">
+                    <div className="icon-box orange"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></div>
+                    <div>
+                      <h2>Manual Creation</h2>
+                      <p>Add places manually</p>
+                    </div>
                   </div>
-                </div>
 
-                <div className="fetch-form-grid">
-                  <div className="fetch-inputs">
-                    <div className="input-with-label">
-                      <label>Category</label>
-                      <select value={osmForm.category} onChange={(e) => setOsmForm({ ...osmForm, category: e.target.value })}>
+                  <div className="manual-form-stack">
+                    <div className="form-group">
+                      <label>Place Name <span className="req">*</span></label>
+                      <input value={manualForm.name} onChange={e => setManualForm({ ...manualForm, name: e.target.value })} placeholder="e.g. City Bank - Main Branch" />
+                    </div>
+                    <div className="form-group">
+                      <label>Category <span className="req">*</span></label>
+                      <select value={manualForm.category} onChange={e => setManualForm({ ...manualForm, category: e.target.value })}>
                         <option value="bank">Bank</option>
                         <option value="hospital">Hospital</option>
                         <option value="government">Government Office</option>
@@ -791,181 +1145,50 @@ export default function AdminDashboard() {
                         <option value="telecom_office">Telecom Office</option>
                       </select>
                     </div>
-                    <div className="input-with-label">
-                      <label>Latitude</label>
-                      <input placeholder="e.g. 24.8607" value={osmForm.lat} onChange={(e) => setOsmForm({ ...osmForm, lat: e.target.value })} />
+                    <div className="form-group">
+                      <label>Address <span className="req">*</span></label>
+                      <input value={manualForm.address} onChange={e => setManualForm({ ...manualForm, address: e.target.value })} placeholder="Full street address" />
                     </div>
-                    <div className="input-with-label">
-                      <label>Longitude</label>
-                      <input placeholder="e.g. 67.0011" value={osmForm.lng} onChange={(e) => setOsmForm({ ...osmForm, lng: e.target.value })} />
+                    <div className="form-row-2">
+                      <div className="form-group">
+                        <label>Latitude <span className="req">*</span></label>
+                        <input value={manualForm.lat} onChange={e => setManualForm({ ...manualForm, lat: e.target.value })} placeholder="0.0000" />
+                      </div>
+                      <div className="form-group">
+                        <label>Longitude <span className="req">*</span></label>
+                        <input value={manualForm.lng} onChange={e => setManualForm({ ...manualForm, lng: e.target.value })} placeholder="0.0000" />
+                      </div>
                     </div>
-                  </div>
-                  <div className="fetch-actions-modern">
-                    <button onClick={fetchOSM} disabled={loadingOSM} className="btn-fetch-osm">
-                      {loadingOSM ? "Searching OSM..." : "Fetch from OSM"}
-                    </button>
-                    <button onClick={fetchGoogle} disabled={loadingGoogle} className="btn-fetch-google">
-                      {loadingGoogle ? "Connecting..." : "Fetch from Google (Upcoming)"}
-                    </button>
-                  </div>
-                </div>
 
-                {osmResults.length > 0 && (
-                  <div className="osm-results-pane">
-                    <h3>Search Results ({osmResults.length})</h3>
-                    <div className="osm-results-list">
-                      {osmResults.map((p, i) => (
-                        <div key={i} className="osm-result-row">
-                          <div className="osm-info">
-                            <strong>{p.name}</strong>
-                            <span>{p.lat}, {p.lng}</span>
+                    <div className="manual-counter-setup">
+                      <label>Assigned Counters <span className="req">*</span></label>
+                      <div className="active-counters-list">
+                        {counters.map((c, i) => (
+                          <div key={i} className="active-counter-chip">
+                            <span>{c}</span>
+                            <button onClick={() => removeCounter(i)}>&times;</button>
                           </div>
-                          <button className="btn-add-mini" onClick={() => addPlaceDirect(p)}>Add to DB</button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </section>
-
-              {pendingAddPlace && (
-                <section className="selection-wizard-card">
-                  <div className="wizard-header">
-                    <span className="wizard-step">Final Step</span>
-                    <h2>Configure Workplace</h2>
-                  </div>
-
-                  <div className="wizard-body">
-                    <div className="place-preview-banner">
-                      <div className="p-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg></div>
-                      <div className="p-text">
-                        <h4>{pendingAddPlace.name}</h4>
-                        <p>{pendingAddPlace.address || "No address provided"}</p>
+                        ))}
+                      </div>
+                      <div className="preset-badges">
+                        {presetCounters.map(c => (
+                          <button key={c} className={`preset-badge ${counters.includes(c) ? "active" : ""}`} onClick={() => addPresetCounter(c)}>{c}</button>
+                        ))}
+                      </div>
+                      <div className="custom-counter-box compact">
+                        <input placeholder="e.g. Reception" value={counterInput} onChange={(e) => setCounterInput(e.target.value)} />
+                        <button className="btn-add-counter" onClick={addCounter}>Add</button>
                       </div>
                     </div>
 
-                    <div className="wizard-inputs">
-                      <div className="input-group-full">
-                        <label>Confirm Address</label>
-                        <input value={pendingAddPlace.address} onChange={(e) => setPendingAddPlace({ ...pendingAddPlace, address: e.target.value })} placeholder="Edit address if needed" />
-                      </div>
-
-                      <div className="counter-config-section">
-                        <label>Assign Service Counters</label>
-                        <div className="preset-badges">
-                          {presetCounters.map(c => (
-                            <button key={c} className={`preset-badge ${counters.includes(c) ? "active" : ""}`} onClick={() => addPresetCounter(c)}>{c}</button>
-                          ))}
-                        </div>
-
-                        <div className="custom-counter-box">
-                          <input placeholder="Add custom counter name..." value={counterInput} onChange={(e) => setCounterInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && addCounter()} />
-                          <button className="btn-add-counter" onClick={addCounter}>Add</button>
-                        </div>
-
-                        <div className="active-counters-list">
-                          {counters.map((c, i) => (
-                            <div key={i} className="active-counter-chip">
-                              <span>{c}</span>
-                              <button onClick={() => removeCounter(i)}>&times;</button>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="wizard-footer">
-                    <button className="btn-cancel-wizard" onClick={() => setPendingAddPlace(null)}>Discard</button>
-                    <button className="btn-save-wizard" onClick={confirmAddPlace}>Deploy Workplace</button>
+                    <button className="btn-submit-manual" onClick={addManual}>Register Place</button>
                   </div>
                 </section>
-              )}
-            </div>
-          )}
-
-          {activeTab === "manual" && (
-            <div className="tab-pane">
-              <section className="management-card narrow">
-                <div className="section-header-styled">
-                  <div className="icon-box orange"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></div>
-                  <div>
-                    <h2>Manual Creation</h2>
-                    <p>Register a new place from scratch</p>
-                  </div>
-                </div>
-
-                <div className="manual-form-stack">
-                  <div className="form-group">
-                    <label>Place Name</label>
-                    <input value={manualForm.name} onChange={e => setManualForm({ ...manualForm, name: e.target.value })} placeholder="e.g. City Bank - Main Branch" />
-                  </div>
-                  <div className="form-group">
-                    <label>Category</label>
-                    <select value={manualForm.category} onChange={e => setManualForm({ ...manualForm, category: e.target.value })}>
-                      <option value="bank">Bank</option>
-                      <option value="hospital">Hospital</option>
-                      <option value="government">Government Office</option>
-                      <option value="courthouse">Courthouse</option>
-                      <option value="police">Police Station</option>
-                      <option value="college">College</option>
-                      <option value="school">School</option>
-                      <option value="post_office">Post Office</option>
-                      <option value="passport_office">Passport Office</option>
-                      <option value="railway_station">Railway Station</option>
-                      <option value="bus_station">Bus Station</option>
-                      <option value="restaurant">Restaurant</option>
-                      <option value="cafe">Cafe</option>
-                      <option value="mall">Mall</option>
-                      <option value="electricity_office">Electricity Office</option>
-                      <option value="water_office">Water Office</option>
-                      <option value="gas_agency">Gas Agency</option>
-                      <option value="telecom_office">Telecom Office</option>
-                    </select>
-                  </div>
-                  <div className="form-group">
-                    <label>Address</label>
-                    <input value={manualForm.address} onChange={e => setManualForm({ ...manualForm, address: e.target.value })} placeholder="Full street address" />
-                  </div>
-                  <div className="form-row-2">
-                    <div className="form-group">
-                      <label>Latitude</label>
-                      <input value={manualForm.lat} onChange={e => setManualForm({ ...manualForm, lat: e.target.value })} placeholder="0.0000" />
-                    </div>
-                    <div className="form-group">
-                      <label>Longitude</label>
-                      <input value={manualForm.lng} onChange={e => setManualForm({ ...manualForm, lng: e.target.value })} placeholder="0.0000" />
-                    </div>
-                  </div>
-
-                  <div className="manual-counter-setup">
-                    <label>Assigned Counters</label>
-                    <div className="active-counters-list">
-                      {counters.map((c, i) => (
-                        <div key={i} className="active-counter-chip">
-                          <span>{c}</span>
-                          <button onClick={() => removeCounter(i)}>&times;</button>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="preset-badges">
-                      {presetCounters.map(c => (
-                        <button key={c} className={`preset-badge ${counters.includes(c) ? "active" : ""}`} onClick={() => addPresetCounter(c)}>{c}</button>
-                      ))}
-                    </div>
-                    <div className="custom-counter-box compact">
-                      <input placeholder="e.g. Reception" value={counterInput} onChange={(e) => setCounterInput(e.target.value)} />
-                      <button className="btn-add-counter" onClick={addCounter}>Add</button>
-                    </div>
-                  </div>
-
-                  <button className="btn-submit-manual" onClick={addManual}>Register Place</button>
-                </div>
-              </section>
-            </div>
-          )}
-        </div>
-      </main>
+              </div>
+            )}
+          </div>
+        </main>
+      </div>
 
       {/* ================= MODALS ================= */}
       {editingPlace && (
@@ -976,12 +1199,8 @@ export default function AdminDashboard() {
               <button className="btn-close-modal" onClick={() => setEditingPlace(null)}>&times;</button>
             </div>
             <div className="modal-body">
-              <p className="modal-hint">Review the JSON data before approving. You can make manual corrections here.</p>
-              <textarea
-                className="modal-json-editor"
-                value={jsonText}
-                onChange={(e) => setJsonText(e.target.value)}
-              />
+              <p className="modal-hint">Review the details before approving. You can make manual corrections here.</p>
+              {renderPlaceForm()}
             </div>
             <div className="modal-footer">
               <button className="btn-modal-cancel" onClick={() => setEditingPlace(null)}>Cancel</button>
@@ -999,12 +1218,8 @@ export default function AdminDashboard() {
               <button className="btn-close-modal" onClick={() => setEditingDbPlace(null)}>&times;</button>
             </div>
             <div className="modal-body">
-              <p className="modal-hint">Direct JSON edit for advanced configuration. Be careful with object IDs and types.</p>
-              <textarea
-                className="modal-json-editor"
-                value={dbJsonText}
-                onChange={(e) => setDbJsonText(e.target.value)}
-              />
+              <p className="modal-hint">Update the place details directly using the form below.</p>
+              {renderPlaceForm()}
             </div>
             <div className="modal-footer">
               <button className="btn-modal-cancel" onClick={() => setEditingDbPlace(null)}>Cancel</button>
@@ -1013,6 +1228,19 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
-    </div>
+      {/* ================= NOTIFICATION TOAST ================= */}
+      {notification.visible && (
+        <div className={`notification-toast ${notification.type}`}>
+          <div className="toast-icon">
+            {notification.type === "success" ? (
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            ) : (
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+            )}
+          </div>
+          <span className="toast-message">{notification.message}</span>
+        </div>
+      )}
+    </>
   );
 }

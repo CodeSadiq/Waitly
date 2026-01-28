@@ -285,96 +285,165 @@
   text-decoration: underline;
 }
 
-/* ================= PROFILE CARD ================= */
-.profile-card {
+/* ================= PROFILE CARD (MODERN) ================= */
+.profile-card.modern {
   max-width: 400px;
+  padding: 40px 32px;
+  text-align: center;
+  border: 1px solid #f1f5f9;
 }
 
 .profile-header {
-  text-align: center;
-  margin-bottom: 24px;
+  margin-bottom: 28px;
 }
 
-.profile-avatar {
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+.profile-avatar-modern {
+  width: 76px;
+  height: 76px;
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
   color: white;
+  font-size: 30px;
+  font-weight: 800;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 32px;
-  font-weight: 700;
   margin: 0 auto 16px;
-  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.25);
-}
-
-.profile-header h2 {
-  font-size: 24px;
-  font-weight: 700;
-  color: #111827;
-  margin: 0 0 6px 0;
-}
-
-.profile-name {
-  font-size: 15px;
-  color: #6b7280;
-  margin: 0;
-}
-
-.profile-info {
-  background: #f9fafb;
-  border-radius: 12px;
-  padding: 16px;
-  margin-bottom: 20px;
-}
-
-.info-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 0;
-}
-
-.info-row:not(:last-child) {
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.info-label {
-  font-size: 13px;
-  color: #6b7280;
-  font-weight: 500;
-}
-
-.info-value {
-  font-size: 14px;
-  color: #111827;
-  font-weight: 600;
-}
-
-.role-badge {
-  padding: 4px 12px;
   border-radius: 20px;
-  font-size: 11px;
-  font-weight: 700;
+  /* Modern Squircle */
+  box-shadow: 0 10px 25px rgba(37, 99, 235, 0.2);
+}
+
+.profile-badge-row {
+  margin-bottom: 8px;
+}
+
+.role-pill {
+  font-size: 10px;
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.1em;
+  padding: 4px 12px;
+  border-radius: 99px;
+  background: #f1f5f9;
+  color: #64748b;
 }
 
-.role-badge.user {
-  background: #dbeafe;
-  color: #1e40af;
+.role-pill.admin {
+  background: #fee2e2;
+  color: #dc2626;
 }
 
-.role-badge.staff {
+.role-pill.staff {
   background: #fef3c7;
-  color: #92400e;
+  color: #d97706;
 }
 
-.role-badge.admin {
-  background: #fce7f3;
-  color: #9f1239;
+.role-pill.user {
+  background: #e0f2fe;
+  color: #0284c7;
+}
+
+.profile-card.modern h2 {
+  font-size: 22px;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 4px 0;
+}
+
+.profile-handle {
+  font-size: 14px;
+  color: #64748b;
+  font-weight: 600;
+  margin-bottom: 0;
+}
+
+.profile-details-minimal {
+  background: #f8fafc;
+  border: 1px solid #f1f5f9;
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 28px;
+}
+
+.detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.detail-item .label {
+  font-size: 10px;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.detail-item .value {
+  font-size: 14px;
+  font-weight: 600;
+  color: #334155;
+  word-break: break-all;
+}
+
+.profile-actions-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.action-btn-primary {
+  width: 100%;
+  padding: 14px;
+  background: #0f172a;
+  /* Professional Dark */
+  color: white;
+  border: none;
+  border-radius: 14px;
+  font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);
+}
+
+.action-btn-primary:hover {
+  background: #1e293b;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.2);
+}
+
+.secondary-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.action-btn-sub {
+  flex: 1;
+  padding: 12px;
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  color: #475569;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.action-btn-sub:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
+.action-btn-sub.danger {
+  color: #ef4444;
+}
+
+.action-btn-sub.danger:hover {
+  background: #fef2f2;
+  border-color: #fecaca;
 }
 
 /* ================= LOADING SPINNER ================= */
@@ -393,12 +462,6 @@
   margin: 0 auto 16px;
 }
 
-.loading-spinner p {
-  color: #6b7280;
-  font-size: 14px;
-  margin: 0;
-}
-
 /* ================= MOBILE ================= */
 @media (max-width: 480px) {
   .auth-page {
@@ -406,22 +469,13 @@
   }
 
   .auth-card {
-    padding: 28px 22px;
+    padding: 32px 24px;
   }
 
-  .auth-header h2 {
-    font-size: 22px;
-  }
-
-  .role-btn {
-    font-size: 12px;
-    padding: 10px 6px;
-  }
-
-  .profile-avatar {
-    width: 70px;
-    height: 70px;
-    font-size: 28px;
+  .profile-avatar-modern {
+    width: 64px;
+    height: 64px;
+    font-size: 26px;
   }
 }
 

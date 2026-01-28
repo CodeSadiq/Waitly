@@ -107,6 +107,9 @@
   font-size: 14.5px;
   color: #4b5563;
   line-height: 1.6;
+  white-space: normal;
+  /* Force wrap to show full address */
+  word-break: break-word;
 }
 
 /* ======================================================
