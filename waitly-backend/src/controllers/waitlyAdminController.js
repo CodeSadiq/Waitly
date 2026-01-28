@@ -5,7 +5,7 @@ import Staff from "../models/Staff.js";
 /* =====================================================
    HELPER: BUILD COUNTERS (DB-SAFE FORMAT)
    ===================================================== */
-const buildCounters = (counterNames = []) => {
+const buildCounters = (counterNames = [], enabled = false) => {
   if (!Array.isArray(counterNames) || counterNames.length === 0) {
     counterNames = ["General"];
   }
@@ -18,7 +18,7 @@ const buildCounters = (counterNames = []) => {
       reportsCount: 0
     },
     queueWait: {
-      enabled: false,
+      enabled: enabled,
       avgTime: 0,
       peopleAhead: 0,
       activeTokens: 0
@@ -507,7 +507,7 @@ export const approveStaffRequest = async (req, res) => {
       address: address,
       category: "General",
       location: { lat: 0, lng: 0 },
-      counters: buildCounters(counters),
+      counters: buildCounters(counters, true), // 🔥 Auto-enable queues for staff requests
       metadata: { source: "staff-request", approvedAt: new Date(), createdByStaff: staff._id }
     });
 

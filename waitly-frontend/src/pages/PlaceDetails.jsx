@@ -14,6 +14,7 @@ export default function PlaceDetails({ place, onWaitUpdated }) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [showWaitPopup, setShowWaitPopup] = useState(false);
+  const [showLoginPrompt, setShowLoginPrompt] = useState(false);
   const autoTimerRef = useRef(null);
 
   const counters = Array.isArray(place?.counters)
@@ -167,12 +168,28 @@ export default function PlaceDetails({ place, onWaitUpdated }) {
         </button>
       ) : (
         <>
-          <button
-            className="join-queue-btn"
-            onClick={() => navigate(`/join-queue/${place._id}`)}
-          >
-            Join Virtual Queue
-          </button>
+          {counters.some((c) => c.queueWait?.enabled) ? (
+            <button
+              className="join-queue-btn"
+              onClick={() => {
+                if (!user) {
+                  setShowLoginPrompt(true);
+                  return;
+                }
+                navigate(`/join-queue/${place._id}`);
+              }}
+            >
+              Join Virtual Queue
+            </button>
+          ) : (
+            <button
+              className="join-queue-btn"
+              style={{ opacity: 0.6, cursor: "not-allowed", background: "#6b7280" }}
+              disabled
+            >
+              Queue Not Active
+            </button>
+          )}
 
           <button
             className="join-queue-btn secondary"
@@ -189,6 +206,30 @@ export default function PlaceDetails({ place, onWaitUpdated }) {
           onClose={() => setShowWaitPopup(false)}
           onWaitUpdated={onWaitUpdated}
         />
+      )}
+
+      {/* LOGIN PROMPT MODAL */}
+      {showLoginPrompt && (
+        <div className="modal-backdrop">
+          <div className="modal-card">
+            <h3>Login Required</h3>
+            <p>You need to be logged in as a user to access this feature.</p>
+            <div className="actions">
+              <button
+                onClick={() => navigate("/login")}
+                className="submit-btn"
+              >
+                Login Now
+              </button>
+              <button
+                onClick={() => setShowLoginPrompt(false)}
+                className="secondary"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

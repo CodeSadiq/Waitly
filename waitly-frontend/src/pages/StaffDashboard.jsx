@@ -340,7 +340,7 @@ export default function StaffDashboard() {
   };
 
   const cancelApplication = async () => {
-    if (!window.confirm("Are you sure you want to cancel your application?")) return;
+    // if (!window.confirm("Are you sure you want to cancel your application?")) return;
     try {
       const res = await fetch(`${API_BASE}/api/staff/places/cancel`, {
         method: "POST",
@@ -368,112 +368,113 @@ export default function StaffDashboard() {
     );
   }
 
-  // 1. Join Workplace / Pending Flow
+  // 1. Join Workplace / Pending Flow (Onboarding)
   if (user.status === "unassigned" || user.status === "applied" || user.status === "pending" || !user.placeId) {
     return (
       <div className="staff-dashboard-container">
-        <header className="staff-header">
-          <div className="header-left">
-            <div className="staff-brand">
-              <div className="brand-icon">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-              </div>
-              <div>
-                <h2>Staff Portal</h2>
-                <p>Digital Queue Management</p>
-              </div>
+        <header className="staff-header-simple">
+          <div className="brand-logo">
+            <div className="logo-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11"></polygon></svg>
             </div>
+            <span className="logo-text">Waitly Staff</span>
           </div>
+          <button className="logout-text-btn" onClick={logout}>Logout</button>
         </header>
 
-        <div className="dashboard-content-scroll">
-          <div className="workplace-container">
-            <div className="workplace-hero">
-              <div className="hero-icon-circle">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+        <div className="onboarding-content">
+          <div className="onboarding-hero">
+            <h1>Welcome to Waitly Staff Portal</h1>
+            <p>The professional way to manage customer queues, reduce wait times, and improve service efficiency.</p>
+          </div>
+
+          <div className="onboarding-steps">
+            <div className="step-card">
+              <div className="step-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
               </div>
-              <h1>Setup Your Workspace</h1>
-              <p>Find your place below to request staff access. Once the admin approves your request, you can use this dashboard to manage live queues and serve customers in real-time.</p>
+              <h3>Find Your Workplace</h3>
+              <p>Search for your organization or branch in our database using the search bar below.</p>
             </div>
-
-            {(user.status === "applied" || user.status === "pending") && (
-              <div className="active-request-section">
-                <div className="section-header">
-                  <span className="status-badge-pulse">Pending Approval</span>
-                  <h3>My Active Request</h3>
-                </div>
-                {loadingPlace ? (
-                  <div className="loading-msg-small">Connecting to workplace...</div>
-                ) : appliedPlace ? (
-                  <div className="applied-place-card-inline">
-                    <div className="place-basic-info">
-                      <h4>{appliedPlace.name}</h4>
-                      <p>{appliedPlace.address}</p>
-                    </div>
-                    <div className="place-actions-inline">
-                      <button className="refresh-status-btn" onClick={() => loadUser()} title="Refresh Status">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M23 4v6h-6"></path><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
-                      </button>
-                      <button className="cancel-req-btn" onClick={cancelApplication}>Cancel Request</button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="applied-place-card-inline error">
-                    <p>Request data not found. Please try refreshing.</p>
-                    <button onClick={() => loadUser()} className="mini-ref-btn">Refresh</button>
-                  </div>
-                )}
+            <div className="step-card">
+              <div className="step-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>
               </div>
-            )}
-
-            <div className="workplace-search-area">
-              <div className="search-box-wrapper">
-                <div className="search-icon-inside">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                </div>
-                <input
-                  placeholder="Enter place name or city..."
-                  value={searchQuery}
-                  onChange={e => { setSearchQuery(e.target.value); setSearchError(""); }}
-                  onKeyDown={e => e.key === 'Enter' && searchPlaces()}
-                />
-                <button className="search-trigger-btn" onClick={searchPlaces} disabled={searching}>
-                  {searching ? "Searching..." : "Find Workplace"}
-                </button>
+              <h3>Request Access</h3>
+              <p>Select your workplace and submit a request. Your admin will verify your identity.</p>
+            </div>
+            <div className="step-card">
+              <div className="step-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
               </div>
+              <h3>Manage Queues</h3>
+              <p>Once approved, you can call tokens, track wait times, and serve customers efficiently.</p>
+            </div>
+          </div>
 
-              {searchError && (
-                <div className="search-error-banner">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
-                  {searchError}
+          <div className="workplace-action-area">
+            {(user.status === "applied" || user.status === "pending") ? (
+              <div className="status-card pending">
+                <div className="status-icon-pulse">
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
                 </div>
-              )}
+                <div className="status-info">
+                  <h3>Application Pending</h3>
+                  <p>You have requested access to <strong>{appliedPlace ? appliedPlace.name : "your workplace"}</strong>.</p>
+                  <p className="status-sub">Please wait for an administrator to approve your request.</p>
+                </div>
+                <div className="status-actions">
+                  <button className="btn-refresh" onClick={() => loadUser()}>Check Status</button>
+                  <button className="btn-cancel" onClick={cancelApplication}>Cancel Request</button>
+                </div>
+              </div>
+            ) : (
+              <div className="search-section">
+                <h2>Join an Existing Workplace</h2>
+                <div className="search-bar-large">
+                  <input
+                    type="text"
+                    placeholder="Search by hospital, bank, or place name..."
+                    value={searchQuery}
+                    onChange={e => { setSearchQuery(e.target.value); setSearchError(""); }}
+                    onKeyDown={e => e.key === 'Enter' && searchPlaces()}
+                  />
+                  <button onClick={searchPlaces} disabled={searching}>
+                    {searching ? "Searching..." : "Search"}
+                  </button>
+                </div>
 
-              <div className="search-results-grid">
-                {searching ? (
-                  <div className="loading-results">
-                    <div className="spinner-dots"><div></div><div></div><div></div></div>
-                    <p>Scanning directory...</p>
-                  </div>
-                ) : (
-                  searchResults.map(p => (
-                    <div key={p._id} className="place-result-tile">
-                      <div className="tile-content">
+                {searchError && <div className="error-banner">{searchError}</div>}
+
+                <div className="search-results-list">
+                  {searchResults.map(p => (
+                    <div key={p._id} className="result-item">
+                      <div className="result-info">
                         <h4>{p.name}</h4>
                         <p>{p.address}</p>
+                        <span className="category-tag">{p.category}</span>
                       </div>
                       <button
-                        className="join-req-btn"
-                        disabled={applying === p._id || user.status === "applied"}
+                        className="btn-apply"
+                        disabled={applying === p._id || p.hasActiveStaff}
                         onClick={() => applyForPlace(p._id)}
+                        style={p.hasActiveStaff ? { background: '#f1f5f9', color: '#94a3b8', borderColor: '#e2e8f0' } : {}}
                       >
-                        {applying === p._id ? "Processing..." : (user.status === "applied" ? "Request Active" : "Request Access")}
+                        {p.hasActiveStaff
+                          ? "Already Approved"
+                          : applying === p._id
+                            ? "Sending..."
+                            : "Request for Queue Management"
+                        }
                       </button>
                     </div>
-                  ))
-                )}
+                  ))}
+                  {searchResults.length === 0 && searchQuery && !searching && !searchError && (
+                    <p className="no-results-text">No places found. Try a different specific keyword.</p>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
@@ -500,47 +501,56 @@ export default function StaffDashboard() {
         </header>
 
         <div className="session-setup-layout">
-          {/* Staff Profile Section */}
+          {/* Staff Profile Summary */}
           <div className="staff-profile-summary">
-            <div className="profile-avatar-large">
-              {user?.username?.[0]?.toUpperCase() || "S"}
-            </div>
-            <div className="profile-info-block">
-              <h2>Welcome, {user?.username}</h2>
-              <p className="email-text">{user?.email}</p>
+            <div className="profile-context">
+              <h2>Hello, {user?.username}</h2>
+              <p>Welcome to <strong>{placeName || "your workplace"}</strong></p>
             </div>
           </div>
 
-          {/* Workplace Info */}
-          <div className="workplace-context-card">
-            <div className="wp-icon">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18"></path><path d="M5 21V7l8-4 8 4v14"></path><path d="M9 10a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2"></path></svg>
-            </div>
-            <div className="wp-details">
-              <span className="wp-label">MANAGING QUEUE AT</span>
-              <h3 className="wp-name">{placeName || "Loading Place..."}</h3>
-            </div>
-          </div>
-
-          {/* Counter Selection */}
+          {/* Counter Selection Card */}
           <div className="counter-select-container">
-            <h3 className="cs-title">Select Your Active Counter</h3>
-            <div className="counters-grid-simple">
-              {counters.length > 0 ? (
-                counters.map((counter, i) => (
-                  <button key={i} className="counter-btn-simple" onClick={() => setSelectedCounter(counter.name)}>
-                    {counter.name}
-                  </button>
-                ))
-              ) : (
-                <div className="loading-results">
-                  <div className="spinner-dots"><div></div><div></div><div></div></div>
-                  <p>{loadingCounters ? "Fetching available counters..." : "Preparing selection..."}</p>
-                  {!loadingCounters && counters.length === 0 && (
-                    <button onClick={fetchCounters} className="mini-ref-btn" style={{ marginTop: '10px' }}>Load Counters</button>
-                  )}
+            <div className="select-card">
+              <div className="card-header" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+                <div className="header-icon-container" style={{
+                  width: '64px',
+                  height: '64px',
+                  background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
+                  borderRadius: '16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 24px auto',
+                  color: '#2563eb'
+                }}>
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                    <line x1="8" y1="21" x2="16" y2="21"></line>
+                    <line x1="12" y1="17" x2="12" y2="21"></line>
+                  </svg>
                 </div>
-              )}
+                <h3 style={{ fontSize: '1.5rem', marginBottom: '12px', color: '#0f172a', display: 'block', width: '100%' }}>Select Your Counter</h3>
+                <p style={{ maxWidth: '400px', margin: '0 auto', lineHeight: '1.6', color: '#64748b', display: 'block' }}>
+                  Choose the counter you will be managing today. This will connect you to the live queue for that specific service.
+                </p>
+              </div>
+
+              <div className="counters-grid-simple">
+                {counters.length > 0 ? (
+                  counters.map((counter, i) => (
+                    <button key={i} className="counter-btn-modern" onClick={() => setSelectedCounter(counter.name)}>
+                      <span className="counter-name">{counter.name}</span>
+                      <span className="counter-arrow">→</span>
+                    </button>
+                  ))
+                ) : (
+                  <div className="loading-simple">
+                    {loadingCounters ? "Loading counters..." : "No counters found."}
+                    {!loadingCounters && <button onClick={fetchCounters} className="link-btn">Retry</button>}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

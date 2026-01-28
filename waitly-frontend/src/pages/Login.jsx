@@ -52,15 +52,9 @@ export default function Login() {
       const result = await login({ identifier, password });
 
       if (result.success) {
-        // Redirect based on role
-        const userRole = result.user.role;
-        if (userRole === "admin") {
-          navigate("/admin/dashboard");
-        } else if (userRole === "staff") {
-          navigate("/staff/dashboard");
-        } else {
-          navigate("/");
-        }
+        // Just show success; the UI will re-render with the "Welcome back" card
+        // which contains the manual "Go to Dashboard/Home" button.
+        setSuccess("Login successful!");
       } else {
         setError(result.error || "Login failed");
       }

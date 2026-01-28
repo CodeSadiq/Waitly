@@ -153,7 +153,7 @@ export default function AdminDashboard() {
 
   /* ================= STAFF REQUEST ACTIONS ================= */
   const approveStaff = async (id) => {
-    if (!window.confirm("Approve this staff request?")) return;
+    // if (!window.confirm("Approve this staff request?")) return; // Removed for better UX
     try {
       console.log("📡 [ADMIN] Approving staff request:", id);
       const res = await adminFetch(`/api/admin/staff-requests/approve/${id}`, {
@@ -176,7 +176,7 @@ export default function AdminDashboard() {
   };
 
   const rejectStaff = async (id) => {
-    if (!window.confirm("Reject and reset this staff request?")) return;
+    // if (!window.confirm("Reject and reset this staff request?")) return; // Removed
     try {
       console.log("🚫 [ADMIN] Rejecting staff request:", id);
       const res = await adminFetch(`/api/admin/staff-requests/reject/${id}`, {
@@ -495,6 +495,11 @@ export default function AdminDashboard() {
 
           <div className="nav-group">
             <span className="group-label">Data</span>
+            <button className={getNavClass("pending")} onClick={() => setActiveTab("pending")}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+              <span>Pending Approvals</span>
+              {pending.length > 0 && <span className="badge warning">{pending.length}</span>}
+            </button>
             <button className={getNavClass("fetch")} onClick={() => setActiveTab("fetch")}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
               <span>Fetch Data</span>
@@ -690,6 +695,61 @@ export default function AdminDashboard() {
                     </div>
                   ))}
                   {filteredDbPlaces.length === 0 && <p className="no-db-results">No places found matching filters.</p>}
+                </div>
+              </section>
+            </div>
+          )}
+
+          {activeTab === "pending" && (
+            <div className="tab-pane">
+              <section className="management-card">
+                <div className="section-header-styled">
+                  <div className="icon-box orange"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></div>
+                  <div>
+                    <h2>Pending Approvals</h2>
+                    <p>Review places submitted by users</p>
+                  </div>
+                </div>
+
+                <div className="staff-grid-large">
+                  {pending.map(p => (
+                    <div key={p._id} className="staff-card-detailed">
+                      <div className="staff-card-top">
+                        <div className="staff-info-header">
+                          <div className="staff-avatar-large" style={{ background: '#f97316' }}>{p.name.charAt(0).toUpperCase()}</div>
+                          <div>
+                            <h3>{p.name}</h3>
+                            <p>{p.category} • {p.source || 'User Submission'}</p>
+                          </div>
+                        </div>
+                        <div className="staff-tag pending">Verification Needed</div>
+                      </div>
+
+                      <div className="staff-request-context">
+                        <div className="workplace-link-card new">
+                          <span className="context-label">Location Details:</span>
+                          <h4>{p.address || "No address provided"}</h4>
+                          <p>Lat: {p.location?.lat}, Lng: {p.location?.lng}</p>
+                        </div>
+                      </div>
+
+                      <div className="staff-card-actions">
+                        <button className="btn-approve-large" onClick={() => approve(p._id)}>Approve Place</button>
+                        <button className="btn-reject-icon" onClick={() => reject(p._id)}>
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        </button>
+                        <button className="btn-reject-icon" title="Edit JSON" onClick={() => { setEditingPlace(p); setJsonText(JSON.stringify(p, null, 2)); }}>
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  {pending.length === 0 && (
+                    <div className="hero-empty">
+                      <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                      <p>No pending place submissions.</p>
+                    </div>
+                  )}
                 </div>
               </section>
             </div>
@@ -908,6 +968,29 @@ export default function AdminDashboard() {
       </main>
 
       {/* ================= MODALS ================= */}
+      {editingPlace && (
+        <div className="modal-overlay" onClick={() => setEditingPlace(null)}>
+          <div className="modal-content large" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Review & Edit Submission</h2>
+              <button className="btn-close-modal" onClick={() => setEditingPlace(null)}>&times;</button>
+            </div>
+            <div className="modal-body">
+              <p className="modal-hint">Review the JSON data before approving. You can make manual corrections here.</p>
+              <textarea
+                className="modal-json-editor"
+                value={jsonText}
+                onChange={(e) => setJsonText(e.target.value)}
+              />
+            </div>
+            <div className="modal-footer">
+              <button className="btn-modal-cancel" onClick={() => setEditingPlace(null)}>Cancel</button>
+              <button className="btn-modal-save" onClick={approveEdited}>Approve & Save</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {editingDbPlace && (
         <div className="modal-overlay" onClick={() => setEditingDbPlace(null)}>
           <div className="modal-content large" onClick={e => e.stopPropagation()}>

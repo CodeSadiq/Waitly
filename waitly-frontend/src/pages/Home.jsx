@@ -29,6 +29,7 @@ export default function Home() {
 
   const [addMode, setAddMode] = useState(false);
   const [newPlaceCoords, setNewPlaceCoords] = useState(null);
+  const [showLoginPrompt, setShowLoginPrompt] = useState(false);
 
   /* =========================
      ⚡ LIVE WAIT UPDATE (SOCKET)
@@ -342,15 +343,21 @@ export default function Home() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
-        <button
-          className={`add-place-btn ${addMode ? "active" : ""}`}
-          onClick={() => {
-            setAddMode(!addMode);
-            setSelectedPlace(null);
-          }}
-        >
-          {addMode ? "✖" : "+"}
-        </button>
+        {(!user || (user.role !== "admin")) && (
+          <button
+            className={`add-place-btn ${addMode ? "active" : ""}`}
+            onClick={() => {
+              if (!user) {
+                setShowLoginPrompt(true);
+                return;
+              }
+              setAddMode(!addMode);
+              setSelectedPlace(null);
+            }}
+          >
+            {addMode ? "✖" : "+"}
+          </button>
+        )}
 
         {addMode && (
           <div className="add-place-hint">
@@ -391,6 +398,30 @@ export default function Home() {
           coords={newPlaceCoords}
           onClose={() => setNewPlaceCoords(null)}
         />
+      )}
+
+      {/* LOGIN PROMPT MODAL */}
+      {showLoginPrompt && (
+        <div className="modal-backdrop">
+          <div className="modal-card">
+            <h3>Login Required</h3>
+            <p>You need to be logged in to add a place.</p>
+            <div className="actions">
+              <button
+                onClick={() => navigate("/login")}
+                className="submit-btn"
+              >
+                Login Now
+              </button>
+              <button
+                onClick={() => setShowLoginPrompt(false)}
+                className="secondary"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

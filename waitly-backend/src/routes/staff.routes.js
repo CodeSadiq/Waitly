@@ -26,9 +26,18 @@ router.get("/places/search", verifyStaff, async (req, res) => {
             name: { $regex: q, $options: "i" }
         }).select("name address category location counters");
 
+        // Check if any place already has an active staff
+        const placesWithStatus = await Promise.all(places.map(async (p) => {
+            const activeStaff = await Staff.findOne({ placeId: p._id, status: 'active' });
+            return {
+                ...p.toObject(),
+                hasActiveStaff: !!activeStaff
+            };
+        }));
+
         console.log(`✅ [SEARCH] Found ${places.length} places for "${q}":`, places.map(p => p.name));
 
-        res.json(places);
+        res.json(placesWithStatus);
     } catch (err) {
         console.error("❌ [SEARCH] ERROR:", err);
         res.status(500).json({ message: "Search failed" });

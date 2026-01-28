@@ -1,8 +1,10 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import "./AddPlaceModal.css";
 import API_BASE from "../config/api";
 
 export default function AddPlaceModal({ coords, onClose }) {
+  const navigate = useNavigate();
   const [form, setForm] = useState({
     name: "",
     category: "bank",
@@ -30,13 +32,22 @@ export default function AddPlaceModal({ coords, onClose }) {
       return;
     }
 
+    const token = localStorage.getItem("waitly_token");
+    if (!token) {
+      showPopup("Please login to your account to add a new place.");
+      return;
+    }
+
     const finalCategory =
       form.category === "other" ? otherCategory.trim() : form.category;
 
     try {
       const res = await fetch(`${API_BASE}/api/admin/pending/add`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
         body: JSON.stringify({
           name: form.name.trim(),
           category: finalCategory,
@@ -50,7 +61,11 @@ export default function AddPlaceModal({ coords, onClose }) {
       });
 
       if (!res.ok) {
-        showPopup("Failed to submit place");
+        if (res.status === 401) {
+          showPopup("Session expired. Please login again.");
+        } else {
+          showPopup("Failed to submit place");
+        }
         return;
       }
 
@@ -184,9 +199,15 @@ export default function AddPlaceModal({ coords, onClose }) {
             </p>
             <button
               onClick={() => {
+                const isSessionExpired = popupMsg === "Session expired. Please login again.";
+
                 setPopupMsg("");
                 if (successPopup) onClose();
                 setSuccessPopup(false);
+
+                if (isSessionExpired) {
+                  navigate("/login");
+                }
               }}
               className="submit-btn"
             >
