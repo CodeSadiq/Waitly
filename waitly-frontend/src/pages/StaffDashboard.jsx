@@ -23,10 +23,11 @@ export default function StaffDashboard() {
   const [showProfile, setShowProfile] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
   const [fetchError, setFetchError] = useState("");
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
 
   // Dashboard Status State
   const [currentTicket, setCurrentTicket] = useState(null);
-  const [queueStats, setQueueStats] = useState({ waiting: 0, completed: 0, skipped: 0 });
+  const [queueStats, setQueueStats] = useState({ waiting: 0, completed: 0, skipped: 0, slotted: 0 });
   const [nextTickets, setNextTickets] = useState([]);
   const [loading, setLoading] = useState(false);
   const [appliedPlace, setAppliedPlace] = useState(null);
@@ -39,9 +40,17 @@ export default function StaffDashboard() {
     return headers;
   };
 
+  const formatWaitTime = (mins) => {
+    if (!mins || mins <= 0) return "0m";
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    if (h > 0) return `${h}h : ${m}m`;
+    return `${m}m`;
+  };
+
   // All Tokens Modal & Inspecting Mode
   const [showTokensModal, setShowTokensModal] = useState(false);
-  const [allTokens, setAllTokens] = useState([]);
+  const [allTokens, setAllTokens] = useState({ serving: [], waiting: [], history: [] });
   const [inspectingTicket, setInspectingTicket] = useState(null);
 
   const fetchAllTokens = async () => {
@@ -52,7 +61,11 @@ export default function StaffDashboard() {
         headers: getAuthHeaders()
       });
       const data = await res.json();
-      setAllTokens(data.tokens || []);
+      setAllTokens({
+        serving: data.serving || [],
+        waiting: data.waiting || [],
+        history: data.history || []
+      });
     } catch (err) {
       console.error("Failed to fetch all tokens", err);
       showNotification("Failed to fetch all tokens", "error");
@@ -210,7 +223,8 @@ export default function StaffDashboard() {
       setQueueStats({
         waiting: data.waiting,
         completed: data.completed,
-        skipped: data.skipped
+        skipped: data.skipped,
+        slotted: data.slotted || 0
       });
       setNextTickets(data.nextTickets || []);
     } catch (err) {
@@ -571,6 +585,7 @@ export default function StaffDashboard() {
               <div className="vc-session-controls">
                 <span className="counter-tag">{selectedCounter}</span>
                 <button className="vc-text-btn" onClick={() => { fetchAllTokens(); setShowTokensModal(true); }}>All Tokens</button>
+                <button className="vc-text-btn" onClick={() => setShowScheduleModal(true)}>Schedule</button>
                 <button className="vc-text-btn danger" onClick={() => window.location.reload()}>Change Counter</button>
               </div>
             </div>
@@ -604,27 +619,18 @@ export default function StaffDashboard() {
                 )}
               </div>
 
-              {!loading && displayTicket && displayTicket.timeSlotLabel && (
-                <div className="vc-slot-badge" style={{
-                  fontSize: '0.9rem',
-                  marginBottom: '20px',
-                  marginTop: '-10px', // Pull it up slightly closer to the code
-                  background: '#f0fdf4',
-                  color: '#166534',
-                  padding: '6px 16px',
-                  borderRadius: '20px',
-                  fontWeight: '600',
-                  border: '1px solid #bbf7d0',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px'
-                }}>
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  {displayTicket.timeSlotLabel}
+              {!loading && displayTicket && (
+                <div style={{ textAlign: 'center', marginBottom: '20px', marginTop: '-10px' }}>
+                  <h2 style={{ fontSize: '1.6rem', fontWeight: '800', color: '#1e293b', margin: '0 0 2px 0' }}>
+                    {displayTicket.userName || "Guest User"}
+                  </h2>
+                  <p style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: '700', margin: 0, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                    Customer Identity
+                  </p>
                 </div>
               )}
+
+
               <div className={`vc-qr-area ${isVerified ? "verified-border" : ""} ${!displayTicket ? "clean" : ""}`}>
                 {displayTicket ? (
                   isVerified ? (
@@ -652,9 +658,10 @@ export default function StaffDashboard() {
             <div className="vc-col-right">
               <span className="vc-label">QUEUE STATUS</span>
               <div className="vc-stat-row"><span>Waiting</span><span className="vc-val blue">{queueStats.waiting}</span></div>
-              <div className="vc-stat-row"><span>Near Service</span><span className="vc-val orange">{nextTickets.length}</span></div>
+
               <div className="vc-stat-row"><span>Completed</span><span className="vc-val green">{queueStats.completed}</span></div>
               <div className="vc-stat-row"><span>Skipped</span><span className="vc-val red" style={{ color: '#ef4444' }}>{queueStats.skipped}</span></div>
+              <div className="vc-stat-row"><span>Active Slotted</span><span className="vc-val" style={{ color: '#ea580c' }}>{queueStats.slotted}</span></div>
               <div className="vc-stat-row" style={{ borderTop: '2px dashed #f1f5f9', marginTop: '8px', paddingTop: '12px' }}>
                 <span style={{ fontWeight: '700', color: '#0f172a' }}>Total Tokens</span>
                 <span className="vc-val" style={{ color: '#0f172a' }}>
@@ -673,35 +680,97 @@ export default function StaffDashboard() {
                 </>
               ) : <div className="inspect-warning-msg">Queue actions disabled in inspect mode</div>
             ) : null /* Hide buttons if no ticket, the main area shows 'Start Queue' or 'No Tokens' */}
-            <button className="vc-btn-scan" onClick={() => setShowScanner(true)}>Scan Token</button>
+            <button
+              className="vc-btn-scan"
+              onClick={() => setShowScanner(true)}
+              disabled={!displayTicket}
+              title={!displayTicket ? "Call a ticket first to enable scanning" : "Verify present token"}
+            >
+              Scan Token
+            </button>
           </div>
         </div>
       </div>
 
       {showTokensModal && (
         <div className="profile-modal-overlay" onClick={() => setShowTokensModal(false)}>
-          <div className="profile-card tokens-list-modal" onClick={e => e.stopPropagation()}>
+          <div className="profile-card tokens-list-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '900px', width: '95%' }}>
             <button className="close-profile-btn" onClick={() => setShowTokensModal(false)}>×</button>
-            <h2 className="modal-title">All Tokens - {selectedCounter}</h2>
-            <div className="tokens-table-container">
-              <table className="tokens-table">
-                <thead>
-                  <tr><th>Pos</th><th>Code</th><th>User</th><th>Slot</th><th>Status</th><th>Action</th></tr>
-                </thead>
-                <tbody>
-                  {allTokens.map(t => (
-                    <tr key={t._id}>
-                      <td style={{ fontWeight: 'bold', color: '#64748b' }}>{t.position ? `#${t.position}` : '-'}</td>
-                      <td className="token-code-cell">{t.tokenCode}</td>
-                      <td>{t.userName || "Guest"}</td>
-                      <td>{t.timeSlotLabel || "-"}</td>
-                      <td><span className={`status-pill ${t.status.toLowerCase()}`}>{t.status}</span></td>
-                      <td><button className="view-token-btn" onClick={() => { setInspectingTicket(t); setShowTokensModal(false); }}>Inspect</button></td>
-                    </tr>
-                  ))}
-                  {allTokens.length === 0 && <tr><td colSpan="4" style={{ textAlign: 'center', padding: '20px', color: '#64748b' }}>No tokens found for today.</td></tr>}
-                </tbody>
-              </table>
+            <h2 className="modal-title">Queue Overview - {selectedCounter}</h2>
+
+            <div className="tokens-modal-scroll-area" style={{ maxHeight: '75vh', overflowY: 'auto', paddingBottom: '20px' }}>
+
+              {/* SECTION 1: LIVE QUEUE (In Order) */}
+              <div className="tokens-section">
+                <h3 className="section-title-modern">
+                  <span className="dot pulse-blue"></span> Live Queue (Serving & Next)
+                </h3>
+                <div className="tokens-table-container">
+                  <table className="tokens-table">
+                    <thead>
+                      <tr><th>Order</th><th>Code</th><th>Name</th><th>Type</th><th>Estimated In</th><th>Action</th></tr>
+                    </thead>
+                    <tbody>
+                      {/* Current Serving */}
+                      {allTokens.serving.map(t => (
+                        <tr key={t._id} className="row-serving-highlight">
+                          <td><span className="badge-serving">SERVING</span></td>
+                          <td className="token-code-cell">{t.tokenCode}</td>
+                          <td style={{ fontWeight: '500' }}>{t.userName || "Guest"}</td>
+                          <td>{t.timeSlotLabel ? <span className="type-slotted">Priority ({t.timeSlotLabel})</span> : <span className="type-walkin">Walk-in</span>}</td>
+                          <td><span className="live-badge">Now</span></td>
+                          <td><button className="view-token-btn" onClick={() => { setInspectingTicket(t); setShowTokensModal(false); }}>Inspect</button></td>
+                        </tr>
+                      ))}
+
+                      {/* Waiting in Order */}
+                      {allTokens.waiting.map(t => (
+                        <tr key={t._id}>
+                          <td style={{ fontWeight: 'bold', color: '#64748b' }}>#{t.positionOnList}</td>
+                          <td className="token-code-cell">{t.tokenCode}</td>
+                          <td style={{ fontWeight: '500' }}>{t.userName || "Guest"}</td>
+                          <td>{t.timeSlotLabel ? <span className="type-slotted">Priority ({t.timeSlotLabel})</span> : <span className="type-walkin">Walk-in</span>}</td>
+                          <td>~{formatWaitTime(t.estimatedWait)}</td>
+                          <td><button className="view-token-btn" onClick={() => { setInspectingTicket(t); setShowTokensModal(false); }}>Inspect</button></td>
+                        </tr>
+                      ))}
+
+                      {allTokens.serving.length === 0 && allTokens.waiting.length === 0 && (
+                        <tr><td colSpan="6" className="empty-row">Queue is currently empty</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* SECTION 2: HISTORY */}
+              <div className="tokens-section" style={{ marginTop: '30px' }}>
+                <h3 className="section-title-modern gray">
+                  Processed History (Today)
+                </h3>
+                <div className="tokens-table-container gray-theme">
+                  <table className="tokens-table">
+                    <thead>
+                      <tr><th>Code</th><th>User</th><th>Status</th><th>Time</th><th>Action</th></tr>
+                    </thead>
+                    <tbody>
+                      {allTokens.history.map(t => (
+                        <tr key={t._id}>
+                          <td className="token-code-cell">{t.tokenCode}</td>
+                          <td>{t.userName || "Guest"}</td>
+                          <td><span className={`status-pill ${t.status.toLowerCase()}`}>{t.status}</span></td>
+                          <td>{new Date(t.completedAt || t.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
+                          <td><button className="view-token-btn" onClick={() => { setInspectingTicket(t); setShowTokensModal(false); }}>Inspect</button></td>
+                        </tr>
+                      ))}
+                      {allTokens.history.length === 0 && (
+                        <tr><td colSpan="5" className="empty-row">No tickets processed yet today</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
             </div>
           </div>
         </div>
@@ -723,7 +792,94 @@ export default function StaffDashboard() {
       )}
 
       {showScanner && <ScannerModal onClose={() => setShowScanner(false)} onScan={handleScanSuccess} />}
+      {showScheduleModal && (
+        <ScheduleModal
+          onClose={() => setShowScheduleModal(false)}
+          counterName={selectedCounter}
+          getAuthHeaders={getAuthHeaders}
+          currentConfig={counters.find(c => c.name === selectedCounter)}
+        />
+      )}
 
+    </div>
+  );
+}
+
+function ScheduleModal({ onClose, counterName, getAuthHeaders, currentConfig }) {
+  const [openingTime, setOpeningTime] = useState(currentConfig?.openingTime || "09:00");
+  const [closingTime, setClosingTime] = useState(currentConfig?.closingTime || "17:00");
+  const [isClosed, setIsClosed] = useState(currentConfig?.isClosed || false);
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/staff/counters/update-schedule`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ counterName, openingTime, closingTime, isClosed }),
+        credentials: "include"
+      });
+      if (res.ok) {
+        // Optionally update local state or just close
+        onClose();
+        alert("Schedule updated!");
+      } else {
+        alert("Failed to update.");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Error saving schedule.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="profile-modal-overlay" onClick={onClose}>
+      <div className="profile-card" onClick={e => e.stopPropagation()} style={{ maxWidth: '400px' }}>
+        <button className="close-profile-btn" onClick={onClose}>×</button>
+        <h2 style={{ marginBottom: '20px' }}>Manage Schedule</h2>
+
+        <div style={{ marginBottom: '15px' }}>
+          <label style={{ display: 'block', fontSize: '13px', color: '#64748b', marginBottom: '5px' }}>Opening Time</label>
+          <input
+            type="time"
+            value={openingTime}
+            onChange={e => setOpeningTime(e.target.value)}
+            style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }}
+          />
+        </div>
+
+        <div style={{ marginBottom: '20px' }}>
+          <label style={{ display: 'block', fontSize: '13px', color: '#64748b', marginBottom: '5px' }}>Closing Time</label>
+          <input
+            type="time"
+            value={closingTime}
+            onChange={e => setClosingTime(e.target.value)}
+            style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }}
+          />
+        </div>
+
+        <div style={{ marginBottom: '25px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <input
+            type="checkbox"
+            checked={isClosed}
+            onChange={e => setIsClosed(e.target.checked)}
+            style={{ width: '18px', height: '18px' }}
+          />
+          <span style={{ fontSize: '14px', fontWeight: '500' }}>Close Counter Manually</span>
+        </div>
+
+        <button
+          className="vc-btn-call"
+          onClick={handleSave}
+          disabled={saving}
+          style={{ width: '100%' }}
+        >
+          {saving ? "Saving..." : "Save Settings"}
+        </button>
+      </div>
     </div>
   );
 }

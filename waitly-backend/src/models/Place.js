@@ -13,7 +13,10 @@ const CounterSchema = new mongoose.Schema(
       avgTime: { type: Number, default: 0 },
       peopleAhead: { type: Number, default: 0 },
       activeTokens: { type: Number, default: 0 }
-    }
+    },
+    openingTime: { type: String, default: "09:00" }, // HH:MM
+    closingTime: { type: String, default: "17:00" }, // HH:MM
+    isClosed: { type: Boolean, default: false }
   },
   { _id: false }
 );
@@ -21,10 +24,10 @@ const CounterSchema = new mongoose.Schema(
 const PlaceSchema = new mongoose.Schema(
   {
     externalPlaceId: {
-  type: String,
-  unique: true,
-  required: true
-},
+      type: String,
+      unique: true,
+      required: true
+    },
 
     name: String,
     category: String,

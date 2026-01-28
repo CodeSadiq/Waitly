@@ -4,8 +4,123 @@ import Place from "../models/Place.js";
 import { generateTokenCode } from "../utils/generateToken.js";
 import { verifyUser } from "../middleware/authMiddleware.js";
 import { io } from "../server.js";
+import { getRealAverageTime, getQueueMetrics } from "../utils/queueLogic.js";
 
 const router = express.Router();
+
+
+/* =====================================================
+   AVAILABLE SLOTS
+   ===================================================== */
+router.get("/available-slots", async (req, res) => {
+  try {
+    const { placeId, counterIndex, date } = req.query; // date in YYYY-MM-DD
+
+    if (!placeId || counterIndex === undefined || !date) {
+      return res.status(400).json({ message: "placeId, counterIndex, and date required" });
+    }
+
+    const place = await Place.findById(placeId);
+    if (!place) return res.status(404).json({ message: "Place not found" });
+
+    const counter = place.counters[counterIndex];
+    if (!counter) return res.status(404).json({ message: "Invalid counter" });
+
+    // 1. Get Operating Hours
+    const openingTime = counter.openingTime || "09:00";
+    const closingTime = counter.closingTime || "17:00";
+
+    // 2. Calculate Dynamic Average Service Time (Real-time data)
+    const realAvgTime = await getRealAverageTime(placeId, counter.name, counter.queueWait.avgTime || 5);
+
+    // 3. Calculate Walk-in Backlog
+    const walkInCount = await Token.countDocuments({
+      place: placeId,
+      counterName: counter.name,
+      status: "Waiting",
+      scheduledTime: null
+    });
+
+    const backlogMinutes = walkInCount * realAvgTime;
+
+    // 4. Determine Start Time (Earliest possible slot)
+    const [openHour, openMin] = openingTime.split(":").map(Number);
+
+    let baseStart = new Date(date);
+    baseStart.setHours(openHour, openMin + backlogMinutes, 0, 0);
+
+    const now = new Date();
+    if (new Date(date).toDateString() === now.toDateString()) {
+      baseStart = baseStart > now ? baseStart : now;
+    }
+
+    // Round up to next 5 minutes
+    const remainder = 5 - (baseStart.getMinutes() % 5);
+    baseStart.setMinutes(baseStart.getMinutes() + remainder);
+
+    // 5. Fetch Existing Booked Slots for this Date
+    const startOfDay = new Date(date); startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(date); endOfDay.setHours(23, 59, 59, 999);
+
+    const bookedTokens = await Token.find({
+      place: placeId,
+      counterName: counter.name,
+      scheduledTime: { $gte: startOfDay, $lte: endOfDay },
+      status: { $nin: ["Cancelled", "Skipped"] }
+    }).select("scheduledTime");
+
+    const bookedTimes = bookedTokens.map(t => new Date(t.scheduledTime).getTime());
+
+    // 6. Generate Valid Slots
+    const [closeHour, closeMin] = closingTime.split(":").map(Number);
+    const closeDate = new Date(date);
+    closeDate.setHours(closeHour, closeMin, 0, 0);
+
+    const slots = [];
+    // Candidate step is 5 mins (granular choice for users)
+    // But buffer protection is `realAvgTime`
+    let currentTime = new Date(baseStart);
+
+    while (currentTime < closeDate) {
+      const candidateTime = currentTime.getTime();
+
+      // Prevent booking in the past
+      if (candidateTime <= Date.now()) {
+        currentTime.setMinutes(currentTime.getMinutes() + 5);
+        continue;
+      }
+
+      let isBlocked = false;
+
+      // Collision Check: blocked if within +/- AvgTime of ANY booked slot
+      // Formula: |Candidate - Booked| < AvgTime
+      // Example: Booked 9:00, Avg 10. 
+      // 8:55 (Diff 5) -> Blocked. 9:05 (Diff 5) -> Blocked. 9:10 (Diff 10) -> OK.
+
+      for (let booked of bookedTimes) {
+        const diffMins = Math.abs(candidateTime - booked) / 60000;
+        // Strict collision: we cannot overlap with the service window
+        if (diffMins < realAvgTime) {
+          isBlocked = true;
+          break;
+        }
+      }
+
+      if (!isBlocked) {
+        slots.push(currentTime.toISOString());
+      }
+
+      // Next candidate in 5 mins
+      currentTime.setMinutes(currentTime.getMinutes() + 5);
+    }
+
+    res.json({ slots, openingTime, closingTime, backlogMinutes, avgTime: realAvgTime });
+
+  } catch (err) {
+    console.error("SLOTS ERROR:", err);
+    res.status(500).json({ message: "Failed to fetch slots" });
+  }
+});
 
 /* =====================================================
    JOIN QUEUE (LOGIN REQUIRED)
@@ -25,6 +140,10 @@ router.post("/join", verifyUser, async (req, res) => {
 
     const counter = place.counters[counterIndex];
     if (!counter) return res.status(400).json({ message: "Invalid counter" });
+
+    if (counter.isClosed) {
+      return res.status(400).json({ message: "Counter is currently closed for new tokens." });
+    }
 
     const tokenData = {
       place: place._id,
@@ -53,6 +172,8 @@ router.post("/join", verifyUser, async (req, res) => {
   }
 });
 
+// Local helpers moved to ../utils/queueLogic.js for shared use.
+
 /* =====================================================
    PRE-JOIN STATS (No Token Needed)
    ===================================================== */
@@ -80,30 +201,14 @@ router.get("/stats", async (req, res) => {
       ]
     });
 
-    // Calculate Avg Time (Simulated or Real)
-    const completed = await Token.aggregate([
-      {
-        $match: {
-          place: place._id,
-          counterName: counter.name,
-          status: "Completed",
-          serviceDuration: { $exists: true }
-        }
-      },
-      {
-        $group: {
-          _id: null,
-          avgTime: { $avg: "$serviceDuration" }
-        }
-      }
-    ]);
-
-    const avgTime = completed[0]?.avgTime || 5;
-    const estimatedWait = Math.round(peopleAhead * avgTime);
+    // Use SIMULATION for accurate stats
+    // For Stats (New Walk-in), we want to know how many people are ahead of the END of the line.
+    // So we assume the target is "The Last Walk-in".
+    const metrics = await getQueueMetrics(placeId, counter.name, null);
 
     res.json({
-      peopleAhead,
-      estimatedWait
+      peopleAhead: metrics.peopleAhead,
+      estimatedWait: metrics.estimatedWait
     });
   } catch (err) {
     console.error(err);
@@ -121,34 +226,22 @@ router.get("/ticket/:tokenId", async (req, res) => {
 
     if (!token) return res.status(404).json({ message: "Ticket not found" });
 
-    const peopleAhead = await Token.countDocuments({
-      place: token.place._id,
-      counterName: token.counterName,
-      _id: { $ne: token._id },
-      $or: [
-        { status: "Waiting", createdAt: { $lt: token.createdAt } },
-        { status: "Serving" }
-      ]
-    });
-
-    const completed = await Token.aggregate([
-      {
-        $match: {
-          place: token.place._id,
-          counterName: token.counterName,
-          status: "Completed",
-          serviceDuration: { $exists: true }
-        }
-      },
-      {
-        $group: {
-          _id: null,
-          avgTime: { $avg: "$serviceDuration" }
-        }
+    // Auto-Check Expiration for Response
+    if (token.status === "Waiting" && token.scheduledTime) {
+      const thirtyMinsAgo = new Date(Date.now() - 30 * 60000);
+      if (new Date(token.scheduledTime) < thirtyMinsAgo) {
+        token.status = "Expired";
       }
-    ]);
+    }
 
-    const avgTime = completed[0]?.avgTime || 5;
+    let peopleAhead = 0;
+    let estimatedWait = 0;
+
+    if (token.status === "Waiting") {
+      const metrics = await getQueueMetrics(token.place._id, token.counterName, token._id);
+      peopleAhead = metrics.peopleAhead;
+      estimatedWait = metrics.estimatedWait;
+    }
 
     res.json({
       _id: token._id,
@@ -159,8 +252,8 @@ router.get("/ticket/:tokenId", async (req, res) => {
       createdAt: token.createdAt,
       place: token.place,
       peopleAhead,
-      estimatedWait: Math.round(peopleAhead * avgTime),
-      timeSlotLabel: token.timeSlotLabel // ✨ Added this field
+      estimatedWait,
+      timeSlotLabel: token.timeSlotLabel
     });
   } catch (err) {
     console.error(err);
@@ -180,7 +273,7 @@ router.get("/my-tickets", verifyUser, async (req, res) => {
       user: req.user._id,
       $or: [
         { status: { $in: ["Waiting", "Serving"] } },
-        { status: { $in: ["Completed", "Cancelled", "Skipped"] }, createdAt: { $gte: today } }
+        { status: { $in: ["Completed", "Cancelled", "Skipped", "Expired"] }, $or: [{ createdAt: { $gte: today } }, { completedAt: { $gte: today } }] }
       ]
     })
       .populate("place", "name address")
@@ -188,20 +281,26 @@ router.get("/my-tickets", verifyUser, async (req, res) => {
 
     const enriched = await Promise.all(
       tokens.map(async (token) => {
+        // Auto-Check Expiration for Response (so user sees it immediately)
+        if (token.status === "Waiting" && token.scheduledTime) {
+          const thirtyMinsAgo = new Date(Date.now() - 30 * 60000);
+          if (new Date(token.scheduledTime) < thirtyMinsAgo) {
+            token.status = "Expired";
+            // DB will be updated by getQueueMetrics or next check, 
+            // but we assume it's effectively expired now.
+          }
+        }
+
         let peopleAhead = 0;
         let estimatedWait = 0;
 
         if (token.status === "Waiting") {
-          peopleAhead = await Token.countDocuments({
-            place: token.place._id,
-            counterName: token.counterName,
-            _id: { $ne: token._id },
-            $or: [
-              { status: "Waiting", createdAt: { $lt: token.createdAt } },
-              { status: "Serving" }
-            ]
-          });
-          estimatedWait = peopleAhead * 5;
+          const metrics = await getQueueMetrics(token.place._id, token.counterName, token._id);
+          peopleAhead = metrics.peopleAhead;
+          estimatedWait = metrics.estimatedWait;
+        } else if (token.status === "Serving") {
+          peopleAhead = 0;
+          estimatedWait = 0;
         }
 
         return {
@@ -214,7 +313,8 @@ router.get("/my-tickets", verifyUser, async (req, res) => {
           place: token.place,
           peopleAhead,
           estimatedWait,
-          timeSlotLabel: token.timeSlotLabel // ✨ Added this field
+          timeSlotLabel: token.timeSlotLabel,
+          scheduledTime: token.scheduledTime
         };
       })
     );
@@ -232,10 +332,10 @@ router.get("/my-tickets", verifyUser, async (req, res) => {
 router.get("/ticket-history", verifyUser, async (req, res) => {
   const tickets = await Token.find({
     user: req.user._id,
-    status: { $in: ["Completed", "Skipped"] }
+    status: { $in: ["Completed", "Skipped", "Expired", "Cancelled"] }
   })
     .populate("place", "name address")
-    .sort({ completedAt: -1 });
+    .sort({ completedAt: -1, createdAt: -1 });
 
   res.json(tickets);
 });
@@ -253,6 +353,7 @@ router.put("/cancel/:id", verifyUser, async (req, res) => {
     }
 
     token.status = "Cancelled";
+    token.completedAt = new Date();
     await token.save();
 
     io.emit("token-updated"); // Notify staff/others

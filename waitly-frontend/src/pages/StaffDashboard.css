@@ -476,6 +476,14 @@
     transform: translateY(-1px);
 }
 
+.vc-btn-scan:disabled {
+    background: #cbd5e1;
+    color: #94a3b8;
+    cursor: not-allowed;
+    transform: none !important;
+    filter: none !important;
+}
+
 .vc-btn-call:disabled {
     opacity: 0.6;
     cursor: wait;
@@ -1518,6 +1526,106 @@
     }
 }
 
+.section-title-modern {
+    font-size: 1rem;
+    font-weight: 700;
+    margin: 24px 0 12px 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--staff-text-main);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.section-title-modern.gray {
+    color: var(--staff-text-sub);
+}
+
+.dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.pulse-blue {
+    background: var(--staff-primary);
+    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.4);
+    animation: pulse-blue 2s infinite;
+}
+
+@keyframes pulse-blue {
+    0% {
+        box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.7);
+    }
+
+    70% {
+        box-shadow: 0 0 0 8px rgba(37, 99, 235, 0);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(37, 99, 235, 0);
+    }
+}
+
+.badge-serving {
+    background: #fff7ed;
+    color: #ea580c;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 0.65rem;
+    font-weight: 800;
+    border: 1px solid #ffedd5;
+}
+
+.row-serving-highlight {
+    background: #fffcf9 !important;
+    border-left: 3px solid #ea580c;
+}
+
+.type-slotted {
+    color: #ea580c;
+    font-weight: 600;
+}
+
+.type-walkin {
+    color: #64748b;
+}
+
+.live-badge {
+    color: #16a34a;
+    font-weight: 700;
+    background: #f0fdf4;
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+.empty-row {
+    text-align: center;
+    padding: 30px !important;
+    color: #94a3b8 !important;
+    font-style: italic;
+    background: #f8fafc;
+}
+
+.gray-theme .tokens-table th {
+    background: #f1f5f9;
+}
+
+.tokens-modal-scroll-area::-webkit-scrollbar {
+    width: 6px;
+}
+
+.tokens-modal-scroll-area::-webkit-scrollbar-track {
+    background: #f1f5f9;
+}
+
+.tokens-modal-scroll-area::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
+}
+
 .token-code-cell {
     font-weight: 800;
     color: var(--staff-primary);
@@ -1549,6 +1657,12 @@
 .status-pill.skipped {
     background: #fef2f2;
     color: var(--staff-danger);
+}
+
+.status-pill.expired {
+    background: #f1f5f9;
+    color: #64748b;
+    border: 1px solid #e2e8f0;
 }
 
 .view-token-btn {

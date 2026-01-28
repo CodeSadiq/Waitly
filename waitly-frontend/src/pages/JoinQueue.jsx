@@ -12,8 +12,11 @@ export default function JoinQueue() {
   const [place, setPlace] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // form → payment → success
-  const [step, setStep] = useState("form");
+  /* =========================
+     STATE MANAGEMENT
+     ========================= */
+  const [step, setStep] = useState(1); // 1: Identity, 2: Type, 3: Details/Pay, 4: Success
+  const [bookingType, setBookingType] = useState(null); // 'walkin' | 'slot'
 
   const [form, setForm] = useState({
     name: "",
@@ -24,9 +27,16 @@ export default function JoinQueue() {
   const [queueStats, setQueueStats] = useState(null);
   const [generatedToken, setGeneratedToken] = useState(null);
 
+  // Date & Slot Logic
+  const [selectedDate, setSelectedDate] = useState("");
+  const [availableSlots, setAvailableSlots] = useState([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
+  const [slotInfo, setSlotInfo] = useState(null); // { openingTime, backlogMinutes }
+
   useEffect(() => {
     if (form.counterIndex === "" || form.counterIndex === undefined) {
       setQueueStats(null);
+      setAvailableSlots([]);
       return;
     }
 
@@ -41,8 +51,32 @@ export default function JoinQueue() {
         console.error("Failed to fetch queue stats", e);
       }
     };
+
+    const fetchSlots = async () => {
+      if (!selectedDate) {
+        setAvailableSlots([]);
+        return;
+      }
+      setLoadingSlots(true);
+      try {
+        const res = await fetch(`${API_BASE}/api/queue/available-slots?placeId=${placeId}&counterIndex=${form.counterIndex}&date=${selectedDate}`);
+        if (res.ok) {
+          const data = await res.json();
+          setAvailableSlots(data.slots || []);
+          setSlotInfo({ openingTime: data.openingTime, closingTime: data.closingTime, backlogMinutes: data.backlogMinutes });
+        } else {
+          setAvailableSlots([]);
+        }
+      } catch (e) {
+        console.error("Slot fetch error", e);
+      } finally {
+        setLoadingSlots(false);
+      }
+    };
+
     fetchStats();
-  }, [form.counterIndex, placeId]);
+    fetchSlots();
+  }, [form.counterIndex, placeId, selectedDate]);
 
   /* =========================
      FETCH PLACE BY ID
@@ -78,8 +112,19 @@ export default function JoinQueue() {
 
   const counters = place.counters || [];
 
-  const proceedToPayment = () => {
-    setStep("payment");
+  const nextStep = () => setStep(s => s + 1);
+  const prevStep = () => setStep(s => s - 1);
+
+  const selectType = (type) => {
+    setBookingType(type);
+    if (type === 'walkin') {
+      setForm(f => ({ ...f, slotDateTime: "" }));
+    } else {
+      // For slots, reset to default state so it shows "choose date..." message
+      setSelectedDate("");
+      setForm(f => ({ ...f, slotDateTime: "" }));
+    }
+    nextStep();
   };
 
   /* =========================
@@ -100,7 +145,7 @@ export default function JoinQueue() {
         userName: form.name
       };
 
-      if (form.slotDateTime) {
+      if (bookingType === 'slot' && form.slotDateTime) {
         const dateObj = new Date(form.slotDateTime);
         payload.scheduledTime = dateObj.toISOString();
 
@@ -130,183 +175,231 @@ export default function JoinQueue() {
       localStorage.setItem("waitly_token_id", data.tokenId);
       setGeneratedToken(data.tokenCode);
 
-      setStep("success");
+      setStep(4);
     } catch (err) {
       console.error(err);
       alert(err.message || "Unable to create ticket");
     }
   };
 
+  /* =========================
+     RENDER STEPS
+     ========================= */
   return (
     <div className="join-page">
 
-      {step === "form" && (
-        <div className="join-card">
-          <h2>Join Virtual Queue</h2>
+      {/* STEP 1: IDENTITY */}
+      {step === 1 && (
+        <div className="join-card fade-in">
+          <h2>Join Queue</h2>
+          <p className="modal-sub">{place.name}</p>
 
-          <p className="modal-sub">
-            {place.name} • ₹20 service charge
-          </p>
-
-          <input
-            placeholder="Full Name"
-            value={form.name}
-            onChange={(e) =>
-              setForm({ ...form, name: e.target.value })
-            }
-          />
-
-          <select
-            value={form.counterIndex}
-            onChange={(e) =>
-              setForm({
-                ...form,
-                counterIndex: e.target.value
-              })
-            }
-          >
-            <option value="">Select Counter</option>
-            {counters.map((counter, index) => (
-              <option key={counter.name} value={index}>
-                {counter.name}
-              </option>
-            ))}
-          </select>
-
-          {queueStats && form.counterIndex !== "" && (
-            <div style={{
-              marginTop: '15px',
-              marginBottom: '15px',
-              padding: '12px',
-              background: '#f8fafc',
-              borderRadius: '12px',
-              border: '1px solid #e2e8f0',
-              display: 'flex',
-              gap: '20px',
-              justifyContent: 'center',
-              alignItems: 'center'
-            }}>
-              <div style={{ textAlign: 'center', flex: 1 }}>
-                <span style={{ display: 'block', fontSize: '11px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px' }}>People Ahead</span>
-                <span style={{ fontSize: '20px', fontWeight: '800', color: '#0f172a' }}>{queueStats.peopleAhead}</span>
-              </div>
-              <div style={{ width: '1px', height: '30px', background: '#cbd5e1' }}></div>
-              <div style={{ textAlign: 'center', flex: 1 }}>
-                <span style={{ display: 'block', fontSize: '11px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Est. Wait</span>
-                <span style={{ fontSize: '20px', fontWeight: '800', color: '#0f172a' }}>{queueStats.estimatedWait}<span style={{ fontSize: '14px', fontWeight: '600' }}>m</span></span>
-              </div>
-            </div>
-          )}
-
-          <div className="input-wrapper">
-            {!form.slotDateTime && (
-              <span className="input-placeholder">
-                Preferred Time Slot (Optional)
-              </span>
-            )}
+          <div className="input-group">
             <input
-              type="datetime-local"
-              min={new Date().toISOString().slice(0, 16)}
-              value={form.slotDateTime}
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  slotDateTime: e.target.value
-                })
-              }
+              placeholder="Enter Name"
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              autoFocus
             />
+          </div>
+
+          <div className="input-group">
+            <select
+              value={form.counterIndex}
+              onChange={(e) => setForm({ ...form, counterIndex: e.target.value })}
+            >
+              <option value="" disabled hidden>Select Counter</option>
+              {counters.map((counter, index) => (
+                <option key={counter.name} value={index}>
+                  {counter.name}
+                </option>
+              ))}
+            </select>
           </div>
 
           <button
             className="pay-btn"
             disabled={!form.name || form.counterIndex === ""}
-            onClick={proceedToPayment}
+            onClick={nextStep}
           >
-            Pay ₹20 & Continue
+            Next
           </button>
 
-          <button
-            className="text-btn"
-            onClick={() => navigate("/")}
-          >
-            Cancel
-          </button>
+          <button className="text-btn" onClick={() => navigate("/")}>Cancel</button>
         </div>
       )}
 
-      {step === "payment" && (
-        <div className="join-card">
-          <h2>Confirm Payment</h2>
+      {/* STEP 2: BOOKING TYPE */}
+      {step === 2 && (
+        <div className="join-card fade-in">
+          <button className="back-link-btn" onClick={prevStep}>← Back</button>
+          <h2>Choose Option</h2>
+          <p className="modal-sub">How would you like to join?</p>
 
-          <p>
-            You are paying <strong>₹20</strong> to join the virtual
-            queue at <strong>{place.name}</strong>.
-          </p>
-
-          <p style={{ fontSize: 13, color: "#6b7280" }}>
-            (Payment gateway will be added later)
-          </p>
-
-          <button
-            className="pay-btn"
-            onClick={confirmPayment}
-          >
-            Confirm & Pay ₹20
-          </button>
-
-          <button
-            className="text-btn"
-            onClick={() => setStep("form")}
-          >
-            Back
-          </button>
-        </div>
-      )}
-
-      {step === "success" && (
-        <div className="join-card">
-          <h2>Token Generated</h2>
-
-          {generatedToken && (
-            <div style={{
-              background: '#f0fdf4',
-              padding: '16px',
-              borderRadius: '12px',
-              margin: '20px 0',
-              border: '2px dashed #4ade80',
-              textAlign: 'center'
-            }}>
-              <div style={{ marginBottom: '8px', color: '#16a34a' }}>
-                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+          <div className="booking-options">
+            <button className="option-card" onClick={() => selectType('walkin')}>
+              <div className="icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="7" r="4" />
+                  <path d="M6 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2" />
                 </svg>
               </div>
-              <span style={{ display: 'block', fontSize: '12px', color: '#166534', fontWeight: '700', textTransform: 'uppercase', marginBottom: '4px' }}>Your Token Number</span>
-              <span style={{ fontSize: '32px', fontWeight: '900', color: '#15803d', letterSpacing: '1px' }}>{generatedToken}</span>
-            </div>
+              <div className="info">
+                <h3>Join Ongoing Queue</h3>
+                <p>Wait in the current line directly. Best if you are nearby.</p>
+              </div>
+              <div className="arrow">→</div>
+            </button>
+
+            <button className="option-card" onClick={() => selectType('slot')}>
+              <div className="icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                  <line x1="16" y1="2" x2="16" y2="6" />
+                  <line x1="8" y1="2" x2="8" y2="6" />
+                  <line x1="3" y1="10" x2="21" y2="10" />
+                </svg>
+              </div>
+              <div className="info">
+                <h3>Book a Future Slot</h3>
+                <p>Schedule a specific available time slot.</p>
+              </div>
+              <div className="arrow">→</div>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* STEP 3: DETAILS & PAYMENT */}
+      {step === 3 && (
+        <div className="join-card fade-in">
+          <button className="back-link-btn" onClick={prevStep}>← Back</button>
+
+          {bookingType === 'walkin' ? (
+            <>
+              <h2>Queue Overview</h2>
+              {queueStats && (
+                <div className="stats-summary-box">
+                  <div className="stat-item">
+                    <span className="lbl">People Ahead</span>
+                    <span className="val">{queueStats.peopleAhead}</span>
+                  </div>
+                  <div className="stat-divider"></div>
+                  <div className="stat-item">
+                    <span className="lbl">Est. Wait</span>
+                    <span className="val">{queueStats.estimatedWait}m</span>
+                  </div>
+                </div>
+              )}
+              <p style={{ textAlign: 'center', margin: '20px 0', color: '#64748b' }}>
+                You are joining counter <strong>{counters[form.counterIndex]?.name}</strong>.
+              </p>
+            </>
+          ) : (
+            <>
+              <h2>Select Time Slot</h2>
+              <p style={{ textAlign: 'center', margin: '10px 0 20px', color: '#64748b' }}>
+                You are booking for counter <strong>{counters[form.counterIndex]?.name}</strong>.
+              </p>
+              <div className="slot-selection-area">
+                <label className="form-label-small">Select Date</label>
+                <input
+                  type="date"
+                  min={(() => {
+                    const d = new Date();
+                    const year = d.getFullYear();
+                    const month = String(d.getMonth() + 1).padStart(2, '0');
+                    const day = String(d.getDate()).padStart(2, '0');
+                    return `${year}-${month}-${day}`;
+                  })()}
+                  value={selectedDate}
+                  onChange={e => { setSelectedDate(e.target.value); setForm({ ...form, slotDateTime: "" }); }}
+                  className="date-input-styled"
+                />
+
+                {loadingSlots ? (
+                  <div className="loading-slots">Finding available slots...</div>
+                ) : (
+                  <div className="slots-reveal-wrapper">
+                    <label className="form-label-small">Available Slots</label>
+                    {availableSlots.length > 0 ? (
+                      <div className="slots-grid">
+                        {availableSlots.map(slot => {
+                          const timeLabel = new Date(slot).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                          const isSelected = form.slotDateTime === slot;
+                          return (
+                            <button
+                              key={slot}
+                              className={`slot-btn ${isSelected ? 'selected' : ''}`}
+                              onClick={() => setForm({ ...form, slotDateTime: slot })}
+                            >
+                              {timeLabel}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="no-slots-msg">
+                        {!selectedDate ? "Choose a date to see available slots" : "No slots available for this date."}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {form.slotDateTime && (
+                  <div className="selected-slot-msg">
+                    Selected: <strong>{new Date(form.slotDateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</strong>
+                    <br />
+                    <span style={{ fontSize: '12px', color: '#ea580c' }}>Slotted Ticket</span>
+                  </div>
+                )}
+              </div>
+            </>
           )}
 
-          <p>
-            Your virtual queue ticket has been created successfully.
+          <div className="payment-footer">
+            <div className="price-tag">
+              <span>Total to Pay</span>
+              <strong>₹20</strong>
+            </div>
+            <button
+              className="pay-btn"
+              onClick={confirmPayment}
+              disabled={bookingType === 'slot' && !form.slotDateTime}
+            >
+              Pay & Join Queue
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* STEP 4: SUCCESS */}
+      {step === 4 && (
+        <div className="join-card fade-in">
+          <div className="success-animation">
+            <svg viewBox="0 0 24 24" fill="none" class="checkmark">
+              <circle cx="12" cy="12" r="12" fill="#dcfce7" />
+              <path d="M7 13l3 3 7-7" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </div>
+          <h2>Access Granted</h2>
+
+          <div className="token-reveal">
+            <span className="lbl">YOUR TOKEN</span>
+            <span className="val">{generatedToken}</span>
+          </div>
+
+          <p className="success-msg">
+            {bookingType === 'slot'
+              ? "You've been added to the ongoing queue with a slotted time."
+              : "You've been added to the queue."}
           </p>
 
-          <p style={{ fontSize: 14, color: "#6b7280" }}>
-            You can now track live updates in <strong>My Ticket</strong>.
-          </p>
-
-          <button
-            className="pay-btn"
-            onClick={() => navigate("/user/dashboard")}
-          >
-            View My Ticket
+          <button className="pay-btn" onClick={() => navigate("/user/dashboard")}>
+            View Ticket
           </button>
 
-          <button
-            className="text-btn"
-            onClick={() => navigate("/")}
-          >
-            Back to Home
-          </button>
+          <button className="text-btn" onClick={() => navigate("/")}>Return Home</button>
         </div>
       )}
     </div>

@@ -70,7 +70,7 @@ const tokenSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ["Waiting", "Serving", "Completed", "Skipped", "Cancelled"],
+      enum: ["Waiting", "Serving", "Completed", "Skipped", "Cancelled", "Expired"],
       default: "Waiting",
       index: true
     },

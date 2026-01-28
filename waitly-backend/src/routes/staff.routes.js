@@ -3,7 +3,7 @@ import Place from "../models/Place.js";
 import Staff from "../models/Staff.js";
 import Token from "../models/Token.js";
 import { verifyStaff } from "../middleware/authMiddleware.js";
-import { getNextTicket } from "../utils/queueLogic.js";
+import { getNextTicket, getRealAverageTime } from "../utils/queueLogic.js";
 import { io } from "../server.js";
 
 const router = express.Router();
@@ -168,6 +168,17 @@ router.get("/status", verifyStaff, async (req, res) => {
         const { counterName } = req.query;
         if (!counterName) return res.status(400).json({ message: "Counter name required" });
 
+        // 0. Auto-Expire Stale Tickets (> 30 mins late)
+        const thirtyMinsAgo = new Date(Date.now() - 30 * 60000);
+        await Token.updateMany({
+            place: req.user.placeId,
+            counterName: counterName,
+            status: "Waiting",
+            scheduledTime: { $lt: thirtyMinsAgo }
+        }, {
+            $set: { status: "Expired", completedAt: new Date() }
+        });
+
         // 1. Current Ticket (Being served by THIS staff or ANY staff on this counter?)
         // Typically, a counter has one staff. Or multiple?
         // Let's assume counterName defines the queue line.
@@ -203,6 +214,13 @@ router.get("/status", verifyStaff, async (req, res) => {
             createdAt: { $gte: new Date(new Date().setHours(0, 0, 0, 0)) }
         });
 
+        const activeSlottedCount = await Token.countDocuments({
+            place: req.user.placeId,
+            counterName: counterName,
+            status: "Waiting",
+            scheduledTime: { $exists: true }
+        });
+
         // 3. Upcoming List (Next 3)
         // Use simple find for display, logic uses intelligent sort
         const nextTickets = await Token.find({
@@ -219,6 +237,7 @@ router.get("/status", verifyStaff, async (req, res) => {
             waiting: waitingCount,
             completed: completedCount,
             skipped: skippedCount,
+            slotted: activeSlottedCount,
             nextTickets
         });
 
@@ -236,38 +255,64 @@ router.get("/all-tokens", verifyStaff, async (req, res) => {
         const { counterName } = req.query;
         if (!counterName) return res.status(400).json({ message: "Counter name required" });
 
-        const tokens = await Token.find({
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        // 1. Get all relevant tokens for today
+        const items = await Token.find({
             place: req.user.placeId,
             counterName: counterName,
-            status: { $in: ["Waiting", "Serving", "Completed", "Skipped"] },
-            createdAt: { $gte: new Date(new Date().setHours(0, 0, 0, 0)) } // Filter for today
-        }).sort({ createdAt: 1 });
+            createdAt: { $gte: today }
+        }).sort({ createdAt: 1, _id: 1 });
 
-        // Enrich with Position in Queue
-        const enrichedTokens = await Promise.all(tokens.map(async (t) => {
-            let position = null;
-            if (t.status === "Waiting") {
-                // Same "peopleAhead" logic as queue.js
-                const peopleAhead = await Token.countDocuments({
-                    place: req.user.placeId,
-                    counterName: counterName,
-                    _id: { $ne: t._id },
-                    $or: [
-                        { status: "Waiting", createdAt: { $lt: t.createdAt } },
-                        { status: "Serving" }
-                    ]
-                });
-                // Position # is basically peopleAhead + 1
-                // E.g. 0 people ahead means I am #1
-                position = peopleAhead + 1;
+        // 2. Separate by categories
+        const serving = items.filter(t => t.status === "Serving");
+        const waitingRaw = items.filter(t => t.status === "Waiting");
+        const history = items
+            .filter(t => ["Completed", "Skipped", "Expired", "Cancelled"].includes(t.status))
+            .sort((a, b) => new Date(b.completedAt || b.updatedAt) - new Date(a.completedAt || a.updatedAt));
+
+        // 3. Simulate Actual Queue Order for "Waiting"
+        const walkIns = waitingRaw.filter(t => !t.scheduledTime);
+        const slotted = waitingRaw.filter(t => t.scheduledTime).sort((a, b) => new Date(a.scheduledTime) - new Date(b.scheduledTime));
+
+        let queue = [...walkIns];
+        let slotIndex = 0;
+        let virtualClock = Date.now();
+        const orderedWaiting = [];
+        const avgTime = await getRealAverageTime(req.user.placeId, counterName, 5);
+
+        while (queue.length > 0 || slotIndex < slotted.length) {
+            const nextSlot = slotted[slotIndex];
+            let candidate = null;
+
+            if (nextSlot && new Date(nextSlot.scheduledTime).getTime() <= virtualClock) {
+                candidate = nextSlot;
+                slotIndex++;
+            } else if (queue.length > 0) {
+                candidate = queue.shift();
+            } else if (nextSlot) {
+                virtualClock = new Date(nextSlot.scheduledTime).getTime();
+                continue;
+            } else {
+                break;
             }
-            return {
-                ...t.toObject(),
-                position
-            };
-        }));
 
-        res.json({ tokens: enrichedTokens });
+            orderedWaiting.push({
+                ...candidate.toObject(),
+                positionOnList: orderedWaiting.length + 1,
+                estimatedWait: Math.max(0, Math.round((virtualClock - Date.now()) / 60000))
+            });
+
+            virtualClock += (avgTime * 60000);
+        }
+
+        res.json({
+            serving: serving.map(t => t.toObject()),
+            waiting: orderedWaiting,
+            history: history.map(t => t.toObject())
+        });
+
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: "Failed to fetch all tokens" });
@@ -280,6 +325,13 @@ router.get("/all-tokens", verifyStaff, async (req, res) => {
 router.post("/next", verifyStaff, async (req, res) => {
     try {
         const { counterName } = req.body;
+
+        // 0. Auto-Skip any existing "Serving" tickets for this counter
+        // This prevents the "multiple It's your turn" bug
+        await Token.updateMany(
+            { place: req.user.placeId, counterName, status: "Serving" },
+            { $set: { status: "Skipped", completedAt: new Date() } }
+        );
 
         // 1. Get Priority Ticket
         const nextTicket = await getNextTicket(req.user.placeId, counterName);
@@ -339,6 +391,38 @@ router.post("/action", verifyStaff, async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: "Failed to update ticket" });
+    }
+});
+
+
+/* =====================================================
+   UPDATE COUNTER SCHEDULE
+   ===================================================== */
+router.post("/counters/update-schedule", verifyStaff, async (req, res) => {
+    try {
+        const { counterName, openingTime, closingTime, isClosed } = req.body;
+
+        if (!counterName) {
+            return res.status(400).json({ message: "Counter name required" });
+        }
+
+        const place = await Place.findById(req.user.placeId);
+        if (!place) return res.status(404).json({ message: "Place not found" });
+
+        const counter = place.counters.find(c => c.name === counterName);
+        if (!counter) return res.status(404).json({ message: "Counter not found" });
+
+        // Update fields
+        if (openingTime !== undefined) counter.openingTime = openingTime;
+        if (closingTime !== undefined) counter.closingTime = closingTime;
+        if (isClosed !== undefined) counter.isClosed = isClosed;
+
+        await place.save();
+
+        res.json({ success: true, message: "Schedule updated", counter });
+    } catch (err) {
+        console.error("UPDATE SCHEDULE ERROR:", err);
+        res.status(500).json({ message: "Failed to update schedule" });
     }
 });
 

@@ -11,17 +11,33 @@ const socket = io(API_BASE, {
     withCredentials: true
 });
 
+// Helper to format minutes to "Hh : Mm"
+const formatWaitTime = (mins) => {
+    if (!mins || mins <= 0) return "0m";
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    if (h > 0) return `${h}h : ${m}m`;
+    return `${m}m`;
+};
+
 // Helper Component for a single ticket card
 function TicketCard({ ticket, onPrint, onCancel, onDelete }) {
     const isWaiting = ticket.status === "Waiting";
     const isServing = ticket.status === "Serving";
-    const isInactive = ["Completed", "Cancelled", "Skipped"].includes(ticket.status);
+    const isInactive = ["Completed", "Cancelled", "Skipped", "Expired"].includes(ticket.status);
 
-    // Cancellation Rule: Can only cancel if wait time > 30 mins
-    const canCancel = isWaiting && ticket.estimatedWait > 30;
+    // Cancellation Rule: 
+    // Walk-in: Can cancel if wait > 30 mins
+    // Slotted: Disabled when slotted time is under next 30 min
+    const isSlotted = !!ticket.timeSlotLabel;
+    const canCancel = isWaiting && (
+        isSlotted
+            ? (ticket.scheduledTime && new Date(ticket.scheduledTime).getTime() - Date.now() > 30 * 60000)
+            : (ticket.estimatedWait > 30)
+    );
 
     // Display status label
-    const displayStatus = ticket.status === "Skipped" ? "Expired" : ticket.status;
+    const displayStatus = ticket.status;
 
     return (
         <div id={`ticket-${ticket._id}`} className="dash-ticket-card printable-ticket">
@@ -52,45 +68,74 @@ function TicketCard({ ticket, onPrint, onCancel, onDelete }) {
                 {/* MAIN TOKEN DISPLAY */}
                 <div className="token-display-modern">
                     <span className="token-label-xs">YOUR TOKEN</span>
-                    <span className="token-code-xl">{ticket.tokenCode}</span>
-                    {ticket.timeSlotLabel && (
-                        <div className="slot-badge-modern">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-                            {ticket.timeSlotLabel}
-                        </div>
-                    )}
+                    <span className="token-code-xl" style={{ color: ticket.timeSlotLabel ? '#16a34a' : '#1e293b' }}>{ticket.tokenCode}</span>
                 </div>
 
-                {/* STATS GRID */}
+                {/* STATS GRID - 3 COLUMNS ALWAYS */}
                 <div className="stats-grid-modern">
-                    <div className="stat-brick">
-                        <span className="brick-val">{ticket.peopleAhead}</span>
-                        <span className="brick-lbl">Ahead</span>
-                    </div>
+                    {ticket.timeSlotLabel ? (
+                        <>
+                            <div className="stat-brick">
+                                <span className="brick-val" style={{ fontSize: '13px', lineHeight: '1.2', fontWeight: '800' }}>
+                                    <span style={{ display: 'block' }}>{ticket.timeSlotLabel?.split(', ')[0]}</span>
+                                    <span style={{ display: 'block', fontSize: '11px', opacity: 0.8, marginTop: '2px', fontWeight: '600' }}>{ticket.timeSlotLabel?.split(', ')[1]}</span>
+                                </span>
+                                <span className="brick-lbl">Slot</span>
+                            </div>
+                            <div className="brick-divider"></div>
+                            <div className="stat-brick">
+                                <span className="brick-val" style={{ fontSize: '15px', fontWeight: '800', color: '#16a34a' }}>Slotted</span>
+                                <span className="brick-lbl">Type</span>
+                            </div>
+                        </>
+                    ) : (
+                        <>
+                            <div className="stat-brick">
+                                <span className="brick-val" style={{ fontSize: '15px', fontWeight: '800' }}>{ticket.peopleAhead}</span>
+                                <span className="brick-lbl">Ahead</span>
+                            </div>
+                            <div className="brick-divider"></div>
+                            <div className="stat-brick">
+                                <span className="brick-val" style={{ fontSize: '15px', fontWeight: '800' }}>{formatWaitTime(ticket.estimatedWait)}</span>
+                                <span className="brick-lbl">Wait</span>
+                            </div>
+                        </>
+                    )}
                     <div className="brick-divider"></div>
                     <div className="stat-brick">
-                        <span className="brick-val">{ticket.estimatedWait}<small>m</small></span>
-                        <span className="brick-lbl">Wait</span>
-                    </div>
-                    <div className="brick-divider"></div>
-                    <div className="stat-brick">
-                        <span className="brick-val" style={{ fontSize: '14px' }}>{ticket.counterName}</span>
+                        <span className="brick-val" style={{ fontSize: '13px', fontWeight: '800' }}>{ticket.counterName}</span>
                         <span className="brick-lbl">Counter</span>
                     </div>
                 </div>
 
-                {/* QR SECTION */}
-                <div className="qr-section-modern">
-                    <QRCode value={ticket.tokenCode} size={100} />
+                {/* INFO / ALERT SECTION - FIXED HEIGHT ZONE */}
+                <div className="ticket-info-zone">
+                    {isWaiting ? (
+                        ticket.timeSlotLabel ? (
+                            <div className="info-msg walkin-msg">
+                                <strong>Note:</strong> Please reach the counter on time. You may experience a slight delay due to the ticket currently being served ahead of you.
+                            </div>
+                        ) : (
+                            <div className="info-msg walkin-msg">
+                                <strong>Note:</strong> Wait: {formatWaitTime(ticket.estimatedWait)} from counter opening time.
+                            </div>
+                        )
+                    ) : isServing ? (
+                        <div className="info-msg serving-msg">
+                            <div className="pulse-dot"></div>
+                            It's your turn! Proceed to {ticket.counterName}
+                        </div>
+                    ) : (
+                        <div className="info-msg placeholder-msg">
+                            Ticket status: {ticket.status}
+                        </div>
+                    )}
                 </div>
 
-                {/* SERVING ALERT */}
-                {isServing && (
-                    <div className="serving-alert-modern">
-                        <div className="pulse-dot"></div>
-                        It's your turn! Please proceed to {ticket.counterName}
-                    </div>
-                )}
+                {/* QR SECTION */}
+                <div className="qr-section-modern">
+                    <QRCode value={ticket.tokenCode} size={80} />
+                </div>
 
                 {/* ACTIONS */}
                 <div className="actions-footer-modern">
@@ -100,9 +145,14 @@ function TicketCard({ ticket, onPrint, onCancel, onDelete }) {
 
                     {isWaiting && (
                         canCancel ? (
-                            <button onClick={() => onCancel(ticket._id)} className="action-text-btn danger">Cancel</button>
+                            <button onClick={() => onCancel(ticket._id)} className="action-text-btn danger">Cancel Ticket</button>
                         ) : (
-                            <span className="wait-msg-xs">You can only cancel if wait is over 30 mins</span>
+                            <span className="wait-msg-xs">
+                                {isSlotted
+                                    ? "Not cancellable in last 30m"
+                                    : "Cancellation: Wait > 30m"
+                                }
+                            </span>
                         )
                     )}
 
@@ -275,7 +325,7 @@ export default function UserDashboard() {
                             )}
 
                             {/* HISTORY / INACTIVE TICKETS */}
-                            {tickets.filter(t => ["Completed", "Cancelled", "Skipped"].includes(t.status)).length > 0 && (
+                            {tickets.filter(t => ["Completed", "Cancelled", "Skipped", "Expired"].includes(t.status)).length > 0 && (
                                 <>
                                     <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
@@ -283,7 +333,7 @@ export default function UserDashboard() {
                                     </h2>
                                     <div className="dashboard-ticket-grid">
                                         {tickets
-                                            .filter(t => ["Completed", "Cancelled", "Skipped"].includes(t.status))
+                                            .filter(t => ["Completed", "Cancelled", "Skipped", "Expired"].includes(t.status))
                                             .map((ticket) => (
                                                 <TicketCard
                                                     key={ticket._id}
