@@ -176,7 +176,7 @@ export default function Home() {
         if (document.body.classList.contains("list-expanded")) visibleH = 92;
         else if (document.body.classList.contains("list-default")) visibleH = 60;
         baseTransform = docH * (1 - visibleH / 100);
-      }, 50); // 50ms hold required to start dragging
+      }, 15); // 15ms hold required to start dragging
     };
 
     const onTouchMove = (e) => {
@@ -214,7 +214,7 @@ export default function Home() {
       const endY = e.changedTouches[0].clientY;
       const diff = startY - endY;
 
-      if (diff > 50) {
+      if (diff > 35) {
         // Drag UP -> Move to next state
         if (document.body.classList.contains("list-expanded")) {
           // Already Max
@@ -225,7 +225,7 @@ export default function Home() {
           // From 35% -> 60%
           document.body.classList.add("list-default");
         }
-      } else if (diff < -50) {
+      } else if (diff < -35) {
         // Drag DOWN -> Move to previous state
         if (document.body.classList.contains("list-expanded")) {
           document.body.classList.remove("list-expanded");
@@ -254,8 +254,9 @@ export default function Home() {
      📱 DETAILS SWIPE LOGIC
      ========================= */
   useEffect(() => {
-    // Reset state on open
-    document.body.classList.remove("details-expanded", "details-reduced", "details-peek");
+    // Reset state on open: Start at REDUCED (40%)
+    document.body.classList.remove("details-expanded", "details-medium", "details-peek");
+    document.body.classList.add("details-reduced");
 
     const detailsEl = document.querySelector(".home-right");
     if (!detailsEl) return;
@@ -263,15 +264,15 @@ export default function Home() {
     let startY = 0;
     let isHolding = false;
     let holdTimer = null;
+    let baseTransform = 0;
 
     const onDetailsTouchStart = (e) => {
-      // RESET visual state when starting valid new drag? No, keep it. 
-      // But we should reset when opening a new place.
       startY = e.touches[0].clientY;
       holdTimer = setTimeout(() => {
         isHolding = true;
         document.body.classList.add("dragging-details");
-      }, 50); // 50ms hold time
+        baseTransform = 0;
+      }, 15);
     };
 
     const onDetailsTouchMove = (e) => {
@@ -280,8 +281,10 @@ export default function Home() {
         return;
       }
       e.preventDefault();
+
       const currentY = e.touches[0].clientY;
       const delta = currentY - startY;
+
       detailsEl.style.transform = `translateY(${delta}px)`;
     };
 
@@ -294,27 +297,29 @@ export default function Home() {
       detailsEl.style.transform = "";
 
       const endY = e.changedTouches[0].clientY;
-      const diff = startY - endY;
+      const diff = startY - endY; // +ve means drag UP, -ve means drag DOWN
 
-      if (diff > 50) {
-        // Drag UP -> Move to next larger state
-        if (document.body.classList.contains("details-peek")) {
-          document.body.classList.remove("details-peek");
-          document.body.classList.add("details-reduced");
-        } else if (document.body.classList.contains("details-reduced")) {
+      if (diff > 35) {
+        // Drag UP: Move to next larger state
+        if (document.body.classList.contains("details-reduced")) {
+          // Reduced -> Medium
           document.body.classList.remove("details-reduced");
-        } else {
+          document.body.classList.add("details-medium");
+        } else if (document.body.classList.contains("details-medium")) {
+          // Medium -> Expanded
+          document.body.classList.remove("details-medium");
           document.body.classList.add("details-expanded");
         }
-      } else if (diff < -50) {
-        // Drag DOWN -> Move to next smaller state
+      } else if (diff < -35) {
+        // Drag DOWN: Move to next smaller state
         if (document.body.classList.contains("details-expanded")) {
+          // Expanded -> Medium
           document.body.classList.remove("details-expanded");
-        } else if (!document.body.classList.contains("details-reduced") && !document.body.classList.contains("details-peek")) {
+          document.body.classList.add("details-medium");
+        } else if (document.body.classList.contains("details-medium")) {
+          // Medium -> Reduced
+          document.body.classList.remove("details-medium");
           document.body.classList.add("details-reduced");
-        } else if (document.body.classList.contains("details-reduced")) {
-          document.body.classList.remove("details-reduced");
-          document.body.classList.add("details-peek");
         }
       }
     };

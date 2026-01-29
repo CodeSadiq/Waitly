@@ -1810,6 +1810,42 @@
         flex-direction: column;
     }
 
+    /* Mobile responsive stats grid */
+    .modal-header-premium {
+        padding: 20px 16px;
+    }
+
+    .modal-title-premium {
+        font-size: 1.35rem;
+    }
+
+    .modal-stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+
+    .stat-pill-premium {
+        padding: 12px;
+    }
+
+    .stat-pill-label {
+        font-size: 0.65rem;
+        margin-bottom: 4px;
+    }
+
+    .stat-pill-value {
+        font-size: 1.25rem;
+    }
+
+    /* Make the Counter Name pill full width on mobile */
+    .stat-pill-premium:nth-child(5) {
+        grid-column: 1 / -1;
+    }
+
+    .tokens-modal-scroll-area {
+        padding: 0 16px 16px 16px;
+    }
+
     .tokens-table-container {
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
@@ -1827,6 +1863,26 @@
     .modal-title {
         font-size: 1.25rem;
         margin-bottom: 16px;
+    }
+}
+
+/* Tablet responsive layout (601px - 900px) */
+@media (min-width: 601px) and (max-width: 900px) {
+    .modal-stats-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+    }
+
+    .stat-pill-premium {
+        padding: 14px;
+    }
+
+    .stat-pill-label {
+        font-size: 0.7rem;
+    }
+
+    .stat-pill-value {
+        font-size: 1.35rem;
     }
 }
 

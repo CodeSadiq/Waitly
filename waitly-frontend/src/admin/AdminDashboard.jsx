@@ -3,6 +3,7 @@ import { AuthContext } from "../context/AuthContext";
 import "./AdminDashboard.css";
 import API_BASE from "../config/api";
 import { adminFetch } from "../utils/adminFetch";
+import { PLACE_CATEGORIES, PRESET_COUNTERS as presetCounters } from "../config/placeConstants";
 
 export default function AdminDashboard() {
   const { user } = useContext(AuthContext);
@@ -115,24 +116,9 @@ export default function AdminDashboard() {
           value={editFormData.category}
           onChange={e => updateFormField('category', e.target.value)}
         >
-          <option value="bank">Bank</option>
-          <option value="hospital">Hospital</option>
-          <option value="government">Government Office</option>
-          <option value="courthouse">Courthouse</option>
-          <option value="police">Police Station</option>
-          <option value="college">College</option>
-          <option value="school">School</option>
-          <option value="post_office">Post Office</option>
-          <option value="passport_office">Passport Office</option>
-          <option value="railway_station">Railway Station</option>
-          <option value="bus_station">Bus Station</option>
-          <option value="restaurant">Restaurant</option>
-          <option value="cafe">Cafe</option>
-          <option value="mall">Mall</option>
-          <option value="electricity_office">Electricity Office</option>
-          <option value="water_office">Water Office</option>
-          <option value="gas_agency">Gas Agency</option>
-          <option value="telecom_office">Telecom Office</option>
+          {PLACE_CATEGORIES.map(c => (
+            <option key={c.value} value={c.value}>{c.label}</option>
+          ))}
         </select>
       </div>
       <div className="form-group">
@@ -207,20 +193,7 @@ export default function AdminDashboard() {
     setCounters(counters.filter((_, idx) => idx !== i));
   };
 
-  const presetCounters = [
-    "General",
-    "Token Counter",
-    "Enquiry",
-    "Cash",
-    "OPD",
-    "Registration",
-    "Billing",
-    "Help Desk",
-    "Customer Service",
-    "Reception",
-    "Information Desk",
-    "Payment Counter",
-  ];
+
 
   const addPresetCounter = (name) => {
     if (counters.includes(name)) return;
@@ -993,24 +966,9 @@ export default function AdminDashboard() {
                       <div className="input-with-label">
                         <label>Category</label>
                         <select value={osmForm.category} onChange={(e) => setOsmForm({ ...osmForm, category: e.target.value })}>
-                          <option value="bank">Bank</option>
-                          <option value="hospital">Hospital</option>
-                          <option value="government">Government Office</option>
-                          <option value="courthouse">Courthouse</option>
-                          <option value="police">Police Station</option>
-                          <option value="college">College</option>
-                          <option value="school">School</option>
-                          <option value="post_office">Post Office</option>
-                          <option value="passport_office">Passport Office</option>
-                          <option value="railway_station">Railway Station</option>
-                          <option value="bus_station">Bus Station</option>
-                          <option value="restaurant">Restaurant</option>
-                          <option value="cafe">Cafe</option>
-                          <option value="mall">Mall</option>
-                          <option value="electricity_office">Electricity Office</option>
-                          <option value="water_office">Water Office</option>
-                          <option value="gas_agency">Gas Agency</option>
-                          <option value="telecom_office">Telecom Office</option>
+                          {PLACE_CATEGORIES.map(c => (
+                            <option key={c.value} value={c.value}>{c.label}</option>
+                          ))}
                         </select>
                       </div>
                       <div className="input-with-label">
@@ -1125,24 +1083,9 @@ export default function AdminDashboard() {
                     <div className="form-group">
                       <label>Category <span className="req">*</span></label>
                       <select value={manualForm.category} onChange={e => setManualForm({ ...manualForm, category: e.target.value })}>
-                        <option value="bank">Bank</option>
-                        <option value="hospital">Hospital</option>
-                        <option value="government">Government Office</option>
-                        <option value="courthouse">Courthouse</option>
-                        <option value="police">Police Station</option>
-                        <option value="college">College</option>
-                        <option value="school">School</option>
-                        <option value="post_office">Post Office</option>
-                        <option value="passport_office">Passport Office</option>
-                        <option value="railway_station">Railway Station</option>
-                        <option value="bus_station">Bus Station</option>
-                        <option value="restaurant">Restaurant</option>
-                        <option value="cafe">Cafe</option>
-                        <option value="mall">Mall</option>
-                        <option value="electricity_office">Electricity Office</option>
-                        <option value="water_office">Water Office</option>
-                        <option value="gas_agency">Gas Agency</option>
-                        <option value="telecom_office">Telecom Office</option>
+                        {PLACE_CATEGORIES.map(c => (
+                          <option key={c.value} value={c.value}>{c.label}</option>
+                        ))}
                       </select>
                     </div>
                     <div className="form-group">

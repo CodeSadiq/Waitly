@@ -175,7 +175,10 @@ export default function PlaceList({ places, selectedPlace, onSelect }) {
 
       {/* EMPTY STATE */}
       {safePlaces.length === 0 && (
-        <div className="no-results">No places found</div>
+        <div className="no-results">
+          <div className="spinner"></div>
+          <p>Loading nearby places...</p>
+        </div>
       )}
     </div>
   );
