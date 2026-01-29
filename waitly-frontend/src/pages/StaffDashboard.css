@@ -48,25 +48,18 @@
     .onboarding-content,
     .workplace-container {
         height: auto !important;
-        overflow-y: visible !important;
-        flex: none !important;
-        /* Stop flex locking */
+        min-height: auto !important;
+        overflow: visible !important;
+        /* Force natural flow */
         display: block !important;
-        /* Force block layout */
+        -webkit-overflow-scrolling: touch;
+        touch-action: pan-y;
     }
 
     .staff-dashboard-container {
-        min-height: 100dvh !important;
-        display: flex !important;
-        /* Keep flex for main layout */
-        flex-direction: column !important;
-    }
-
-    /* Ensure content wrapper expands */
-    .dashboard-content-wrapper {
-        flex: 1 1 auto !important;
-        padding-bottom: 80px !important;
-        /* Safety padding */
+        min-height: auto !important;
+        height: auto !important;
+        overflow: visible !important;
     }
 }
 
@@ -2602,10 +2595,12 @@
 /* ================= MOBILE: SCROLLABLE LAYOUT (ALL CONTENT VISIBLE) ================= */
 @media (max-width: 768px) {
     .staff-dashboard-container {
-        min-height: 100vh;
+        min-height: auto !important;
         height: auto !important;
-        overflow-y: visible !important;
+        overflow: visible !important;
+        display: block !important;
         -webkit-overflow-scrolling: touch;
+        touch-action: pan-y;
     }
 
     .staff-header {
@@ -2806,6 +2801,79 @@
     .vc-actions.inspect-mode .inspect-warning-msg {
         order: -1;
         /* Place warning above button */
+    }
+
+    /* ================= RESPONSIVE TOKENS TABLE (Mobile Card View) ================= */
+    .tokens-list-modal {
+        width: 100% !important;
+        height: 100% !important;
+        border-radius: 0 !important;
+        max-width: none !important;
+        padding: 16px !important;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .tokens-modal-scroll-area {
+        max-height: none !important;
+        flex: 1;
+    }
+
+    .tokens-table thead {
+        display: none;
+    }
+
+    .tokens-table,
+    .tokens-table tbody,
+    .tokens-table tr,
+    .tokens-table td {
+        display: block;
+        width: 100%;
+    }
+
+    .tokens-table tbody tr {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 12px;
+        box-shadow: 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    }
+
+    .tokens-table td {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 0;
+        border: none !important;
+        text-align: right;
+        min-height: 40px;
+    }
+
+    /* Pseudo-header for each cell */
+    .tokens-table td::before {
+        content: attr(data-label);
+        font-weight: 600;
+        color: #64748b;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        text-align: left;
+        margin-right: 20px;
+    }
+
+    /* Adjust specific cells */
+    .tokens-table td[data-label="Action"] {
+        margin-top: 12px;
+        border-top: 1px dashed #f1f5f9;
+        padding-top: 16px;
+    }
+
+    .view-token-btn {
+        width: 100%;
+        margin: 0;
+        padding: 10px;
+        font-size: 0.9rem;
     }
 }
 

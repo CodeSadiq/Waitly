@@ -1,6 +1,7 @@
 import Place from "../models/Place.js";
 import PendingPlace from "../models/PendingPlace.js";
 import Staff from "../models/Staff.js";
+import { io } from "../server.js";
 
 /* =====================================================
    HELPER: BUILD COUNTERS (DB-SAFE FORMAT)
@@ -485,8 +486,42 @@ export const approveStaffRequest = async (req, res) => {
     // CASE A: NEW APPLICATION FLOW (Link to existing place)
     if (staff.status === "applied" && staff.application?.placeId) {
       console.log(`✅ [APPROVE STAFF] Processing APPLIED staff: ${staff.username}`);
+
+      const targetPlaceId = staff.application.placeId._id || staff.application.placeId;
+
+      /* ===================================================
+         🔥 FIX: AUTO-ENABLE QUEUES FOR THIS PLACE
+         So users can see "Join Queue" immediately
+         =================================================== */
+      try {
+        const placeDoc = await Place.findById(targetPlaceId);
+        if (placeDoc) {
+          if (!placeDoc.counters || placeDoc.counters.length === 0) {
+            // Use helper to create default
+            placeDoc.counters = buildCounters(["General"], true);
+          } else {
+            // Enable existing
+            placeDoc.counters.forEach((c) => {
+              if (c.queueWait) c.queueWait.enabled = true;
+            });
+          }
+          await placeDoc.save();
+          console.log(`✅ [APPROVE STAFF] Queues auto-enabled for place: ${targetPlaceId}`);
+
+          // 🔥 Notify Frontend
+          if (io) {
+            io.emit("wait-updated", {
+              placeId: placeDoc._id,
+              counters: placeDoc.counters
+            });
+          }
+        }
+      } catch (err) {
+        console.error("⚠️ Failed to auto-enable queues:", err);
+      }
+
       staff.status = "active";
-      staff.placeId = staff.application.placeId._id || staff.application.placeId;
+      staff.placeId = targetPlaceId;
       staff.application = undefined; // Clear application
       await staff.save();
       return res.json({ success: true, staff });

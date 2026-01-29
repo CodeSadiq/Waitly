@@ -176,7 +176,7 @@ export default function Home() {
         if (document.body.classList.contains("list-expanded")) visibleH = 92;
         else if (document.body.classList.contains("list-default")) visibleH = 60;
         baseTransform = docH * (1 - visibleH / 100);
-      }, 100); // 100ms hold required to start dragging
+      }, 50); // 50ms hold required to start dragging
     };
 
     const onTouchMove = (e) => {
@@ -271,7 +271,7 @@ export default function Home() {
       holdTimer = setTimeout(() => {
         isHolding = true;
         document.body.classList.add("dragging-details");
-      }, 100); // 100ms hold time
+      }, 50); // 50ms hold time
     };
 
     const onDetailsTouchMove = (e) => {

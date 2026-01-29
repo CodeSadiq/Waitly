@@ -434,9 +434,20 @@
     /* 60% visible */
   }
 
+  /* EXPANDED STATE CONFIG */
   body.list-expanded .home-left {
     transform: translateY(8dvh);
     /* 92% visible */
+  }
+
+  /* INTEGRATE SEARCH BAR WHEN EXPANDED (Mobile) */
+  body.list-expanded .search-container.desktop-only {
+    display: block !important;
+    margin-bottom: 16px;
+  }
+
+  body.list-expanded .search-input-wrapper.mobile-only {
+    display: none !important;
   }
 
   /* DRAGGING ACTIVE - Smooth tracking */

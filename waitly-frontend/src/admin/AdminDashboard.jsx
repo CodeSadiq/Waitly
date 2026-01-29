@@ -1,9 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useContext } from "react";
+import { AuthContext } from "../context/AuthContext";
 import "./AdminDashboard.css";
 import API_BASE from "../config/api";
 import { adminFetch } from "../utils/adminFetch";
 
 export default function AdminDashboard() {
+  const { user } = useContext(AuthContext);
   /* ================= STATE ================= */
   const [pending, setPending] = useState([]);
   const [staffRequests, setStaffRequests] = useState([]); // ✅ NEW
@@ -660,7 +662,6 @@ export default function AdminDashboard() {
         <aside className="admin-sidebar">
           <div className="sidebar-header">
             <div className="logo-area">
-              <div className="logo-icon">W</div>
               <span className="logo-text">Waitly<span>Admin</span></span>
             </div>
           </div>
@@ -713,16 +714,15 @@ export default function AdminDashboard() {
           <header className="main-header">
             <div className="header-info">
               <h1>Admin Console</h1>
-              <p className="subtitle">Welcome back. Here's what's happening today.</p>
+              <p className="subtitle">Welcome back, {user?.username || "Admin"}. Here's the latest data.</p>
             </div>
+
             <div className="header-actions">
-              <div className="header-actions">
-                {activeTab === "dashboard" && (
-                  <button className={`refresh-btn ${refreshing ? "spinning" : ""}`} onClick={handleRefresh} disabled={refreshing} title="Refresh Dashboard Stats">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M23 4v6h-6"></path><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
-                  </button>
-                )}
-              </div>
+              {activeTab === "dashboard" && (
+                <button className={`refresh-btn ${refreshing ? "spinning" : ""}`} onClick={handleRefresh} disabled={refreshing} title="Refresh Dashboard Stats">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M23 4v6h-6"></path><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+                </button>
+              )}
             </div>
           </header>
 
@@ -1230,12 +1230,12 @@ export default function AdminDashboard() {
       )}
       {/* ================= NOTIFICATION TOAST ================= */}
       {notification.visible && (
-        <div className={`notification-toast ${notification.type}`}>
+        <div className={`notification-toast ${notification.type} admin-toast`}>
           <div className="toast-icon">
             {notification.type === "success" ? (
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
             ) : (
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
             )}
           </div>
           <span className="toast-message">{notification.message}</span>

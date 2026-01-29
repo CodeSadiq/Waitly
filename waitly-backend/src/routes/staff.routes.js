@@ -418,6 +418,12 @@ router.post("/counters/update-schedule", verifyStaff, async (req, res) => {
         if (closingTime !== undefined) counter.closingTime = closingTime;
         if (isClosed !== undefined) counter.isClosed = isClosed;
 
+        // 🔥 FIX: Ensure queue is ENABLED when staff configures it
+        // This fixes the issue where "Join Queue" button is hidden for legacy places
+        if (counter.queueWait) {
+            counter.queueWait.enabled = true;
+        }
+
         await place.save();
 
         res.json({ success: true, message: "Schedule updated", counter });

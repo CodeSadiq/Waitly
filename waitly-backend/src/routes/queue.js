@@ -314,7 +314,8 @@ router.get("/my-tickets", verifyUser, async (req, res) => {
           peopleAhead,
           estimatedWait,
           timeSlotLabel: token.timeSlotLabel,
-          scheduledTime: token.scheduledTime
+          scheduledTime: token.scheduledTime,
+          completedAt: token.completedAt
         };
       })
     );

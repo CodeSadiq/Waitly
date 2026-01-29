@@ -757,23 +757,23 @@ export default function StaffDashboard() {
                     <tbody>
                       {allTokens.serving.map(t => (
                         <tr key={t._id} className="row-serving-highlight row-serving-today">
-                          <td><span className="badge-serving">SERVING</span></td>
-                          <td><span className="token-code-pill">{t.tokenCode}</span></td>
-                          <td className="user-name-cell">{t.userName || "Guest User"}</td>
-                          <td>{t.timeSlotLabel ? <span className="type-slotted">Slotted</span> : <span className="type-walkin">Walk-in</span>}</td>
-                          <td><span className="live-badge">Live</span></td>
-                          <td><button className="view-token-btn" onClick={() => { setInspectingTicket(t); setShowTokensModal(false); }}>Inspect</button></td>
+                          <td data-label="Position"><span className="badge-serving">SERVING</span></td>
+                          <td data-label="Token"><span className="token-code-pill">{t.tokenCode}</span></td>
+                          <td data-label="Customer" className="user-name-cell">{t.userName || "Guest User"}</td>
+                          <td data-label="Path">{t.timeSlotLabel ? <span className="type-slotted">Slotted</span> : <span className="type-walkin">Walk-in</span>}</td>
+                          <td data-label="Expect Flow"><span className="live-badge">Live</span></td>
+                          <td data-label="Action"><button className="view-token-btn" onClick={() => { setInspectingTicket(t); setShowTokensModal(false); }}>Inspect</button></td>
                         </tr>
                       ))}
 
                       {allTokens.waiting.map(t => (
                         <tr key={t._id} className={t.willServeToday ? 'row-serving-today' : ''}>
-                          <td><span style={{ fontWeight: '700', color: '#94a3b8' }}>#{t.positionOnList}</span></td>
-                          <td><span className="token-code-pill" style={{ background: '#f8fafc', color: '#64748b' }}>{t.tokenCode}</span></td>
-                          <td className="user-name-cell">{t.userName || "Guest User"}</td>
-                          <td>{t.timeSlotLabel ? <span className="type-slotted">Slotted</span> : <span className="type-walkin">Walk-in</span>}</td>
-                          <td style={{ fontWeight: '500' }}>~{formatWaitTime(t.estimatedWait)}</td>
-                          <td><button className="view-token-btn" onClick={() => { setInspectingTicket(t); setShowTokensModal(false); }}>Inspect</button></td>
+                          <td data-label="Position"><span style={{ fontWeight: '700', color: '#94a3b8' }}>#{t.positionOnList}</span></td>
+                          <td data-label="Token"><span className="token-code-pill" style={{ background: '#f8fafc', color: '#64748b' }}>{t.tokenCode}</span></td>
+                          <td data-label="Customer" className="user-name-cell">{t.userName || "Guest User"}</td>
+                          <td data-label="Path">{t.timeSlotLabel ? <span className="type-slotted">Slotted</span> : <span className="type-walkin">Walk-in</span>}</td>
+                          <td data-label="Expect Flow" style={{ fontWeight: '500' }}>~{formatWaitTime(t.estimatedWait)}</td>
+                          <td data-label="Action"><button className="view-token-btn" onClick={() => { setInspectingTicket(t); setShowTokensModal(false); }}>Inspect</button></td>
                         </tr>
                       ))}
 
@@ -795,11 +795,11 @@ export default function StaffDashboard() {
                     <tbody>
                       {allTokens.history.map(t => (
                         <tr key={t._id}>
-                          <td><span className="token-code-pill" style={{ background: '#f1f5f9', color: '#475569' }}>{t.tokenCode}</span></td>
-                          <td className="user-name-cell">{t.userName || "Guest User"}</td>
-                          <td><span className={`status-pill ${t.status.toLowerCase()}`}>{t.status}</span></td>
-                          <td style={{ color: '#64748b', fontSize: '0.85rem' }}>{formatRelativeDate(t.completedAt || t.updatedAt)}</td>
-                          <td><button className="view-token-btn" onClick={() => { setInspectingTicket(t); setShowTokensModal(false); }}>Inspect</button></td>
+                          <td data-label="Reference"><span className="token-code-pill" style={{ background: '#f1f5f9', color: '#475569' }}>{t.tokenCode}</span></td>
+                          <td data-label="Customer" className="user-name-cell">{t.userName || "Guest User"}</td>
+                          <td data-label="Status"><span className={`status-pill ${t.status.toLowerCase()}`}>{t.status}</span></td>
+                          <td data-label="Timestamp" style={{ color: '#64748b', fontSize: '0.85rem' }}>{formatRelativeDate(t.completedAt || t.updatedAt)}</td>
+                          <td data-label="Action"><button className="view-token-btn" onClick={() => { setInspectingTicket(t); setShowTokensModal(false); }}>Inspect</button></td>
                         </tr>
                       ))}
                       {allTokens.history.length === 0 && (

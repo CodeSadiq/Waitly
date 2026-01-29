@@ -196,15 +196,107 @@
 
 .header-info h1 {
   font-size: 1.5rem;
-  font-weight: 700;
+  font-weight: 800;
   margin: 0;
   color: #0f172a;
+  letter-spacing: -0.02em;
 }
 
 .subtitle {
   color: var(--text-muted);
   font-size: 0.875rem;
   margin: 2px 0 0;
+  font-weight: 500;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.admin-profile-mini {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 12px;
+  border-radius: 12px;
+  background: #f8fafc;
+  border: 1px solid var(--border-color);
+  transition: all 0.2s;
+  cursor: default;
+}
+
+.admin-profile-mini:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.admin-avatar-sm {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--admin-primary), var(--admin-secondary));
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 0.9rem;
+  box-shadow: 0 4px 6px rgba(79, 70, 229, 0.2);
+}
+
+.admin-user-details-header {
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-name-top {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.2;
+}
+
+.admin-role-top {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.refresh-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  background: white;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.refresh-btn:hover {
+  background: #f8fafc;
+  color: var(--admin-primary);
+  border-color: var(--admin-primary);
+  transform: translateY(-1px);
+}
+
+.refresh-btn.spinning svg {
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .content-scroll {
@@ -1435,10 +1527,10 @@
   /* --- LAYOUT & SCROLLING FIXES --- */
   .admin-layout {
     flex-direction: column;
-    height: 100vh;
-    /* Use viewport height */
-    overflow: hidden;
-    /* Prevent body scroll, handle internally */
+    height: auto !important;
+    min-height: 100vh;
+    overflow: visible !important;
+    display: block !important;
   }
 
   .admin-sidebar {
@@ -1468,11 +1560,10 @@
   .admin-main {
     margin-left: 0;
     width: 100%;
-    height: calc(100vh - 60px);
-    /* Fill remaining space */
-    overflow-y: auto;
-    /* ENABLE MAIN SCROLLING */
-    -webkit-overflow-scrolling: touch;
+    height: auto !important;
+    overflow: visible !important;
+    display: block !important;
+    flex: none;
   }
 
   .content-scroll {
@@ -1555,19 +1646,48 @@
 
   /* --- HEADERS & TYPOGRAPHY SIZE REDUCTIONS --- */
   .main-header {
-    height: 60px;
+    height: 70px;
     padding: 0 16px;
+    background: white;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   }
 
   .header-info h1 {
-    font-size: 1.1rem;
-    /* Smaller H1 */
+    font-size: 1.15rem;
+    font-weight: 800;
   }
 
   .subtitle {
-    font-size: 0.75rem;
     display: none;
-    /* Hide subtitle to save vertical space */
+  }
+
+  .header-actions {
+    gap: 10px;
+  }
+
+  .admin-profile-mini {
+    padding: 4px 8px;
+    gap: 8px;
+    border-radius: 10px;
+    background: transparent;
+    border: none;
+  }
+
+  .admin-user-details-header {
+    display: none;
+    /* Hide text on mobile for space */
+  }
+
+  .admin-avatar-sm {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+  }
+
+  .refresh-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
   }
 
   .section-header-styled h2 {
@@ -1855,62 +1975,52 @@
 }
 
 
-/* ================= NOTIFICATION TOAST ================= */
+/* ================= NOTIFICATION TOAST (MODERN REDESIGN) ================= */
 .notification-toast {
   position: fixed;
-  top: 50%;
+  top: 24px;
   left: 50%;
-  transform: translate(-50%, -50%);
-  background: white !important;
-  /* Force white background */
-  padding: 32px;
-  border-radius: 24px;
+  transform: translateX(-50%);
+  background: white;
+  padding: 12px 20px;
+  border-radius: 10px;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 16px;
-  box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.3);
-  z-index: 2147483647 !important;
-  border: 1px solid #e2e8f0;
-  animation: centerToastIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-  text-align: center;
-  width: auto;
-  min-width: 300px;
+  gap: 12px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  z-index: 10000;
+  animation: toastSlideDown 0.3s ease-out forwards;
+  width: fit-content;
   max-width: 400px;
-  height: auto;
-  /* Fit content */
-  min-height: auto;
+  height: fit-content;
+  border-left: 4px solid #cbd5e1;
 }
 
-@keyframes centerToastIn {
+@keyframes toastSlideDown {
   from {
     opacity: 0;
-    transform: translate(-50%, -45%) scale(0.95);
+    transform: translate(-50%, -20px) scale(0.95);
   }
 
   to {
     opacity: 1;
-    transform: translate(-50%, -50%) scale(1);
+    transform: translate(-50%, 0) scale(1);
   }
 }
 
 .notification-toast.success {
-  border-top: 6px solid #10b981;
+  border-left-color: #10b981;
 }
 
 .notification-toast.error {
-  border-top: 6px solid #ef4444;
+  border-left-color: #ef4444;
 }
 
 .toast-icon {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 48px;
-  /* Fixed height to prevent stretching */
-  width: 48px;
-  margin-bottom: 8px;
+  flex-shrink: 0;
 }
 
 .notification-toast.success .toast-icon {
@@ -1922,12 +2032,13 @@
 }
 
 .toast-icon svg {
-  width: 48px;
-  height: 48px;
+  width: 22px;
+  height: 22px;
 }
 
 .toast-message {
-  font-weight: 700;
-  color: #1e293b;
-  font-size: 1.2rem;
+  font-weight: 600;
+  color: #334155;
+  font-size: 0.95rem;
+  line-height: 1.4;
 }
