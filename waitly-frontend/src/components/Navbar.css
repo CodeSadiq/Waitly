@@ -269,7 +269,8 @@
     padding: 80px 24px;
     gap: 0;
     transition: right 0.3s ease;
-    z-index: 9999;
+    z-index: 11000;
+    /* Higher than expanded list */
     box-shadow: -10px 0 30px rgba(0, 0, 0, 0.05);
     align-items: flex-start;
   }
@@ -291,7 +292,8 @@
 
   .hamburger {
     display: block;
-    z-index: 10005;
+    z-index: 11005;
+    /* Top-most */
   }
 
   .nav-right {

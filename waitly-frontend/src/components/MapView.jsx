@@ -6,7 +6,7 @@ import {
   useMap,
   useMapEvents
 } from "react-leaflet";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
@@ -21,13 +21,18 @@ const userIcon = new L.DivIcon({
 });
 
 /* =========================
-   🔴 Place icon
+   📍 Dynamic Place icon with Name
    ========================= */
-const placeIcon = new L.DivIcon({
-  className: "place-marker",
-  html: `<div class="place-dot"></div>`,
-  iconSize: [14, 14],
-  iconAnchor: [7, 7]
+const createPlaceIcon = (name, isActive, showName) => new L.DivIcon({
+  className: `place-marker ${isActive ? "active" : ""}`,
+  html: `
+    <div class="simple-marker">
+      <span class="marker-dot"></span>
+      ${showName ? `<span class="marker-name">${name}</span>` : ""}
+    </div>
+  `,
+  iconSize: [null, null],
+  iconAnchor: [6, 6]
 });
 
 /* =========================
@@ -61,22 +66,30 @@ function FlyToPlace({ place }) {
     if (!place?.location) return;
 
     const isMobile = window.innerWidth <= 1024;
-    const isUserLoc = place.isUserLocation;
+    const isUserLoc = place._id === "my-location" || place.isUserLocation;
     const targetZoom = 17;
 
     if (isMobile && isUserLoc) {
       // 📱 MOBILE + USER LOCATION: Offset center to account for bottom sheet
-      // Sheet is ~40% height. Visible map is top 60%. Visual center is at 30%.
-      // Map center is at 50%. So we need to shift center DOWN by 20% of height.
+      // Typically the sheet takes up the bottom 35-40%. 
+      // Shifting center down transforms the visual center higher up.
       const latlng = [place.location.lat, place.location.lng];
-      const point = map.project(latlng, targetZoom);
-      const offsetY = window.innerHeight * 0.20;
-      const targetPoint = point.add([0, offsetY]); // Shift center down so point appears up
-      const targetLatLng = map.unproject(targetPoint, targetZoom);
 
-      map.flyTo(targetLatLng, targetZoom, { duration: 1.2 });
+      // Use a timeout to ensure container size is stable
+      const timer = setTimeout(() => {
+        const point = map.project(latlng, targetZoom);
+        // We want the pin at ~30% from the top (visual center of map space)
+        // Center is at 50%. Diff is 20%.
+        const offsetY = window.innerHeight * 0.12;
+        const targetPoint = point.add([0, offsetY]);
+        const targetLatLng = map.unproject(targetPoint, targetZoom);
+
+        map.flyTo(targetLatLng, targetZoom, { duration: 1.5 });
+      }, 100);
+
+      return () => clearTimeout(timer);
     } else {
-      // 💻 DESKTOP or DETAILS OPEN: Standard center
+      // 💻 DESKTOP or PLACES: Standard center
       map.flyTo(
         [place.location.lat, place.location.lng],
         targetZoom,
@@ -124,6 +137,18 @@ export default function MapView({
   addMode,
   onMapSelect
 }) {
+  const [zoom, setZoom] = useState(14); // Track zoom level
+
+  // Simple sub-component to catch zoom events
+  function ZoomTracker() {
+    const map = useMapEvents({
+      zoomend() {
+        setZoom(map.getZoom());
+      },
+    });
+    return null;
+  }
+
   if (!userLocation) {
     return (
       <div style={{
@@ -145,6 +170,8 @@ export default function MapView({
     );
   }
 
+  const showNames = zoom >= 15; // Threshold for showing names
+
   return (
     <MapContainer
       center={[userLocation.lat, userLocation.lng]}
@@ -156,6 +183,7 @@ export default function MapView({
         url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
       />
 
+      <ZoomTracker />
       <ResizeHandler selectedPlace={selectedPlace} />
 
       {/* 🔥 CLICK HANDLER */}
@@ -170,31 +198,47 @@ export default function MapView({
       {/* 💧 USER LOCATION */}
       <Marker
         position={[userLocation.lat, userLocation.lng]}
-        icon={userIcon}
+        icon={new L.DivIcon({
+          className: "user-drop-marker",
+          html: `
+            <div class="simple-marker">
+              <div class="drop"></div>
+              ${showNames ? `<span class="marker-name" style="color: #3b82f6; font-weight: 700;">My Location</span>` : ""}
+            </div>
+          `,
+          iconSize: [0, 0],
+          iconAnchor: [9, 9] // Center of the 18px drop
+        })}
       >
         <Popup>You are here</Popup>
       </Marker>
 
       {/* 📍 PLACES */}
-      {places.map((place) => (
-        <Marker
-          key={place._id}
-          position={[
-            place.location.lat,
-            place.location.lng
-          ]}
-          icon={placeIcon}
-          eventHandlers={{
-            click: () => onSelectPlace(place)
-          }}
-        >
-          <Popup>
-            <strong>{place.name}</strong>
-            <br />
-            {place.category}
-          </Popup>
-        </Marker>
-      ))}
+      {places.map((place) => {
+        if (place.isUserLocation) return null; // Already handled above
+
+        const isActive = selectedPlace?._id === place._id;
+
+        return (
+          <Marker
+            key={place._id}
+            position={[
+              place.location.lat,
+              place.location.lng
+            ]}
+            icon={createPlaceIcon(place.name, isActive, showNames)}
+            eventHandlers={{
+              click: () => onSelectPlace(place)
+            }}
+          >
+            <Popup>
+              <strong>{place.name}</strong>
+              <br />
+              {place.category}
+            </Popup>
+          </Marker>
+        );
+      })}
     </MapContainer>
   );
 }
