@@ -1,2 +1,3 @@
-.end
+.env
+.env.*
 node_modules
