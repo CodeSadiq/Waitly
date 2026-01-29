@@ -196,22 +196,19 @@ router.get("/status", verifyStaff, async (req, res) => {
         const waitingCount = await Token.countDocuments({
             place: req.user.placeId,
             counterName: counterName,
-            status: "Waiting",
-            createdAt: { $gte: new Date(new Date().setHours(0, 0, 0, 0)) }
+            status: "Waiting"
         });
 
         const completedCount = await Token.countDocuments({
             place: req.user.placeId,
             counterName: counterName,
-            status: "Completed",
-            completedAt: { $gte: new Date(new Date().setHours(0, 0, 0, 0)) }
+            status: "Completed"
         });
 
         const skippedCount = await Token.countDocuments({
             place: req.user.placeId,
             counterName: counterName,
-            status: "Skipped",
-            createdAt: { $gte: new Date(new Date().setHours(0, 0, 0, 0)) }
+            status: "Skipped"
         });
 
         const activeSlottedCount = await Token.countDocuments({
@@ -255,14 +252,10 @@ router.get("/all-tokens", verifyStaff, async (req, res) => {
         const { counterName } = req.query;
         if (!counterName) return res.status(400).json({ message: "Counter name required" });
 
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        // 1. Get all relevant tokens for today
+        // 1. Get all relevant tokens (removed date filter for all-time visibility)
         const items = await Token.find({
             place: req.user.placeId,
-            counterName: counterName,
-            createdAt: { $gte: today }
+            counterName: counterName
         }).sort({ createdAt: 1, _id: 1 });
 
         // 2. Separate by categories
@@ -270,7 +263,15 @@ router.get("/all-tokens", verifyStaff, async (req, res) => {
         const waitingRaw = items.filter(t => t.status === "Waiting");
         const history = items
             .filter(t => ["Completed", "Skipped", "Expired", "Cancelled"].includes(t.status))
-            .sort((a, b) => new Date(b.completedAt || b.updatedAt) - new Date(a.completedAt || a.updatedAt));
+            .sort((a, b) => {
+                const priority = { "Completed": 1, "Cancelled": 2, "Expired": 3, "Skipped": 4 };
+                const pa = priority[a.status] || 99;
+                const pb = priority[b.status] || 99;
+
+                if (pa !== pb) return pa - pb;
+                // If same priority, latest first
+                return new Date(b.completedAt || b.updatedAt) - new Date(a.completedAt || a.updatedAt);
+            });
 
         // 3. Simulate Actual Queue Order for "Waiting"
         const walkIns = waitingRaw.filter(t => !t.scheduledTime);

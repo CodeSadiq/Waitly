@@ -160,7 +160,7 @@ export default function Home() {
     let currentY = 0;
     let isHolding = false;
     let holdTimer = null;
-    let initialTransform = 0; // To track where we started
+    let baseTransform = 0;
 
     const onTouchStart = (e) => {
       // 1. Start timer on touch
@@ -169,8 +169,14 @@ export default function Home() {
       holdTimer = setTimeout(() => {
         isHolding = true;
         document.body.classList.add("dragging-active");
-        if (navigator.vibrate) navigator.vibrate(50); // Haptic feedback
-      }, 50); // 50ms (0.05s) hold required
+
+        // Calculate baseline for 3-step cycle (35% -> 60% -> 92%)
+        const docH = window.innerHeight;
+        let visibleH = 35; // Default Minimum
+        if (document.body.classList.contains("list-expanded")) visibleH = 92;
+        else if (document.body.classList.contains("list-default")) visibleH = 60;
+        baseTransform = docH * (1 - visibleH / 100);
+      }, 100); // 100ms hold required to start dragging
     };
 
     const onTouchMove = (e) => {
@@ -187,8 +193,8 @@ export default function Home() {
       currentY = e.touches[0].clientY;
       const delta = currentY - startY;
 
-      // Apply smooth inline transform to list only
-      listEl.style.transform = `translateY(${delta}px)`;
+      // Apply smooth drag with base baseline
+      listEl.style.transform = `translateY(${baseTransform + delta}px)`;
     };
 
 
@@ -209,13 +215,26 @@ export default function Home() {
       const diff = startY - endY;
 
       if (diff > 50) {
-        // Drag UP -> EXPAND
-        document.body.classList.add("list-expanded");
-        document.body.classList.remove("list-collapsed");
+        // Drag UP -> Move to next state
+        if (document.body.classList.contains("list-expanded")) {
+          // Already Max
+        } else if (document.body.classList.contains("list-default")) {
+          document.body.classList.remove("list-default");
+          document.body.classList.add("list-expanded");
+        } else {
+          // From 35% -> 60%
+          document.body.classList.add("list-default");
+        }
       } else if (diff < -50) {
-        // Drag DOWN -> COLLAPSE
-        document.body.classList.remove("list-expanded");
-        document.body.classList.add("list-collapsed");
+        // Drag DOWN -> Move to previous state
+        if (document.body.classList.contains("list-expanded")) {
+          document.body.classList.remove("list-expanded");
+          document.body.classList.add("list-default");
+        } else if (document.body.classList.contains("list-default")) {
+          document.body.classList.remove("list-default");
+        } else {
+          // Already Min (no class)
+        }
       }
     };
 
@@ -236,7 +255,7 @@ export default function Home() {
      ========================= */
   useEffect(() => {
     // Reset state on open
-    document.body.classList.remove("details-expanded", "details-reduced");
+    document.body.classList.remove("details-expanded", "details-reduced", "details-peek");
 
     const detailsEl = document.querySelector(".home-right");
     if (!detailsEl) return;
@@ -252,8 +271,7 @@ export default function Home() {
       holdTimer = setTimeout(() => {
         isHolding = true;
         document.body.classList.add("dragging-details");
-        if (navigator.vibrate) navigator.vibrate(50);
-      }, 50); // 50ms (0.05s) hold time
+      }, 100); // 100ms hold time
     };
 
     const onDetailsTouchMove = (e) => {
@@ -279,22 +297,24 @@ export default function Home() {
       const diff = startY - endY;
 
       if (diff > 50) {
-        // Drag UP
-        if (document.body.classList.contains("details-reduced")) {
-          // Reduced -> Default
+        // Drag UP -> Move to next larger state
+        if (document.body.classList.contains("details-peek")) {
+          document.body.classList.remove("details-peek");
+          document.body.classList.add("details-reduced");
+        } else if (document.body.classList.contains("details-reduced")) {
           document.body.classList.remove("details-reduced");
         } else {
-          // Default -> Expanded
           document.body.classList.add("details-expanded");
         }
       } else if (diff < -50) {
-        // Drag DOWN
+        // Drag DOWN -> Move to next smaller state
         if (document.body.classList.contains("details-expanded")) {
-          // Expanded -> Default
           document.body.classList.remove("details-expanded");
-        } else {
-          // Default -> Reduced
+        } else if (!document.body.classList.contains("details-reduced") && !document.body.classList.contains("details-peek")) {
           document.body.classList.add("details-reduced");
+        } else if (document.body.classList.contains("details-reduced")) {
+          document.body.classList.remove("details-reduced");
+          document.body.classList.add("details-peek");
         }
       }
     };
@@ -337,17 +357,6 @@ export default function Home() {
       </aside>
 
       <main className="home-center">
-        {/* MOBILE SEARCH (Floating on Map) */}
-        <div className="search-input-wrapper mobile-only">
-          <svg className="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-          <input
-            className="place-search"
-            type="text"
-            placeholder="Search places..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
         {(!user || (user.role !== "admin")) && (
           <button
             className={`add-place-btn ${addMode ? "active" : ""}`}
@@ -366,7 +375,8 @@ export default function Home() {
 
         {addMode && (
           <div className="add-place-hint">
-            📍 Tap on map to add a new place
+            <svg stroke="currentColor" fill="none" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+            Tap on map to add a new place
           </div>
         )}
 
@@ -393,6 +403,18 @@ export default function Home() {
         )}
 
       </main>
+
+      {/* MOBILE SEARCH (Floating outside center to stay on top layer) */}
+      <div className="search-input-wrapper mobile-only">
+        <svg className="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input
+          className="place-search"
+          type="text"
+          placeholder="Search places..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+      </div>
 
       <aside className="home-right">
         <PlaceDetails place={selectedPlace} userLocation={userLocation} />

@@ -58,7 +58,7 @@
 .place-search {
   width: 100%;
   padding: 14px 16px 14px 44px;
-  border-radius: 12px;
+  border-radius: 99px;
   border: 1px solid #d1d5db;
   /* Stronger border */
   font-size: 15px;
@@ -76,7 +76,7 @@
 .place-search:focus {
   border-color: #2563eb;
   background: #ffffff;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+  box-shadow: none;
 }
 
 /* ===============================
@@ -343,7 +343,7 @@
 
   /* Expanded */
   body.list-expanded {
-    --list-height: 75dvh;
+    --list-height: 92dvh;
   }
 
   /* Collapsed */
@@ -387,12 +387,18 @@
   .search-input-wrapper.mobile-only {
     position: fixed;
     top: 90px;
-    /* 72px nav + 18px */
-    z-index: 6000;
+    z-index: 9000;
+    /* Over everything including list and details */
     margin: 0px;
     width: 92%;
     left: 4%;
+    border-radius: 99px;
     box-shadow: none;
+  }
+
+  /* Hide mobile search when place details are open */
+  body.details-open .search-input-wrapper.mobile-only {
+    display: none !important;
   }
 
   /* Reset input styles that shifted to wrapper */
@@ -403,33 +409,39 @@
   /* PLACE LIST (BOTTOM SHEET) */
   .home-left {
     position: fixed;
-    bottom: 0;
+    top: 0;
     left: 0;
     width: 100%;
-    height: var(--list-height);
-    padding: 16px 16px 40px;
+    height: 180dvh;
+    /* Huge buffer extends far below screen */
+    padding: 16px 16px 80dvh;
+    /* Huge padding cushion */
     background: #ffffff;
-    border-radius: 22px 22px 0 0;
+    border-radius: 24px 24px 0 0;
     z-index: 3000;
     box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.05);
-    transition: height 0.4s cubic-bezier(0.19, 1, 0.22, 1), transform 0.4s cubic-bezier(0.19, 1, 0.22, 1);
-    will-change: height, transform;
+    transform: translateY(65dvh);
+    /* Default State (Minimum - 35% visible) */
+    transition: transform 0.4s cubic-bezier(0.19, 1, 0.22, 1);
+    will-change: transform;
     overflow-y: auto;
-    /* Enable Scroll */
     -webkit-overflow-scrolling: touch;
   }
 
-  /* VISUAL CUE FOR HOLDING */
-  body.dragging-active .home-left {
-    transform: scale(1.02);
-    box-shadow: none;
-    transition: none !important;
-    /* Follow finger instantly */
+  /* PLACE LIST STATES - Controlled via translateY */
+  body.list-default .home-left {
+    transform: translateY(40dvh);
+    /* 60% visible */
   }
 
-  /* EXPANDED LIST (toggle via body.list-expanded) */
   body.list-expanded .home-left {
-    height: var(--list-height);
+    transform: translateY(8dvh);
+    /* 92% visible */
+  }
+
+  /* DRAGGING ACTIVE - Smooth tracking */
+  body.dragging-active .home-left {
+    transition: none !important;
   }
 
 
@@ -513,11 +525,20 @@
 
   /* REDUCED STATE */
   body.details-reduced .home-right {
-    height: 40dvh;
+    height: 35dvh;
   }
 
   body.details-reduced .home-center {
-    height: 60dvh !important;
+    height: 65dvh !important;
+  }
+
+  /* PEEK STATE (MINIMUM) */
+  body.details-peek .home-right {
+    height: 12dvh;
+  }
+
+  body.details-peek .home-center {
+    height: 88dvh !important;
   }
 
 
@@ -526,7 +547,7 @@
   }
 
   body.details-open .home-left {
-    transform: translateY(100%);
+    transform: translateY(100dvh);
   }
 
   /* BACK / CLOSE BUTTON */
@@ -588,16 +609,46 @@
 
 
   .add-place-hint {
-    position: absolute;
+    position: fixed;
     display: inline-flex;
-    height: fit-content;
-    top: 33px;
-    background: #111827;
+    align-items: center;
+    gap: 8px;
+    height: 40px;
+
+    /* Mobile Default: Top Center */
+    top: 90px;
+    bottom: auto;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+
+    background: #1f2937;
     color: #ffffff;
-    padding: 10px 14px;
-    border-radius: 10px;
+    padding: 0 16px;
+    border-radius: 99px;
     font-size: 13px;
-    z-index: 1000;
+    font-weight: 500;
+    z-index: 9005;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    width: max-content;
+  }
+
+  .add-place-hint svg {
+    color: #f87171;
+    /* Light red pin */
+    font-size: 16px;
+  }
+
+  /* Desktop Override: Bottom Right */
+  @media (min-width: 1024px) {
+    .add-place-hint {
+      top: auto;
+      bottom: 28px;
+      left: auto;
+      right: 80px;
+      transform: none;
+      height: 44px;
+    }
   }
 
   .leaflet-control-zoom {
@@ -622,9 +673,11 @@
     height: 100vh !important;
   }
 
+  /* Button remains visible in add-mode (acting as cancel) */
   body.add-mode .add-place-btn {
-    transform: translateY(1000%);
-    visibility: hidden;
+    transform: translateY(0);
+    visibility: visible;
+    opacity: 1;
   }
 
   body.add-mode .place-search {
@@ -634,7 +687,7 @@
 
   /* Hide place list */
   body.add-place-open .home-left {
-    transform: translateY(100%);
+    transform: translateY(100dvh);
     visibility: hidden;
   }
 
@@ -648,14 +701,15 @@
     height: 100dvh !important;
   }
 
-  /* Keep search hidden (optional but recommended) */
-  body.add-place-open .place-search {
-    display: none;
+  /* Hide search bar and icon when adding a place or in add mode */
+  body.add-place-open .search-input-wrapper,
+  body.add-mode .search-input-wrapper {
+    display: none !important;
   }
 
 
-  /* Hide search bar when hamburger menu is open */
-  body.menu-open .place-search {
+  /* Hide search bar and icon when menu is open */
+  body.menu-open .search-input-wrapper {
     display: none !important;
   }
 
@@ -669,15 +723,9 @@
    LIST STATES (MOBILE)
 ================================ */
 
-  /* COLLAPSED LIST — map almost full */
-  body.list-collapsed .home-left {
-    height: 12vh;
-  }
+  /* Height override removed */
 
-  /* EXPANDED LIST — map reduced */
-  body.list-expanded .home-left {
-    height: 60vh;
-  }
+  /* Height override removed */
 
   /* MAP HEIGHT — DEFAULT (uses existing base height) */
   .home-center {
@@ -797,3 +845,10 @@
   scrollbar-width: thin;
   scrollbar-color: #cbd5e1 #f1f5f9;
 }
+
+/* ===============================
+   DESKTOP HIDE RULES
+================================ */
+
+
+/* Desktop rules removed */

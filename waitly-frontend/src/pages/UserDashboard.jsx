@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import API_BASE from "../config/api";
 import { io } from "socket.io-client";
 import QRCode from "react-qr-code";
+import { formatWaitTime } from "../utils/timeFormat";
 import "./UserDashboard.css";
 
 // Single socket instance
@@ -11,14 +12,6 @@ const socket = io(API_BASE, {
     withCredentials: true
 });
 
-// Helper to format minutes to "Hh : Mm"
-const formatWaitTime = (mins) => {
-    if (!mins || mins <= 0) return "0m";
-    const h = Math.floor(mins / 60);
-    const m = mins % 60;
-    if (h > 0) return `${h}h : ${m}m`;
-    return `${m}m`;
-};
 
 // Helper Component for a single ticket card
 function TicketCard({ ticket, onPrint, onCancel, onDelete }) {

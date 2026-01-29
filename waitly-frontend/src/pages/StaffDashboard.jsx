@@ -5,6 +5,7 @@ import API_BASE from "../config/api";
 import { io } from "socket.io-client";
 import QRCode from 'react-qr-code';
 import { Html5Qrcode } from "html5-qrcode";
+import { formatWaitTime, formatRelativeDate } from "../utils/timeFormat";
 import "./StaffDashboard.css";
 
 // Single socket instance
@@ -40,13 +41,6 @@ export default function StaffDashboard() {
     return headers;
   };
 
-  const formatWaitTime = (mins) => {
-    if (!mins || mins <= 0) return "0m";
-    const h = Math.floor(mins / 60);
-    const m = mins % 60;
-    if (h > 0) return `${h}h : ${m}m`;
-    return `${m}m`;
-  };
 
   // All Tokens Modal & Inspecting Mode
   const [showTokensModal, setShowTokensModal] = useState(false);
@@ -61,14 +55,33 @@ export default function StaffDashboard() {
         headers: getAuthHeaders()
       });
       const data = await res.json();
+      const todayString = new Date().toDateString();
+
+      const now = new Date();
+      const endOfDay = new Date(now);
+      endOfDay.setHours(23, 59, 59, 999);
+      const minsRemaining = (endOfDay - now) / 60000;
+
       setAllTokens({
-        serving: data.serving || [],
-        waiting: data.waiting || [],
-        history: data.history || []
+        serving: (data.serving || []).map(t => ({
+          ...t,
+          isToday: new Date(t.createdAt).toDateString() === todayString,
+          willServeToday: true
+        })),
+        waiting: (data.waiting || []).map(t => ({
+          ...t,
+          isToday: new Date(t.createdAt).toDateString() === todayString,
+          willServeToday: (t.estimatedWait || 0) <= minsRemaining
+        })),
+        history: (data.history || []).map(t => ({
+          ...t,
+          isToday: new Date(t.completedAt || t.updatedAt).toDateString() === todayString
+        }))
       });
     } catch (err) {
       console.error("Failed to fetch all tokens", err);
-      showNotification("Failed to fetch all tokens", "error");
+      // Assuming showNotification is defined elsewhere or needs to be added
+      // showNotification("Failed to fetch all tokens", "error");
     }
   };
 
@@ -701,83 +714,101 @@ export default function StaffDashboard() {
 
       {showTokensModal && (
         <div className="profile-modal-overlay" onClick={() => setShowTokensModal(false)}>
-          <div className="profile-card tokens-list-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '900px', width: '95%' }}>
-            <button className="close-profile-btn" onClick={() => setShowTokensModal(false)}>×</button>
-            <h2 className="modal-title">Queue Overview - {selectedCounter}</h2>
+          <div className="profile-card tokens-list-modal">
+            <div className="modal-header-premium">
+              <div className="modal-title-row">
+                <h2 className="modal-title-premium">Queue Snapshot</h2>
+                <button className="close-profile-btn" onClick={() => setShowTokensModal(false)} style={{ position: 'static' }}>&times;</button>
+              </div>
+              <div className="modal-stats-grid">
+                <div className="stat-pill-premium">
+                  <span className="stat-pill-label">All Time Waiting</span>
+                  <span className="stat-pill-value blue">{allTokens.serving.length + allTokens.waiting.length}</span>
+                </div>
+                <div className="stat-pill-premium">
+                  <span className="stat-pill-label">Waiting Today</span>
+                  <span className="stat-pill-value orange">{allTokens.waiting.filter(t => t.willServeToday).length}</span>
+                </div>
+                <div className="stat-pill-premium">
+                  <span className="stat-pill-label">All Time Completed</span>
+                  <span className="stat-pill-value purple">{allTokens.history.filter(t => t.status === 'Completed').length}</span>
+                </div>
+                <div className="stat-pill-premium">
+                  <span className="stat-pill-label">Completed Today</span>
+                  <span className="stat-pill-value green">{allTokens.history.filter(t => t.status === 'Completed' && t.isToday).length}</span>
+                </div>
+                <div className="stat-pill-premium">
+                  <span className="stat-pill-label">Counter Name</span>
+                  <span className="stat-pill-value">{selectedCounter}</span>
+                </div>
+              </div>
+            </div>
 
-            <div className="tokens-modal-scroll-area" style={{ maxHeight: '75vh', overflowY: 'auto', paddingBottom: '20px' }}>
-
-              {/* SECTION 1: LIVE QUEUE (In Order) */}
+            <div className="tokens-modal-scroll-area" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
               <div className="tokens-section">
                 <h3 className="section-title-modern">
-                  <span className="dot pulse-blue"></span> Live Queue (Serving & Next)
+                  <span className="dot pulse-blue"></span> Active Queue
                 </h3>
                 <div className="tokens-table-container">
                   <table className="tokens-table">
                     <thead>
-                      <tr><th>Order</th><th>Code</th><th>Name</th><th>Type</th><th>Estimated In</th><th>Action</th></tr>
+                      <tr><th>Position</th><th>Token</th><th>Customer</th><th>Path</th><th>Expect Flow</th><th>Action</th></tr>
                     </thead>
                     <tbody>
-                      {/* Current Serving */}
                       {allTokens.serving.map(t => (
-                        <tr key={t._id} className="row-serving-highlight">
+                        <tr key={t._id} className="row-serving-highlight row-serving-today">
                           <td><span className="badge-serving">SERVING</span></td>
-                          <td className="token-code-cell">{t.tokenCode}</td>
-                          <td style={{ fontWeight: '500' }}>{t.userName || "Guest"}</td>
-                          <td>{t.timeSlotLabel ? <span className="type-slotted">Priority ({t.timeSlotLabel})</span> : <span className="type-walkin">Walk-in</span>}</td>
-                          <td><span className="live-badge">Now</span></td>
+                          <td><span className="token-code-pill">{t.tokenCode}</span></td>
+                          <td className="user-name-cell">{t.userName || "Guest User"}</td>
+                          <td>{t.timeSlotLabel ? <span className="type-slotted">Slotted</span> : <span className="type-walkin">Walk-in</span>}</td>
+                          <td><span className="live-badge">Live</span></td>
                           <td><button className="view-token-btn" onClick={() => { setInspectingTicket(t); setShowTokensModal(false); }}>Inspect</button></td>
                         </tr>
                       ))}
 
-                      {/* Waiting in Order */}
                       {allTokens.waiting.map(t => (
-                        <tr key={t._id}>
-                          <td style={{ fontWeight: 'bold', color: '#64748b' }}>#{t.positionOnList}</td>
-                          <td className="token-code-cell">{t.tokenCode}</td>
-                          <td style={{ fontWeight: '500' }}>{t.userName || "Guest"}</td>
-                          <td>{t.timeSlotLabel ? <span className="type-slotted">Priority ({t.timeSlotLabel})</span> : <span className="type-walkin">Walk-in</span>}</td>
-                          <td>~{formatWaitTime(t.estimatedWait)}</td>
+                        <tr key={t._id} className={t.willServeToday ? 'row-serving-today' : ''}>
+                          <td><span style={{ fontWeight: '700', color: '#94a3b8' }}>#{t.positionOnList}</span></td>
+                          <td><span className="token-code-pill" style={{ background: '#f8fafc', color: '#64748b' }}>{t.tokenCode}</span></td>
+                          <td className="user-name-cell">{t.userName || "Guest User"}</td>
+                          <td>{t.timeSlotLabel ? <span className="type-slotted">Slotted</span> : <span className="type-walkin">Walk-in</span>}</td>
+                          <td style={{ fontWeight: '500' }}>~{formatWaitTime(t.estimatedWait)}</td>
                           <td><button className="view-token-btn" onClick={() => { setInspectingTicket(t); setShowTokensModal(false); }}>Inspect</button></td>
                         </tr>
                       ))}
 
                       {allTokens.serving.length === 0 && allTokens.waiting.length === 0 && (
-                        <tr><td colSpan="6" className="empty-row">Queue is currently empty</td></tr>
+                        <tr><td colSpan="6" className="empty-row">No active sessions in queue</td></tr>
                       )}
                     </tbody>
                   </table>
                 </div>
               </div>
 
-              {/* SECTION 2: HISTORY */}
-              <div className="tokens-section" style={{ marginTop: '30px' }}>
-                <h3 className="section-title-modern gray">
-                  Processed History (Today)
-                </h3>
-                <div className="tokens-table-container gray-theme">
+              <div className="tokens-section" style={{ marginTop: '32px' }}>
+                <h3 className="section-title-modern gray">All Time History</h3>
+                <div className="tokens-table-container">
                   <table className="tokens-table">
                     <thead>
-                      <tr><th>Code</th><th>User</th><th>Status</th><th>Time</th><th>Action</th></tr>
+                      <tr><th>Reference</th><th>Customer</th><th>Status</th><th>Timestamp</th><th>Action</th></tr>
                     </thead>
                     <tbody>
                       {allTokens.history.map(t => (
                         <tr key={t._id}>
-                          <td className="token-code-cell">{t.tokenCode}</td>
-                          <td>{t.userName || "Guest"}</td>
+                          <td><span className="token-code-pill" style={{ background: '#f1f5f9', color: '#475569' }}>{t.tokenCode}</span></td>
+                          <td className="user-name-cell">{t.userName || "Guest User"}</td>
                           <td><span className={`status-pill ${t.status.toLowerCase()}`}>{t.status}</span></td>
-                          <td>{new Date(t.completedAt || t.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
+                          <td style={{ color: '#64748b', fontSize: '0.85rem' }}>{formatRelativeDate(t.completedAt || t.updatedAt)}</td>
                           <td><button className="view-token-btn" onClick={() => { setInspectingTicket(t); setShowTokensModal(false); }}>Inspect</button></td>
                         </tr>
                       ))}
                       {allTokens.history.length === 0 && (
-                        <tr><td colSpan="5" className="empty-row">No tickets processed yet today</td></tr>
+                        <tr><td colSpan="5" className="empty-row">No history recorded yet</td></tr>
                       )}
                     </tbody>
                   </table>
                 </div>
               </div>
-
             </div>
           </div>
         </div>

@@ -683,13 +683,16 @@
 }
 
 .p-badge {
-    color: #2563eb;
-    font-weight: 800;
-    font-size: 0.75rem;
+    color: var(--staff-primary);
+    background: #eff6ff;
+    padding: 4px 12px;
+    border-radius: 99px;
+    font-weight: 700;
+    font-size: 0.7rem;
     text-transform: uppercase;
-    letter-spacing: 0.1em;
-    display: block;
-    margin-bottom: 12px;
+    letter-spacing: 0.05em;
+    display: inline-block;
+    margin-bottom: 16px;
 }
 
 .protocol-section h3 {
@@ -707,14 +710,29 @@
 
 .p-step {
     display: flex;
-    gap: 16px;
+    gap: 20px;
+    padding: 12px 0;
+    border-bottom: 1px solid #f8fafc;
+}
+
+.p-step:last-child {
+    border-bottom: none;
 }
 
 .p-num {
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     font-weight: 800;
-    color: #cbd5e1;
-    padding-top: 4px;
+    color: var(--staff-primary);
+    background: white;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+    flex-shrink: 0;
 }
 
 .p-info strong {
@@ -731,16 +749,22 @@
 }
 
 .strict-warning {
-    margin-top: 48px;
+    margin-top: 40px;
     display: flex;
-    gap: 10px;
+    gap: 12px;
     background: #fff1f2;
-    padding: 16px;
-    border-radius: 16px;
+    padding: 20px;
+    border-radius: 20px;
     color: #e11d48;
-    font-size: 0.8rem;
+    font-size: 0.85rem;
     font-weight: 600;
-    line-height: 1.4;
+    line-height: 1.5;
+    border: 1px solid #ffe4e6;
+}
+
+.strict-warning svg {
+    flex-shrink: 0;
+    margin-top: 2px;
 }
 
 .setup-content {
@@ -887,13 +911,38 @@
     }
 }
 
-color: var(--staff-primary);
-transform: translateY(-2px);
-box-shadow: 0 4px 12px rgba(37, 99, 235, 0.1);
+
+
+.row-serving-today {
+    background-color: #f0fdf4 !important;
+    /* Soft green */
 }
 
-.counter-selection-btn:active {
-    transform: translateY(0);
+.serving-today-badge {
+    background: #10b981;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 99px;
+    font-size: 0.65rem;
+    font-weight: 800;
+    margin-left: 8px;
+    text-transform: uppercase;
+}
+
+.today-badge {
+    background: #0ea5e9;
+    color: white;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.65rem;
+    font-weight: 800;
+    margin-left: 8px;
+    text-transform: uppercase;
+    vertical-align: middle;
+}
+
+.row-today-highlight {
+    background-color: #f8fafc !important;
 }
 
 .selection-title {
@@ -1620,59 +1669,142 @@ box-shadow: 0 4px 12px rgba(37, 99, 235, 0.1);
 
 /* ================= TOKENS LIST MODAL ================= */
 .tokens-list-modal {
-    max-width: 800px;
-    width: 90%;
-    /* Ensure it doesn't overflow horizontally on small screens */
-    margin: 0 auto;
-    /* Center it */
-    padding: 30px;
-    box-sizing: border-box;
-    /* Include padding in width calculation */
+    max-width: 950px !important;
+    width: 95% !important;
+    padding: 0 !important;
+    border-radius: 24px !important;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
 }
 
-.modal-title {
+.modal-header-premium {
+    padding: 32px;
+    background: white;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.modal-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.modal-title-premium {
+    font-size: 1.75rem;
+    font-weight: 850;
+    color: #0f172a;
+    margin: 0;
+    letter-spacing: -0.02em;
+}
+
+.modal-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 16px;
+}
+
+.stat-pill-premium {
+    background: #f8fafc;
+    padding: 16px;
+    border-radius: 16px;
+    border: 1px solid #f1f5f9;
+    transition: all 0.3s ease;
+}
+
+.stat-pill-premium:hover {
+    border-color: var(--staff-primary);
+    background: #fff;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.05);
+}
+
+.stat-pill-label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 4px;
+}
+
+.stat-pill-value {
+    display: block;
     font-size: 1.5rem;
     font-weight: 800;
-    margin-bottom: 24px;
-    text-align: left;
-    color: var(--staff-text-main);
-    border-bottom: 1px solid var(--staff-border);
-    padding-bottom: 15px;
+    color: #0f172a;
+}
+
+.stat-pill-value.blue {
+    color: var(--staff-primary);
+}
+
+.stat-pill-value.green {
+    color: #10b981;
+}
+
+.stat-pill-value.orange {
+    color: #f59e0b;
+}
+
+.stat-pill-value.purple {
+    color: #8b5cf6;
+}
+
+.tokens-modal-scroll-area {
+    padding: 0 32px 32px 32px;
+    background: #fcfdfe;
 }
 
 .tokens-table-container {
-    max-height: 400px;
-    overflow-y: auto;
-    overflow-x: auto;
-    /* Allow horizontal scroll for table on mobile */
-    border: 1px solid var(--staff-border);
-    border-radius: 12px;
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+    overflow: hidden;
 }
 
 .tokens-table {
     width: 100%;
     border-collapse: collapse;
-    text-align: left;
 }
 
 .tokens-table th {
     background: #f8fafc;
-    padding: 12px 16px;
+    padding: 16px 20px;
     font-size: 0.75rem;
     font-weight: 700;
-    color: var(--staff-text-sub);
+    color: #475569;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    position: sticky;
-    top: 0;
-    border-bottom: 1px solid var(--staff-border);
+    border-bottom: 1px solid #e2e8f0;
 }
 
 .tokens-table td {
-    padding: 14px 16px;
+    padding: 16px 20px;
     border-bottom: 1px solid #f1f5f9;
-    font-size: 0.9rem;
-    color: var(--staff-text-main);
+    font-size: 0.95rem;
+    color: #1e293b;
+    vertical-align: middle;
+}
+
+.tokens-table tr:hover td {
+    background: #fbfcfe;
+}
+
+.token-code-pill {
+    background: #eff6ff;
+    color: #2563eb;
+    padding: 4px 10px;
+    border-radius: 8px;
+    font-weight: 700;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.user-name-cell {
+    font-weight: 600;
+    color: #0f172a;
 }
 
 @media (max-width: 600px) {
