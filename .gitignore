@@ -21,3 +21,7 @@ yarn-error.log*
 .idea/
 *.swp
 *.swo
+
+# Documentation (Local Only)
+waitly_overview.md
+waitly_viva_questions.md

@@ -217,5 +217,21 @@ export const authAPI = {
         }
 
         return data;
+    },
+    // Google Login
+    googleLogin: async (tokenId, role, allowRegistration) => {
+        const res = await fetch(`${API_BASE}/api/auth/google`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ tokenId, role, allowRegistration })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+            throw new Error(data.message || "Google login failed");
+        }
+
+        return data;
     }
 };

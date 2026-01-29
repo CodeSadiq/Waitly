@@ -4,9 +4,10 @@ import "./Auth.css";
 import { AuthContext } from "../context/AuthContext";
 import { validateLoginForm, validateRegisterForm, getPasswordStrength } from "../utils/validators";
 import API_BASE from "../config/api";
+import { GoogleLogin } from "@react-oauth/google";
 
 export default function Login() {
-  const { user, loading: authLoading, login, register, loadUser } = useContext(AuthContext);
+  const { user, loading: authLoading, login, register, loadUser, googleLogin } = useContext(AuthContext);
 
   const [mode, setMode] = useState("login");
 
@@ -32,6 +33,30 @@ export default function Login() {
     loadUser();
   }, []);
 
+  /* ================= GOOGLE LOGIN HANDLER ================= */
+  const handleGoogleSuccess = async (credentialResponse) => {
+    setLoading(true);
+    setError("");
+    try {
+      // mode === "register" will be true on Sign Up page, allowing account creation
+      // mode === "login" will be false on Sign In page, preventing auto-registration
+      const result = await googleLogin(credentialResponse.credential, role, mode === "register");
+      if (result.success) {
+        setSuccess("Login successful!");
+      } else {
+        setError(result.error || "Google login failed");
+      }
+    } catch (err) {
+      setError(err.message || "Google login failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleError = () => {
+    setError("Google Sign-In was unsuccessful. Try again later.");
+  };
+
   /* ================= LOGIN ================= */
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -52,8 +77,6 @@ export default function Login() {
       const result = await login({ identifier, password });
 
       if (result.success) {
-        // Just show success; the UI will re-render with the "Welcome back" card
-        // which contains the manual "Go to Dashboard/Home" button.
         setSuccess("Login successful!");
       } else {
         setError(result.error || "Login failed");
@@ -171,9 +194,6 @@ export default function Login() {
               <button className="action-btn-sub" onClick={() => navigate("/")}>
                 Return Home
               </button>
-              <button className="action-btn-sub danger" onClick={handleLogout}>
-                Sign Out
-              </button>
             </div>
           </div>
         </div>
@@ -196,23 +216,23 @@ export default function Login() {
           <p>{mode === "login" ? "Sign in to continue" : "Join us today"}</p>
         </div>
 
-        {/* ROLE SELECTOR (only for register) */}
+        {/* ROLE SELECTOR (Sign Up only) */}
         {mode === "register" && (
-          <div className="role-select">
-            {["user", "staff"].map(r => (
-              <button
-                key={r}
-                className={`role-btn ${role === r ? "active" : ""}`}
-                onClick={() => setRole(r)}
-                type="button"
-              >
-                {r.toUpperCase()}
-              </button>
-            ))}
+          <div className="role-selection-container">
+            <div className="role-select">
+              {["user", "staff"].map(r => (
+                <button
+                  key={r}
+                  className={`role-btn ${role === r ? "active" : ""}`}
+                  onClick={() => setRole(r)}
+                  type="button"
+                >
+                  {r === "user" ? "USER" : "PLACE-STAFF"}
+                </button>
+              ))}
+            </div>
           </div>
         )}
-
-
 
         <form onSubmit={mode === "login" ? handleLogin : handleRegister}>
 
@@ -333,6 +353,30 @@ export default function Login() {
           >
             {loading ? "Please wait..." : mode === "login" ? "Sign In" : "Create Account"}
           </button>
+
+          {/* SEPARATOR */}
+          <div className="auth-separator">
+            <span>OR</span>
+          </div>
+
+          {/* GOOGLE LOGIN BUTTON */}
+          <div className="google-auth-container">
+            {mode === "register" && (
+              <p className="google-info-text">
+                Your account will be created as a <strong>{role === "user" ? "USER" : "PLACE-STAFF"}</strong>
+              </p>
+            )}
+            <GoogleLogin
+              onSuccess={handleGoogleSuccess}
+              onError={handleGoogleError}
+              useOneTap
+              theme="outline"
+              size="large"
+              width="100%"
+              text="continue_with"
+              shape="pill"
+            />
+          </div>
 
           {/* TOGGLE MODE */}
           <div className="auth-footer">

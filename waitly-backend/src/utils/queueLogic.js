@@ -30,17 +30,32 @@ export async function getRealAverageTime(placeId, counterName, defaultTime = 5) 
  * Common Auto-Expiration Logic
  */
 async function autoExpireTickets(placeId, counterName, io = null) {
-    const thirtyMinsAgo = new Date(Date.now() - 30 * 60000);
-    const expiryResult = await Token.updateMany({
+    const now = new Date();
+    const thirtyMinsAgo = new Date(now.getTime() - 30 * 60000);
+    const sixHoursAgo = new Date(now.getTime() - 6 * 60 * 60000);
+
+    // 1. Expire scheduled slots that are 30 mins past due
+    const scheduledExpiry = await Token.updateMany({
         place: placeId,
         counterName: counterName,
         status: "Waiting",
-        scheduledTime: { $lt: thirtyMinsAgo }
+        scheduledTime: { $ne: null, $lt: thirtyMinsAgo }
     }, {
         $set: { status: "Expired", completedAt: new Date() }
     });
 
-    if (expiryResult.modifiedCount > 0 && io) {
+    // 2. Expire walk-ins that have been waiting for more than 6 hours
+    const walkinExpiry = await Token.updateMany({
+        place: placeId,
+        counterName: counterName,
+        status: "Waiting",
+        scheduledTime: null,
+        createdAt: { $lt: sixHoursAgo }
+    }, {
+        $set: { status: "Expired", completedAt: new Date() }
+    });
+
+    if ((scheduledExpiry.modifiedCount > 0 || walkinExpiry.modifiedCount > 0) && io) {
         io.emit("token-updated");
     }
 }
@@ -63,7 +78,14 @@ export async function getQueueMetrics(placeId, counterName, targetTokenId = null
         status: "Serving"
     });
 
-    if (allCandidates.length === 0) return { peopleAhead: servingCount, estimatedWait: 0 };
+    const avgTime = await getRealAverageTime(placeId, counterName, 5);
+
+    if (allCandidates.length === 0) {
+        return {
+            peopleAhead: servingCount,
+            estimatedWait: servingCount * avgTime
+        };
+    }
 
     const walkIns = allCandidates
         .filter(t => !t.scheduledTime)
@@ -73,7 +95,6 @@ export async function getQueueMetrics(placeId, counterName, targetTokenId = null
         .filter(t => t.scheduledTime)
         .sort((a, b) => new Date(a.scheduledTime) - new Date(b.scheduledTime) || a._id.toString().localeCompare(b._id.toString()));
 
-    const avgTime = await getRealAverageTime(placeId, counterName, 5);
     let virtualClock = Date.now();
     let peopleAhead = servingCount;
 

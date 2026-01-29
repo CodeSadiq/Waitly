@@ -11,7 +11,8 @@ import {
    resetPassword,
    changePassword,
    refreshToken,
-   unifiedLogin
+   unifiedLogin,
+   googleLogin
 } from "../controllers/auth.controller.js";
 
 import { protect } from "../middleware/authMiddleware.js";
@@ -45,6 +46,7 @@ router.post("/user/login", validateLogin, userLogin);
 router.post("/staff/login", validateLogin, staffLogin);
 router.post("/admin/login", validateAdminLogin, adminLogin);
 router.post("/login", validateLogin, unifiedLogin);
+router.post("/google", googleLogin);
 
 /* =====================================================
    CURRENT USER

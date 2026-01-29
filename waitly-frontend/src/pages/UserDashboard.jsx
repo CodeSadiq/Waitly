@@ -15,7 +15,7 @@ const socket = io(API_BASE, {
 
 
 // Custom Confirmation Modal Component
-function ConfirmModal({ isOpen, title, message, onConfirm, onCancel, type = "primary" }) {
+function ConfirmModal({ isOpen, title, message, onConfirm, onCancel, type = "primary", confirmText }) {
     if (!isOpen) return null;
     return (
         <div className="confirm-modal-overlay">
@@ -32,7 +32,7 @@ function ConfirmModal({ isOpen, title, message, onConfirm, onCancel, type = "pri
                 <div className="confirm-modal-actions">
                     <button className="confirm-btn-cancel" onClick={onCancel}>Cancel</button>
                     <button className={`confirm-btn-action ${type}`} onClick={onConfirm}>
-                        {type === "danger" ? "Yes, Delete" : "Confirm"}
+                        {confirmText || (type === "danger" ? "Yes, Delete" : "Confirm")}
                     </button>
                 </div>
             </div>
@@ -218,7 +218,8 @@ export default function UserDashboard() {
         title: "",
         message: "",
         onConfirm: null,
-        type: "primary"
+        type: "primary",
+        confirmText: ""
     });
 
     const closeConfirm = () => setConfirmModal(prev => ({ ...prev, isOpen: false }));
@@ -307,6 +308,7 @@ export default function UserDashboard() {
             title: "Cancel Ticket?",
             message: "Are you sure you want to cancel this ticket? You will lose your position in the queue.",
             type: "danger",
+            confirmText: "Yes, Cancel",
             onConfirm: async () => {
                 closeConfirm();
                 try {
@@ -334,6 +336,7 @@ export default function UserDashboard() {
             title: "Remove Ticket?",
             message: "This will permanently remove the ticket from your history. This action cannot be undone.",
             type: "danger",
+            confirmText: "Yes, Delete",
             onConfirm: async () => {
                 closeConfirm();
                 try {
@@ -364,8 +367,10 @@ export default function UserDashboard() {
                     <div className="avatar">
                         {user.username?.charAt(0).toUpperCase() || "U"}
                     </div>
-                    <h3>{user.username}</h3>
-                    <p className="email">{user.email}</p>
+                    <div className="profile-info-group">
+                        <h3>{user.username}</h3>
+                        <p className="email">{user.email}</p>
+                    </div>
                     <div className="role-batch">{user.role}</div>
 
                     <div className="profile-stats" style={{ justifyContent: 'space-evenly', alignItems: 'center' }}>
@@ -459,15 +464,19 @@ export default function UserDashboard() {
                             )}
 
                             {tickets.length === 0 && (
-                                <div className="empty-state">
-                                    <div className="empty-icon">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}><path strokeLinecap="round" strokeLinejoin="round" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" /></svg>
+                                <div className="dashboard-empty-state">
+                                    <div className="empty-state-content">
+                                        <div className="empty-state-illustration">
+                                            <div className="illustration-blob"></div>
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" /></svg>
+                                        </div>
+                                        <h3>No Active Tickets</h3>
+                                        <p>Your queue journey haven't started yet. Browse nearby places and join a virtual queue to see your tickets here.</p>
+                                        <button onClick={() => navigate("/")} className="dashboard-primary-btn">
+                                            <span>Explore Places</span>
+                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                                        </button>
                                     </div>
-                                    <h3>No tickets at the moment</h3>
-                                    <p>Join a queue to see your ticket here.</p>
-                                    <button onClick={() => navigate("/")} className="primary-btn">
-                                        Browse Places
-                                    </button>
                                 </div>
                             )}
                         </>
@@ -480,6 +489,7 @@ export default function UserDashboard() {
                 title={confirmModal.title}
                 message={confirmModal.message}
                 type={confirmModal.type}
+                confirmText={confirmModal.confirmText}
                 onConfirm={confirmModal.onConfirm}
                 onCancel={closeConfirm}
             />

@@ -159,6 +159,27 @@ export function AuthProvider({ children }) {
     return () => clearInterval(refreshInterval);
   }, [user]);
 
+  /* ================= GOOGLE LOGIN ================= */
+  const googleLogin = async (tokenId, role, allowRegistration) => {
+    try {
+      setError(null);
+      const data = await authAPI.googleLogin(tokenId, role, allowRegistration);
+
+      if (data && data.success && data.user) {
+        if (data.token) localStorage.setItem('waitly_token', data.token);
+        if (data.refreshToken) localStorage.setItem('waitly_refresh_token', data.refreshToken);
+
+        setUser(data.user);
+        return { success: true, user: data.user };
+      }
+      return { success: false, error: "Google login failed" };
+    } catch (err) {
+      console.warn("Google login failed:", err.message);
+      setError(err.message);
+      return { success: false, error: err.message };
+    }
+  };
+
   const value = {
     user,
     loading,
@@ -166,6 +187,7 @@ export function AuthProvider({ children }) {
     loadUser,
     register,
     login,
+    googleLogin,
     logout,
     forgotPassword,
     resetPassword,

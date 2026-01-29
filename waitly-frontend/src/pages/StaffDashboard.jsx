@@ -618,35 +618,38 @@ export default function StaffDashboard() {
                 <span className="vc-label">{inspectingTicket ? "INSPECTING TOKEN" : "CURRENT TOKEN"}</span>
                 {inspectingTicket && <button className="return-queue-btn" onClick={() => setInspectingTicket(null)}>Back to Queue</button>}
               </div>
-              <div className="vc-token-code">
-                {loading ? (
-                  <div className="clean-message">
-                    <span>Calling Next...</span>
-                    <div className="spinner-small" style={{ margin: '10px 0 0', width: '24px', height: '24px', borderWidth: '2px' }}></div>
-                  </div>
-                ) : displayTicket ? (
-                  displayTicket.tokenCode
-                ) : queueStats.waiting > 0 ? (
-                  <div className="clean-message">
-                    <span>Ready to Serve</span>
-                    <button className="vc-btn-call" onClick={handleNextTicket} style={{ marginTop: '16px', width: 'auto', padding: '10px 32px', fontSize: '1rem', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>Start Queue</button>
-                  </div>
-                ) : (
-                  <div className="clean-message">
-                    <span>No Tokens in Queue</span>
-                    <span className="clean-subtext">You're all caught up!</span>
-                  </div>
-                )}
+              <div className="vc-token-display-box">
+                <span className="vc-token-label">TOKEN ID</span>
+                <div className="vc-token-code">
+                  {loading ? (
+                    <div className="clean-message">
+                      <span>Calling Next...</span>
+                      <div className="spinner-small" style={{ margin: '10px 0 0', width: '24px', height: '24px', borderWidth: '2px' }}></div>
+                    </div>
+                  ) : displayTicket ? (
+                    displayTicket.tokenCode
+                  ) : queueStats.waiting > 0 ? (
+                    <div className="clean-message">
+                      <span>Ready to Serve</span>
+                      <button className="vc-btn-call" onClick={handleNextTicket} style={{ marginTop: '16px', width: 'auto', padding: '10px 32px', fontSize: '1rem', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>Start Queue</button>
+                    </div>
+                  ) : (
+                    <div className="clean-message">
+                      <span>No Tokens in Queue</span>
+                      <span className="clean-subtext">You're all caught up!</span>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {!loading && displayTicket && (
-                <div style={{ textAlign: 'center', marginBottom: '20px', marginTop: '-10px' }}>
-                  <h2 style={{ fontSize: '1.6rem', fontWeight: '800', color: '#1e293b', margin: '0 0 2px 0' }}>
+                <div className="vc-customer-info-card">
+                  <span className="vc-customer-name">
                     {displayTicket.userName || "Guest User"}
-                  </h2>
-                  <p style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: '700', margin: 0, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                  </span>
+                  <span className="vc-customer-label">
                     Customer Identity
-                  </p>
+                  </span>
                 </div>
               )}
 
@@ -744,7 +747,7 @@ export default function StaffDashboard() {
               </div>
             </div>
 
-            <div className="tokens-modal-scroll-area" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+            <div className="tokens-modal-scroll-area" style={{ overflowY: 'auto' }}>
               <div className="tokens-section">
                 <h3 className="section-title-modern">
                   <span className="dot pulse-blue"></span> Active Queue
@@ -838,7 +841,6 @@ export default function StaffDashboard() {
           currentConfig={counters.find(c => c.name === selectedCounter)}
         />
       )}
-
     </div>
   );
 }

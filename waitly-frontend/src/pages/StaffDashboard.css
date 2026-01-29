@@ -156,10 +156,10 @@
 .counter-tag {
     background: #eff6ff;
     color: var(--staff-primary);
-    padding: 6px 14px;
+    padding: 3px 10px;
     border-radius: 99px;
     font-weight: 800;
-    font-size: 0.75rem;
+    font-size: 0.65rem;
     text-transform: uppercase;
     letter-spacing: 0.05em;
     border: 1px solid #dbeafe;
@@ -168,9 +168,9 @@
 .vc-text-btn {
     background: transparent;
     border: 1px solid var(--staff-border);
-    padding: 6px 14px;
+    padding: 3px 10px;
     border-radius: 99px;
-    font-size: 0.8rem;
+    font-size: 0.65rem;
     font-weight: 700;
     color: var(--staff-text-sub);
     cursor: pointer;
@@ -233,11 +233,10 @@
 /* ================= CONTENT AREA ================= */
 .dashboard-content-wrapper {
     flex: 1;
-    padding: 24px;
+    padding: 50px;
     display: flex;
     justify-content: center;
     align-items: flex-start;
-    /* changed from stretch to avoid full height forcing */
     width: 100%;
 }
 
@@ -251,10 +250,10 @@
 
 .verification-card {
     width: 100%;
-    max-width: 1100px;
+    max-width: 850px;
     display: flex;
     flex-direction: column;
-    gap: 24px;
+    gap: 18px;
 }
 
 .vc-header-info {
@@ -263,7 +262,7 @@
 }
 
 .vc-place-name {
-    font-size: 1.8rem;
+    font-size: 1.3rem;
     font-weight: 800;
     color: var(--staff-text-main);
     margin: 0;
@@ -271,16 +270,16 @@
 }
 
 .vc-sub {
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     color: var(--staff-text-sub);
-    margin-top: 4px;
+    margin-top: 3px;
 }
 
 /* ================= GRID LAYOUT ================= */
 .vc-grid {
     display: grid;
     grid-template-columns: 1.2fr 0.8fr;
-    gap: 24px;
+    gap: 20px;
     width: 100%;
 }
 
@@ -297,38 +296,103 @@
     background: #ffffff;
     border: 1px solid var(--staff-border);
     border-radius: 12px;
-    padding: 32px;
+    padding: 18px;
     display: flex;
     flex-direction: column;
     align-items: center;
 }
 
 .vc-label {
-    font-size: 0.7rem;
-    font-weight: 800;
+    font-size: 0.75rem;
+    font-weight: 850;
     text-transform: uppercase;
-    letter-spacing: 0.1em;
+    letter-spacing: 0.12em;
     color: var(--staff-text-sub);
-    margin-bottom: 24px;
+    margin-bottom: 10px;
 }
 
-/* LEFT COL - TOKEN DISPLAY */
+.return-queue-btn {
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: var(--staff-primary);
+    background: #eff6ff;
+    border: 1px solid #dbeafe;
+    padding: 4px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.return-queue-btn:hover {
+    background: #dbeafe;
+    transform: translateY(-1px);
+}
+
+.vc-token-display-box {
+    background: #f8fbff;
+    width: 100%;
+    padding: 12px;
+    border-radius: 12px;
+    border: 1px solid #eef2ff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.vc-token-label {
+    font-size: 0.55rem;
+    font-weight: 700;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    margin-bottom: 2px;
+}
+
 .vc-token-code {
-    font-size: 5rem;
-    font-weight: 900;
-    line-height: 1;
-    color: var(--staff-text-main);
-    letter-spacing: -0.05em;
-    margin: 10px 0 20px 0;
+    font-size: 2.5rem;
+    font-weight: 950;
+    line-height: 1.1;
+    color: var(--staff-primary);
+    letter-spacing: -0.02em;
+    margin: 0;
+    text-shadow: 0 1px 3px rgba(37, 99, 235, 0.05);
+}
+
+.vc-customer-info-card {
+    background: #ffffff;
+    border: 1px solid #f1f5f9;
+    border-radius: 10px;
+    padding: 10px;
+    width: 100%;
+    margin-bottom: 14px;
+    text-align: center;
+    box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.02);
+}
+
+.vc-customer-name {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: #0f172a;
+    margin: 0 0 2px 0;
+    display: block;
+}
+
+.vc-customer-label {
+    font-size: 0.5rem;
+    font-weight: 700;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
 }
 
 .vc-qr-area {
     background: #f8fafc;
     border: 2px dashed var(--staff-border);
     border-radius: 12px;
-    padding: 16px;
-    width: 180px;
-    height: 180px;
+    padding: 14px;
+    width: 160px;
+    height: 160px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -346,20 +410,20 @@
 }
 
 .verified-icon {
-    font-size: 3rem;
-    margin-bottom: 12px;
+    font-size: 2.2rem;
+    margin-bottom: 8px;
 }
 
 .verified-status-panel h3 {
     margin: 0;
-    font-size: 1rem;
+    font-size: 0.85rem;
     font-weight: 700;
     color: var(--staff-success);
 }
 
 .verified-status-panel p {
-    margin: 4px 0 0 0;
-    font-size: 0.75rem;
+    margin: 2px 0 0 0;
+    font-size: 0.65rem;
     color: #059669;
 }
 
@@ -372,7 +436,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 16px 20px;
+    padding: 10px 15px;
     border-bottom: 1px solid #f1f5f9;
 }
 
@@ -383,11 +447,11 @@
 .vc-stat-row span:first-child {
     font-weight: 500;
     color: var(--staff-text-sub);
-    font-size: 0.95rem;
+    font-size: 0.8rem;
 }
 
 .vc-val {
-    font-size: 1.5rem;
+    font-size: 1.2rem;
     font-weight: 700;
     color: var(--staff-text-main);
 }
@@ -412,9 +476,9 @@
 }
 
 .vc-actions button {
-    height: 56px;
-    border-radius: 12px;
-    font-size: 1rem;
+    height: 46px;
+    border-radius: 10px;
+    font-size: 0.9rem;
     font-weight: 700;
     cursor: pointer;
     transition: all 0.2s ease;
@@ -422,7 +486,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 0 24px;
+    padding: 0 20px;
 }
 
 .vc-btn-complete {
@@ -489,12 +553,12 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(15, 23, 42, 0.4);
-    backdrop-filter: blur(4px);
+    background: rgba(15, 23, 42, 0.75);
+    backdrop-filter: blur(8px);
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 5000;
+    z-index: 100000;
 }
 
 .profile-card {
@@ -1664,17 +1728,22 @@
 .tokens-list-modal {
     max-width: 950px !important;
     width: 95% !important;
+    max-height: 90vh !important;
     padding: 0 !important;
     border-radius: 24px !important;
     overflow: hidden;
     display: flex;
     flex-direction: column;
+    background: white;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
 }
 
 .modal-header-premium {
     padding: 32px;
     background: white;
     border-bottom: 1px solid #f1f5f9;
+    flex-shrink: 0;
+    z-index: 10;
 }
 
 .modal-title-row {
@@ -1748,6 +1817,8 @@
 .tokens-modal-scroll-area {
     padding: 0 32px 32px 32px;
     background: #fcfdfe;
+    overflow-y: auto;
+    flex: 1;
 }
 
 .tokens-table-container {
@@ -2071,7 +2142,10 @@
     align-items: center;
     justify-content: center;
     font-weight: 600;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
+    padding: 12px 20px;
+    min-height: 46px;
+    text-align: center;
 }
 
 /* ================= SESSION SETUP REDESIGN ================= */
@@ -2843,15 +2917,19 @@
     .inspect-warning-msg {
         flex: none;
         width: 100%;
-        padding: 10px;
-        font-size: 0.75rem;
-        margin-bottom: 8px;
+        padding: 14px 20px;
+        font-size: 0.8rem;
+        margin-bottom: 12px;
         text-align: center;
+        border-radius: 99px;
+        /* Pill style on mobile */
+        min-height: 48px;
     }
 
     .vc-actions.inspect-mode {
         flex-direction: column;
-        gap: 8px;
+        gap: 12px;
+        width: 100%;
     }
 
     .vc-actions.inspect-mode .inspect-warning-msg {
@@ -2943,9 +3021,10 @@
     }
 
     .vc-actions button {
-        height: 40px;
-        font-size: 0.75rem;
-        padding: 0 8px;
+        height: 48px;
+        font-size: 0.85rem;
+        padding: 0 16px;
+        border-radius: 12px;
     }
 
     .vc-qr-area {

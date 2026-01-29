@@ -3,6 +3,118 @@ import Admin from "../models/Admin.js";
 import Staff from "../models/Staff.js";
 import { createAccessToken, createRefreshToken } from "../utils/jwt.js";
 import crypto from "crypto";
+import { OAuth2Client } from "google-auth-library";
+
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+/* =====================================================
+   GOOGLE LOGIN
+===================================================== */
+export const googleLogin = async (req, res) => {
+  try {
+    const { tokenId, role = "user", allowRegistration = true } = req.body;
+
+    if (!tokenId) {
+      return res.status(400).json({ success: false, message: "Token ID is required" });
+    }
+
+    // Verify Google Token
+    const ticket = await client.verifyIdToken({
+      idToken: tokenId,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+
+    const { sub: googleId, email, name, picture } = ticket.getPayload();
+
+    // 1. Find user by googleId
+    let user = await User.findOne({ googleId });
+
+    if (!user) {
+      // 2. If not found by googleId, check if email exists from a normal registration
+      user = await User.findOne({ email });
+
+      if (user) {
+        // Link googleId to existing account
+        user.googleId = googleId;
+        // Optionally update role if it was a generic migration, but safer to keep existing role
+        await user.save();
+      } else {
+        // 3. User does not exist – Check if registration is allowed
+        if (!allowRegistration) {
+          return res.status(404).json({
+            success: false,
+            message: "No account found with this Google email. Please sign up first."
+          });
+        }
+
+        // 4. Create new user
+        // Generate a simple username from name + random suffix
+        let username = name.replace(/\s+/g, '_').toLowerCase();
+        const exists = await User.findOne({ username });
+        if (exists) {
+          username += Math.floor(Math.random() * 1000);
+        }
+
+        user = await User.create({
+          username,
+          email,
+          googleId,
+          role, // Use the role passed from frontend (defaults to "user")
+          isVerified: true // Google accounts are pre-verified
+        });
+      }
+    }
+
+    // Update last login
+    user.lastLogin = new Date();
+    await user.save();
+
+    // Create Tokens
+    const payload = {
+      id: user._id.toString(),
+      role: user.role
+    };
+
+    const token = createAccessToken(payload);
+    const refreshToken = createRefreshToken(payload);
+
+    // Set Cookies
+    res.cookie("token", token, {
+      httpOnly: true,
+      sameSite: "none",
+      secure: true,
+      path: "/"
+    });
+
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      sameSite: "none",
+      secure: true,
+      path: "/"
+    });
+
+    res.json({
+      success: true,
+      message: "Login successful with Google",
+      token,
+      refreshToken,
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+        picture // Optional: UI can display this
+      }
+    });
+
+  } catch (err) {
+    console.error("GOOGLE LOGIN ERROR:", err);
+    res.status(401).json({
+      success: false,
+      message: "Google authentication failed"
+    });
+  }
+};
 
 /* =====================================================
    USER REGISTER
