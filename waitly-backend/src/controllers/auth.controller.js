@@ -11,7 +11,9 @@ export const userRegister = async (req, res) => {
   try {
     const { username, email, password, role } = req.body;
 
-    const allowedRoles = ["user", "staff", "admin"];
+    // Only allow 'user' and 'staff' roles in public registration
+    // Admin accounts must be created manually via database/env
+    const allowedRoles = ["user", "staff"];
     const finalRole = allowedRoles.includes(role) ? role : "user";
 
     // Check if user already exists

@@ -194,10 +194,17 @@ export default function PlaceDetails({ place, onWaitUpdated, userLocation }) {
         )}
       </div>
 
-      <div className="best-time">
+      {/* Best Time to Visit - Hidden for now */}
+      {/* <div className="best-time">
         <h4 className="section-heading">Best Time to Visit</h4>
-        <p className="muted">🚧 Future Enhancement</p>
-      </div>
+        <p className="muted" style={{ display: 'flex', alignItems: 'center', gap: '6px', margin: 0 }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12 6 12 12 16 14"></polyline>
+          </svg>
+          Coming Soon
+        </p>
+      </div> */}
 
       {user && (user.role === 'staff' || user.role === 'admin') ? (
         <button

@@ -199,7 +199,7 @@ export default function Login() {
         {/* ROLE SELECTOR (only for register) */}
         {mode === "register" && (
           <div className="role-select">
-            {["user", "staff", "admin"].map(r => (
+            {["user", "staff"].map(r => (
               <button
                 key={r}
                 className={`role-btn ${role === r ? "active" : ""}`}

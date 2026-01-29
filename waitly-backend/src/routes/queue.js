@@ -84,8 +84,9 @@ router.get("/available-slots", async (req, res) => {
     while (currentTime < closeDate) {
       const candidateTime = currentTime.getTime();
 
-      // Prevent booking in the past
-      if (candidateTime <= Date.now()) {
+      // Prevent booking within next 1 hour (60 minutes minimum advance booking)
+      const oneHourFromNow = Date.now() + (60 * 60 * 1000);
+      if (candidateTime < oneHourFromNow) {
         currentTime.setMinutes(currentTime.getMinutes() + 5);
         continue;
       }

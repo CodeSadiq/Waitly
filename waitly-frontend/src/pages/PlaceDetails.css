@@ -308,6 +308,11 @@
   .close-details-btn {
     display: flex;
   }
+
+  /* Hide "Best Time to Visit" section on mobile */
+  .best-time {
+    display: none;
+  }
 }
 
 /* ======================================================
