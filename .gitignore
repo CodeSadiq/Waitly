@@ -25,3 +25,4 @@ yarn-error.log*
 # Documentation (Local Only)
 waitly_overview.md
 waitly_viva_questions.md
+waitly-backend/ADMIN_AUTH.md
