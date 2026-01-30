@@ -372,7 +372,7 @@ export default function Login() {
               useOneTap
               theme="outline"
               size="large"
-              width="100%"
+              size="large"
               text="continue_with"
               shape="pill"
             />
