@@ -21,7 +21,7 @@
 /* ================= LAYOUT ================= */
 .admin-layout {
   display: flex;
-  height: 100vh;
+  height: calc(100vh - var(--nav-height));
   /* Fixed height */
   overflow: hidden;
   /* Prevent body scroll */

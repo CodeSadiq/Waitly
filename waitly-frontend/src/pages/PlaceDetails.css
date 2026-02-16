@@ -137,16 +137,20 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 16px;
-  border-radius: 14px;
-  background: #ffffff;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04),
-    inset 0 0 0 1px #e5e7eb;
-  transition: transform 0.15s ease;
+  padding: 16px 18px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04),
+    0 1px 3px rgba(0, 0, 0, 0.02);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .wait-row:hover {
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08),
+    0 2px 6px rgba(0, 0, 0, 0.04);
+  border-color: #cbd5e1;
 }
 
 /* COUNTER LABEL */
@@ -154,13 +158,13 @@
 .wait-label {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-weight: 700;
+  gap: 10px;
+  font-weight: 600;
   font-size: 15px;
-  color: #111827;
-  padding: 4px 10px;
-  border-radius: 8px;
-  background: #f8fafc;
+  color: #1e293b;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
 }
 
 .counter-icon svg {
@@ -330,4 +334,100 @@
   line-height: 1.6;
   max-width: 420px;
   margin: 0 auto;
+}
+
+/* ======================================================
+   CROWD DENSITY BADGES
+   ====================================================== */
+
+.wait-label.top-aligned {
+  align-items: center;
+  /* keep centered vertically relative to icon */
+}
+
+.counter-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #3b82f6;
+  background: #eff6ff;
+  padding: 6px;
+  border-radius: 8px;
+}
+
+.crowd-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.crowd-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 20px;
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #e5e7eb;
+  line-height: 1;
+  letter-spacing: 0.2px;
+}
+
+.crowd-badge .icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.avg-service {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: #64748b;
+  letter-spacing: 0.2px;
+  margin-right: 2px;
+}
+
+/* Variants */
+.crowd-badge.low {
+  background: #ecfdf5;
+  color: #059669;
+  border-color: #a7f3d0;
+}
+
+.crowd-badge.low .icon-wrapper {
+  color: #10b981;
+}
+
+.crowd-badge.medium {
+  background: #fefce8;
+  color: #a16207;
+  border-color: #fde047;
+}
+
+.crowd-badge.medium .icon-wrapper {
+  color: #eab308;
+}
+
+.crowd-badge.high {
+  background: #fff7ed;
+  color: #c2410c;
+  border-color: #fdba74;
+}
+
+.crowd-badge.high .icon-wrapper {
+  color: #f97316;
+}
+
+.crowd-badge.critical {
+  background: #fef2f2;
+  color: #b91c1c;
+  border-color: #fca5a5;
+}
+
+.crowd-badge.critical .icon-wrapper {
+  color: #ef4444;
 }

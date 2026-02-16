@@ -1,0 +1,147 @@
+/* ======================================================
+   LANDING NAVBAR
+====================================================== */
+
+.landing-navbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(226, 232, 240, 0.6);
+    animation: slideDown 0.6s ease-out;
+}
+
+.landing-nav-content {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 16px 8%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 40px;
+}
+
+/* Logo */
+.landing-nav-logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+.landing-nav-logo:hover {
+    transform: scale(1.02);
+}
+
+.landing-nav-logo svg {
+    color: #2563eb;
+}
+
+.landing-nav-logo span {
+    font-size: 22px;
+    font-weight: 800;
+    color: #111827;
+    letter-spacing: 1px;
+}
+
+/* Navigation Links */
+.landing-nav-links {
+    display: flex;
+    align-items: center;
+    gap: 32px;
+}
+
+.landing-nav-links a {
+    font-size: 15px;
+    font-weight: 500;
+    color: #64748b;
+    text-decoration: none;
+    transition: color 0.2s ease;
+    position: relative;
+}
+
+.landing-nav-links a::after {
+    content: "";
+    position: absolute;
+    bottom: -4px;
+    left: 0;
+    width: 0;
+    height: 2px;
+    background: linear-gradient(90deg, #2563eb, #7c3aed);
+    transition: width 0.3s ease;
+}
+
+.landing-nav-links a:hover {
+    color: #2563eb;
+}
+
+.landing-nav-links a:hover::after {
+    width: 100%;
+}
+
+/* Action Buttons */
+.landing-nav-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.nav-signin,
+.nav-getstarted {
+    padding: 10px 24px;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.nav-signin {
+    background: transparent;
+    color: #64748b;
+}
+
+.nav-signin:hover {
+    color: #2563eb;
+    background: #f1f5f9;
+}
+
+.nav-getstarted {
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+}
+
+.nav-getstarted:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .landing-nav-links {
+        display: none;
+    }
+
+    .landing-nav-content {
+        padding: 14px 6%;
+    }
+
+    .landing-nav-logo span {
+        font-size: 18px;
+    }
+
+    .nav-signin {
+        display: none;
+    }
+
+    .nav-getstarted {
+        padding: 10px 20px;
+        font-size: 14px;
+    }
+}

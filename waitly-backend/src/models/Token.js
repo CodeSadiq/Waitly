@@ -13,11 +13,24 @@ const tokenSchema = new mongoose.Schema(
     },
 
     /* =====================
-       COUNTER
+       COUNTER & SERVICE
        ===================== */
     counterName: {
       type: String,
       required: true
+    },
+
+    // 🔥 NEW: Service Category Concept
+    category: {
+      type: String, // e.g. "general", "express"
+      default: "general"
+    },
+
+    // 🔥 NEW: Ticket Type
+    type: {
+      type: String,
+      enum: ["Slot", "Walk-in"],
+      default: "Walk-in"
     },
 
     /* =====================
@@ -26,7 +39,7 @@ const tokenSchema = new mongoose.Schema(
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true,          // 🔥 IMPORTANT
+      required: true,
       index: true
     },
 
@@ -84,13 +97,16 @@ const tokenSchema = new mongoose.Schema(
       index: true
     },
 
+    // 🔥 NEW: Verification Timestamp
+    verifiedAt: Date, // When they arrive/check-in (or mapped to createdAt for now)
+
     servingStartedAt: Date,
     completedAt: Date,
 
     /* =====================
        METRICS
        ===================== */
-    serviceDuration: Number
+    serviceDuration: Number // Minutes
   },
   { versionKey: false }
 );

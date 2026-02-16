@@ -33,6 +33,9 @@ export default function StaffDashboard() {
   const [loading, setLoading] = useState(false);
   const [appliedPlace, setAppliedPlace] = useState(null);
   const [loadingPlace, setLoadingPlace] = useState(false);
+  const [crowdData, setCrowdData] = useState({ level: "Unknown", activeCount: 0, dailyCapacity: 0 });
+  const [avgTimes, setAvgTimes] = useState({ staff: 5, system: 5, final: 5 });
+  const [activeCounterConfig, setActiveCounterConfig] = useState(null);
 
   const getAuthHeaders = () => {
     const token = localStorage.getItem('waitly_token');
@@ -240,6 +243,9 @@ export default function StaffDashboard() {
         slotted: data.slotted || 0
       });
       setNextTickets(data.nextTickets || []);
+      if (data.crowd) setCrowdData(data.crowd);
+      if (data.avgTimes) setAvgTimes(data.avgTimes);
+      if (data.counterConfig) setActiveCounterConfig(data.counterConfig);
     } catch (err) {
       console.error("Failed to fetch status", err);
     }
@@ -602,11 +608,14 @@ export default function StaffDashboard() {
           <div className="vc-header-info">
             <div className="vc-header-main">
               <h1 className="vc-place-name">{placeName}</h1>
-              <div className="vc-session-controls">
+              <div className="vc-session-controls" style={{ gap: '10px' }}>
+                <span className={`crowd-badge ${crowdData.level.toLowerCase()}`} title={`Load: ${crowdData.activeCount}/${crowdData.dailyCapacity}`}>
+                  {crowdData.level} Crowd
+                </span>
                 <span className="counter-tag">{selectedCounter}</span>
-                <button className="vc-text-btn" onClick={() => { fetchAllTokens(); setShowTokensModal(true); }}>All Tokens</button>
-                <button className="vc-text-btn" onClick={() => setShowScheduleModal(true)}>Schedule</button>
-                <button className="vc-text-btn danger" onClick={() => window.location.reload()}>Change Counter</button>
+                <button className="vc-text-btn" onClick={() => { fetchAllTokens(); setShowTokensModal(true); }}>History & All Tokens</button>
+                <button className="vc-text-btn" onClick={() => setShowScheduleModal(true)}>Settings</button>
+                <button className="vc-text-btn danger" onClick={() => window.location.reload()}>Leave Counter</button>
               </div>
             </div>
             <p className="vc-sub">{placeAddress}</p>
@@ -620,21 +629,42 @@ export default function StaffDashboard() {
               </div>
               <div className="vc-token-code">
                 {loading ? (
-                  <div className="clean-message">
-                    <span>Calling Next...</span>
-                    <div className="spinner-small" style={{ margin: '10px 0 0', width: '24px', height: '24px', borderWidth: '2px' }}></div>
+                  <div className="clean-message" style={{ padding: '20px' }}>
+                    <span style={{ fontSize: '1.2rem', fontWeight: '800' }}>Calling Next...</span>
+                    <div className="spinner-small" style={{ margin: '8px auto 0', width: '20px', height: '20px', borderWidth: '2px' }}></div>
                   </div>
                 ) : displayTicket ? (
                   displayTicket.tokenCode
                 ) : queueStats.waiting > 0 ? (
-                  <div className="clean-message">
-                    <span>Ready to Serve</span>
-                    <button className="vc-btn-call" onClick={handleNextTicket} style={{ marginTop: '16px', width: 'auto', padding: '10px 32px', fontSize: '1rem', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>Start Queue</button>
+                  <div className="clean-message" style={{ padding: '20px' }}>
+                    <span style={{ fontSize: '1.2rem', fontWeight: '800', display: 'block', marginBottom: '8px' }}>Ready to Serve</span>
+                    <button className="vc-btn-call" onClick={handleNextTicket} style={{ width: 'auto', padding: '8px 24px', fontSize: '0.9rem' }}>Start Queue</button>
                   </div>
                 ) : (
-                  <div className="clean-message">
-                    <span>No Tokens in Queue</span>
-                    <span className="clean-subtext">You're all caught up!</span>
+                  <div className="clean-message" style={{
+                    padding: '24px',
+                    background: 'linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%)',
+                    borderRadius: '16px',
+                    border: '1px solid #dcfce7'
+                  }}>
+                    <div style={{
+                      fontSize: '1.25rem',
+                      color: '#16a34a',
+                      fontWeight: '900',
+                      letterSpacing: '0.05em',
+                      marginBottom: '6px'
+                    }}>✓ ALL CAUGHT UP</div>
+                    <span style={{
+                      fontSize: '0.85rem',
+                      color: '#64748b',
+                      fontWeight: '700',
+                      background: '#f8fafc',
+                      padding: '4px 12px',
+                      borderRadius: '8px',
+                      border: '1px solid #f1f5f9',
+                      display: 'inline-block',
+                      letterSpacing: '0.05em'
+                    }}>No tokens in queue.</span>
                   </div>
                 )}
               </div>
@@ -644,6 +674,9 @@ export default function StaffDashboard() {
                   <h2 style={{ fontSize: '1.6rem', fontWeight: '800', color: '#1e293b', margin: '0 0 2px 0' }}>
                     {displayTicket.userName || "Guest User"}
                   </h2>
+                  <div style={{ display: 'inline-block', background: '#f1f5f9', color: '#64748b', padding: '2px 10px', borderRadius: '6px', fontSize: '0.65rem', fontWeight: '800', textTransform: 'uppercase', marginBottom: '8px' }}>
+                    {displayTicket.category || "General Service"}
+                  </div>
                   <p style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: '700', margin: 0, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
                     Customer Identity
                   </p>
@@ -712,162 +745,217 @@ export default function StaffDashboard() {
         </div>
       </div>
 
-      {showTokensModal && (
-        <div className="profile-modal-overlay" onClick={() => setShowTokensModal(false)}>
-          <div className="profile-card tokens-list-modal">
-            <div className="modal-header-premium">
-              <div className="modal-title-row">
-                <h2 className="modal-title-premium">Queue Snapshot</h2>
-                <button className="close-profile-btn" onClick={() => setShowTokensModal(false)} style={{ position: 'static' }}>&times;</button>
-              </div>
-              <div className="modal-stats-grid">
-                <div className="stat-pill-premium">
-                  <span className="stat-pill-label">All Time Waiting</span>
-                  <span className="stat-pill-value blue">{allTokens.serving.length + allTokens.waiting.length}</span>
+      {
+        showTokensModal && (
+          <div className="profile-modal-overlay" onClick={() => setShowTokensModal(false)}>
+            <div className="profile-card tokens-list-modal">
+              <div className="modal-header-premium">
+                <div className="modal-title-row">
+                  <h2 className="modal-title-premium">Queue Snapshot</h2>
+                  <button className="close-profile-btn" onClick={() => setShowTokensModal(false)} style={{ position: 'static' }}>&times;</button>
                 </div>
-                <div className="stat-pill-premium">
-                  <span className="stat-pill-label">Waiting Today</span>
-                  <span className="stat-pill-value orange">{allTokens.waiting.filter(t => t.willServeToday).length}</span>
-                </div>
-                <div className="stat-pill-premium">
-                  <span className="stat-pill-label">All Time Completed</span>
-                  <span className="stat-pill-value purple">{allTokens.history.filter(t => t.status === 'Completed').length}</span>
-                </div>
-                <div className="stat-pill-premium">
-                  <span className="stat-pill-label">Completed Today</span>
-                  <span className="stat-pill-value green">{allTokens.history.filter(t => t.status === 'Completed' && t.isToday).length}</span>
-                </div>
-                <div className="stat-pill-premium">
-                  <span className="stat-pill-label">Counter Name</span>
-                  <span className="stat-pill-value">{selectedCounter}</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="tokens-modal-scroll-area" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
-              <div className="tokens-section">
-                <h3 className="section-title-modern">
-                  <span className="dot pulse-blue"></span> Active Queue
-                </h3>
-                <div className="tokens-table-container">
-                  <table className="tokens-table">
-                    <thead>
-                      <tr><th>Position</th><th>Token</th><th>Customer</th><th>Path</th><th>Expect Flow</th><th>Action</th></tr>
-                    </thead>
-                    <tbody>
-                      {allTokens.serving.map(t => (
-                        <tr key={t._id} className="row-serving-highlight row-serving-today">
-                          <td data-label="Position"><span className="badge-serving">SERVING</span></td>
-                          <td data-label="Token"><span className="token-code-pill">{t.tokenCode}</span></td>
-                          <td data-label="Customer" className="user-name-cell">{t.userName || "Guest User"}</td>
-                          <td data-label="Path">{t.timeSlotLabel ? <span className="type-slotted">Slotted</span> : <span className="type-walkin">Walk-in</span>}</td>
-                          <td data-label="Expect Flow"><span className="live-badge">Live</span></td>
-                          <td data-label="Action"><button className="view-token-btn" onClick={() => { setInspectingTicket(t); setShowTokensModal(false); }}>Inspect</button></td>
-                        </tr>
-                      ))}
-
-                      {allTokens.waiting.map(t => (
-                        <tr key={t._id} className={t.willServeToday ? 'row-serving-today' : ''}>
-                          <td data-label="Position"><span style={{ fontWeight: '700', color: '#94a3b8' }}>#{t.positionOnList}</span></td>
-                          <td data-label="Token"><span className="token-code-pill" style={{ background: '#f8fafc', color: '#64748b' }}>{t.tokenCode}</span></td>
-                          <td data-label="Customer" className="user-name-cell">{t.userName || "Guest User"}</td>
-                          <td data-label="Path">{t.timeSlotLabel ? <span className="type-slotted">Slotted</span> : <span className="type-walkin">Walk-in</span>}</td>
-                          <td data-label="Expect Flow" style={{ fontWeight: '500' }}>~{formatWaitTime(t.estimatedWait)}</td>
-                          <td data-label="Action"><button className="view-token-btn" onClick={() => { setInspectingTicket(t); setShowTokensModal(false); }}>Inspect</button></td>
-                        </tr>
-                      ))}
-
-                      {allTokens.serving.length === 0 && allTokens.waiting.length === 0 && (
-                        <tr><td colSpan="6" className="empty-row">No active sessions in queue</td></tr>
-                      )}
-                    </tbody>
-                  </table>
+                <div className="modal-stats-grid">
+                  <div className="stat-pill-premium">
+                    <span className="stat-pill-label">All Time Waiting</span>
+                    <span className="stat-pill-value blue">{allTokens.serving.length + allTokens.waiting.length}</span>
+                  </div>
+                  <div className="stat-pill-premium">
+                    <span className="stat-pill-label">Waiting Today</span>
+                    <span className="stat-pill-value orange">{allTokens.waiting.filter(t => t.willServeToday).length}</span>
+                  </div>
+                  <div className="stat-pill-premium">
+                    <span className="stat-pill-label">All Time Completed</span>
+                    <span className="stat-pill-value purple">{allTokens.history.filter(t => t.status === 'Completed').length}</span>
+                  </div>
+                  <div className="stat-pill-premium">
+                    <span className="stat-pill-label">Completed Today</span>
+                    <span className="stat-pill-value green">{allTokens.history.filter(t => t.status === 'Completed' && t.isToday).length}</span>
+                  </div>
+                  <div className="stat-pill-premium">
+                    <span className="stat-pill-label">Counter Name</span>
+                    <span className="stat-pill-value">{selectedCounter}</span>
+                  </div>
                 </div>
               </div>
 
-              <div className="tokens-section" style={{ marginTop: '32px' }}>
-                <h3 className="section-title-modern gray">All Time History</h3>
-                <div className="tokens-table-container">
-                  <table className="tokens-table">
-                    <thead>
-                      <tr><th>Reference</th><th>Customer</th><th>Status</th><th>Timestamp</th><th>Action</th></tr>
-                    </thead>
-                    <tbody>
-                      {allTokens.history.map(t => (
-                        <tr key={t._id}>
-                          <td data-label="Reference"><span className="token-code-pill" style={{ background: '#f1f5f9', color: '#475569' }}>{t.tokenCode}</span></td>
-                          <td data-label="Customer" className="user-name-cell">{t.userName || "Guest User"}</td>
-                          <td data-label="Status"><span className={`status-pill ${t.status.toLowerCase()}`}>{t.status}</span></td>
-                          <td data-label="Timestamp" style={{ color: '#64748b', fontSize: '0.85rem' }}>{formatRelativeDate(t.completedAt || t.updatedAt)}</td>
-                          <td data-label="Action"><button className="view-token-btn" onClick={() => { setInspectingTicket(t); setShowTokensModal(false); }}>Inspect</button></td>
-                        </tr>
-                      ))}
-                      {allTokens.history.length === 0 && (
-                        <tr><td colSpan="5" className="empty-row">No history recorded yet</td></tr>
-                      )}
-                    </tbody>
-                  </table>
+              <div className="tokens-modal-scroll-area" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+                <div className="tokens-section">
+                  <h3 className="section-title-modern">
+                    <span className="dot pulse-blue"></span> Active Queue
+                  </h3>
+                  <div className="tokens-table-container">
+                    <table className="tokens-table">
+                      <thead>
+                        <tr><th>Position</th><th>Token</th><th>Customer</th><th>Path</th><th>Expect Flow</th><th>Action</th></tr>
+                      </thead>
+                      <tbody>
+                        {allTokens.serving.map(t => (
+                          <tr key={t._id} className="row-serving-highlight row-serving-today">
+                            <td data-label="Position"><span className="badge-serving">SERVING</span></td>
+                            <td data-label="Token"><span className="token-code-pill">{t.tokenCode}</span></td>
+                            <td data-label="Customer" className="user-name-cell">
+                              <div style={{ fontWeight: '700' }}>{t.userName || "Guest User"}</div>
+                              <div style={{ fontSize: '0.65rem', color: '#94a3b8', fontWeight: '800', textTransform: 'uppercase', marginTop: '2px' }}>{t.category || "General Service"}</div>
+                            </td>
+                            <td data-label="Path">{t.timeSlotLabel ? <span className="type-slotted">Slotted</span> : <span className="type-walkin">Walk-in</span>}</td>
+                            <td data-label="Expect Flow"><span className="live-badge">Live</span></td>
+                            <td data-label="Action"><button className="view-token-btn" onClick={() => { setInspectingTicket(t); setShowTokensModal(false); }}>Inspect</button></td>
+                          </tr>
+                        ))}
+
+                        {allTokens.waiting.map(t => (
+                          <tr key={t._id} className={t.willServeToday ? 'row-serving-today' : ''}>
+                            <td data-label="Position"><span style={{ fontWeight: '700', color: '#94a3b8' }}>#{t.positionOnList}</span></td>
+                            <td data-label="Token"><span className="token-code-pill" style={{ background: '#f8fafc', color: '#64748b' }}>{t.tokenCode}</span></td>
+                            <td data-label="Customer" className="user-name-cell">{t.userName || "Guest User"}</td>
+                            <td data-label="Path">{t.timeSlotLabel ? <span className="type-slotted">Slotted</span> : <span className="type-walkin">Walk-in</span>}</td>
+                            <td data-label="Expect Flow" style={{ fontWeight: '500' }}>~{formatWaitTime(t.estimatedWait)}</td>
+                            <td data-label="Action"><button className="view-token-btn" onClick={() => { setInspectingTicket(t); setShowTokensModal(false); }}>Inspect</button></td>
+                          </tr>
+                        ))}
+
+                        {allTokens.serving.length === 0 && allTokens.waiting.length === 0 && (
+                          <tr><td colSpan="6" className="empty-row">No active sessions in queue</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div className="tokens-section" style={{ marginTop: '32px' }}>
+                  <h3 className="section-title-modern gray">All Time History</h3>
+                  <div className="tokens-table-container">
+                    <table className="tokens-table">
+                      <thead>
+                        <tr><th>Token No.</th><th>Type</th><th>Customer</th><th>Status</th><th>Timestamp</th><th>Action</th></tr>
+                      </thead>
+                      <tbody>
+                        {allTokens.history.map(t => (
+                          <tr key={t._id} className={t.status === "Serving" ? "row-serving-today" : ""}>
+                            <td data-label="Token No.">
+                              <span className="token-code-pill">{t.tokenCode}</span>
+                              {t.status === "Serving" && <span className="serving-today-badge">Live</span>}
+                            </td>
+                            <td data-label="Type">
+                              <span className={`type-badge ${t.scheduledTime ? 'slotted' : 'walkin'}`}>
+                                {t.scheduledTime ? `Slot ${t.timeSlotLabel || ""}` : "Walk-in"}
+                              </span>
+                            </td>
+                            <td data-label="Customer">
+                              <div style={{ fontWeight: '700', color: '#1e293b' }}>{t.userName || "Guest User"}</div>
+                              <div style={{ fontSize: '0.6rem', color: '#94a3b8', fontWeight: '700', textTransform: 'uppercase' }}>{t.category || "General Service"}</div>
+                            </td>
+                            <td data-label="Status">
+                              <span className={`status-pill ${t.status.toLowerCase()}`}>{t.status}</span>
+                            </td>
+                            <td data-label="Timestamp" style={{ color: '#64748b', fontSize: '0.85rem' }}>{formatRelativeDate(t.completedAt || t.updatedAt)}</td>
+                            <td data-label="Action"><button className="view-token-btn" onClick={() => { setInspectingTicket(t); setShowTokensModal(false); }}>Inspect</button></td>
+                          </tr>
+                        ))}
+                        {allTokens.history.length === 0 && (
+                          <tr><td colSpan="6" className="empty-row">No history recorded yet</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
-      {showProfile && (
-        <div className="profile-modal-overlay" onClick={() => setShowProfile(false)}>
-          <div className="profile-card" onClick={e => e.stopPropagation()}>
-            <button className="close-profile-btn" onClick={() => setShowProfile(false)}>×</button>
-            <div className="profile-avatar">{user?.username ? user.username.charAt(0).toUpperCase() : "U"}</div>
-            <h2 className="profile-name">{user?.username}</h2>
-            <p className="profile-role">{user?.role} Account</p>
-            <div style={{ marginTop: '20px' }}>
-              <div className="profile-detail-row"><span className="profile-detail-label">Email</span><span className="profile-detail-value">{user?.email}</span></div>
-              <div className="profile-detail-row"><span className="profile-detail-label">Status</span><span className="profile-detail-value" style={{ textTransform: 'capitalize', color: '#16a34a' }}>{user?.status}</span></div>
+      {
+        showProfile && (
+          <div className="profile-modal-overlay" onClick={() => setShowProfile(false)}>
+            <div className="profile-card" onClick={e => e.stopPropagation()}>
+              <button className="close-profile-btn" onClick={() => setShowProfile(false)}>×</button>
+              <div className="profile-avatar">{user?.username ? user.username.charAt(0).toUpperCase() : "U"}</div>
+              <h2 className="profile-name">{user?.username}</h2>
+              <p className="profile-role">{user?.role} Account</p>
+              <div style={{ marginTop: '20px' }}>
+                <div className="profile-detail-row"><span className="profile-detail-label">Email</span><span className="profile-detail-value">{user?.email}</span></div>
+                <div className="profile-detail-row"><span className="profile-detail-label">Status</span><span className="profile-detail-value" style={{ textTransform: 'capitalize', color: '#16a34a' }}>{user?.status}</span></div>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
       {showScanner && <ScannerModal onClose={() => setShowScanner(false)} onScan={handleScanSuccess} />}
-      {showScheduleModal && (
-        <ScheduleModal
-          onClose={() => setShowScheduleModal(false)}
-          counterName={selectedCounter}
-          getAuthHeaders={getAuthHeaders}
-          currentConfig={counters.find(c => c.name === selectedCounter)}
-        />
-      )}
+      {
+        showScheduleModal && (
+          <CounterSettingsModal
+            onClose={() => setShowScheduleModal(false)}
+            counterName={selectedCounter}
+            getAuthHeaders={getAuthHeaders}
+            currentConfig={activeCounterConfig || counters.find(c => c.name === selectedCounter)}
+            avgTimes={avgTimes}
+            fetchStatus={fetchStatus}
+          />
+        )
+      }
 
-    </div>
+    </div >
   );
 }
 
-function ScheduleModal({ onClose, counterName, getAuthHeaders, currentConfig }) {
+function CounterSettingsModal({ onClose, counterName, getAuthHeaders, currentConfig, avgTimes, fetchStatus }) {
   const [openingTime, setOpeningTime] = useState(currentConfig?.openingTime || "09:00");
   const [closingTime, setClosingTime] = useState(currentConfig?.closingTime || "17:00");
   const [isClosed, setIsClosed] = useState(currentConfig?.isClosed || false);
   const [saving, setSaving] = useState(false);
 
+  // Categories State
+  const [categories, setCategories] = useState(
+    currentConfig?.services?.length > 0
+      ? currentConfig.services.map(s => ({ ...s }))
+      : [{ categoryId: "general", name: "General Service", staffAvgTime: 5 }]
+  );
+
+  const addCategory = () => {
+    setCategories([...categories, { categoryId: `cat_${Date.now()}`, name: "New Service", staffAvgTime: 5 }]);
+  };
+
+  const removeCategory = (id) => {
+    if (categories.length <= 1) return;
+    setCategories(categories.filter(c => c.categoryId !== id));
+  };
+
+  const updateCategory = (id, field, value) => {
+    setCategories(categories.map(c => c.categoryId === id ? { ...c, [field]: value } : c));
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
-      const res = await fetch(`${API_BASE}/api/staff/counters/update-schedule`, {
+      // 1. Update Schedule & Categories
+      const res = await fetch(`${API_BASE}/api/staff/counters/update-metrics`, {
         method: "POST",
         headers: getAuthHeaders(),
-        body: JSON.stringify({ counterName, openingTime, closingTime, isClosed }),
+        body: JSON.stringify({
+          counterName,
+          openingTime,
+          closingTime,
+          isClosed,
+          categories: categories.map(c => ({
+            name: c.name,
+            staffAvgTime: c.staffAvgTime,
+            categoryId: c.categoryId
+          }))
+        }),
         credentials: "include"
       });
+
       if (res.ok) {
-        // Optionally update local state or just close
+        fetchStatus();
         onClose();
-        alert("Schedule updated!");
       } else {
-        alert("Failed to update.");
+        alert("Settings failed to save.");
       }
     } catch (e) {
       console.error(e);
-      alert("Error saving schedule.");
+      alert("Error saving settings.");
     } finally {
       setSaving(false);
     }
@@ -875,48 +963,82 @@ function ScheduleModal({ onClose, counterName, getAuthHeaders, currentConfig }) 
 
   return (
     <div className="profile-modal-overlay" onClick={onClose}>
-      <div className="profile-card" onClick={e => e.stopPropagation()} style={{ maxWidth: '400px' }}>
+      <div className="profile-card" onClick={e => e.stopPropagation()} style={{ maxWidth: '650px', width: '95%', padding: '32px', maxHeight: '90vh', overflowY: 'auto' }}>
         <button className="close-profile-btn" onClick={onClose}>×</button>
-        <h2 style={{ marginBottom: '20px' }}>Manage Schedule</h2>
+        <h2 style={{ marginBottom: '8px', fontSize: '1.6rem', fontWeight: '900' }}>Intelligence Center</h2>
+        <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: '32px' }}>Configure categories, speed, and working hours.</p>
 
-        <div style={{ marginBottom: '15px' }}>
-          <label style={{ display: 'block', fontSize: '13px', color: '#64748b', marginBottom: '5px' }}>Opening Time</label>
-          <input
-            type="time"
-            value={openingTime}
-            onChange={e => setOpeningTime(e.target.value)}
-            style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }}
-          />
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px' }}>
+          {/* Left Column: Categories */}
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h3 style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Service Categories</h3>
+              <button onClick={addCategory} style={{ background: '#2563eb', color: '#fff', border: 'none', padding: '4px 12px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '700', cursor: 'pointer' }}>+ Add</button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {categories.map((cat) => (
+                <div key={cat.categoryId} style={{ background: '#f8fafc', padding: '16px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                  <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+                    <input
+                      value={cat.name}
+                      onChange={e => updateCategory(cat.categoryId, 'name', e.target.value)}
+                      placeholder="Category Name"
+                      style={{ flex: 1, padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem', fontWeight: '600' }}
+                    />
+                    <button onClick={() => removeCategory(cat.categoryId)} style={{ background: '#fee2e2', color: '#ef4444', border: 'none', width: '32px', borderRadius: '6px', cursor: 'pointer', fontWeight: '800' }}>×</button>
+                  </div>
+                  <label style={{ display: 'block', fontSize: '11px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', marginBottom: '8px' }}>Goal: {cat.staffAvgTime} mins</label>
+                  <input
+                    type="range"
+                    min="1"
+                    max="60"
+                    value={cat.staffAvgTime}
+                    onChange={e => updateCategory(cat.categoryId, 'staffAvgTime', e.target.value)}
+                    style={{ width: '100%' }}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Right Column: Schedule & Status */}
+          <div>
+            <h3 style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: '800', marginBottom: '16px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Working Hours</h3>
+            <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '24px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '11px', color: '#64748b', marginBottom: '6px', fontWeight: '700' }}>OPEN FROM</label>
+                  <input type="time" value={openingTime} onChange={e => setOpeningTime(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '11px', color: '#64748b', marginBottom: '6px', fontWeight: '700' }}>CLOSE AT</label>
+                  <input type="time" value={closingTime} onChange={e => setClosingTime(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }} />
+                </div>
+              </div>
+
+              <div style={{ background: isClosed ? '#fff1f2' : '#f0fdf4', padding: '12px 16px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '12px', border: `1px solid ${isClosed ? '#fecaca' : '#bbf7d0'}` }}>
+                <input type="checkbox" id="isClosed" checked={isClosed} onChange={e => setIsClosed(e.target.checked)} style={{ width: '18px', height: '18px' }} />
+                <label htmlFor="isClosed" style={{ fontSize: '0.85rem', fontWeight: '800', color: isClosed ? '#e11d48' : '#16a34a' }}>
+                  {isClosed ? "QUEUE IS CLOSED" : "QUEUE IS OPEN"}
+                </label>
+              </div>
+            </div>
+
+            <div style={{ background: '#f1f5f9', padding: '20px', borderRadius: '12px', textAlign: 'center' }}>
+              <span style={{ fontSize: '0.65rem', color: '#64748b', fontWeight: '800', display: 'block', marginBottom: '8px' }}>SYSTEM PULSE</span>
+              <div style={{ fontSize: '2rem', fontWeight: '900', color: '#0f172a', lineHeight: '1' }}>{avgTimes.final}m</div>
+              <span style={{ fontSize: '0.65rem', color: '#3b82f6', fontWeight: '800' }}>SMART HYBRID AVERAGE</span>
+            </div>
+          </div>
         </div>
 
-        <div style={{ marginBottom: '20px' }}>
-          <label style={{ display: 'block', fontSize: '13px', color: '#64748b', marginBottom: '5px' }}>Closing Time</label>
-          <input
-            type="time"
-            value={closingTime}
-            onChange={e => setClosingTime(e.target.value)}
-            style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }}
-          />
+        <div style={{ marginTop: '40px', display: 'flex', gap: '12px' }}>
+          <button onClick={handleSave} disabled={saving} style={{ flex: 1, background: '#2563eb', color: '#fff', border: 'none', padding: '14px', borderRadius: '12px', fontWeight: '800', fontSize: '1rem', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}>
+            {saving ? "Saving..." : "Apply Configuration"}
+          </button>
+          <button onClick={onClose} style={{ padding: '14px 24px', borderRadius: '12px', border: '1px solid #cbd5e1', background: '#fff', fontWeight: '700', color: '#64748b', cursor: 'pointer' }}>Cancel</button>
         </div>
-
-        <div style={{ marginBottom: '25px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <input
-            type="checkbox"
-            checked={isClosed}
-            onChange={e => setIsClosed(e.target.checked)}
-            style={{ width: '18px', height: '18px' }}
-          />
-          <span style={{ fontSize: '14px', fontWeight: '500' }}>Close Counter Manually</span>
-        </div>
-
-        <button
-          className="vc-btn-call"
-          onClick={handleSave}
-          disabled={saving}
-          style={{ width: '100%' }}
-        >
-          {saving ? "Saving..." : "Save Settings"}
-        </button>
       </div>
     </div>
   );

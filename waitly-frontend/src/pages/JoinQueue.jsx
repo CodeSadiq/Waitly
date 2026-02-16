@@ -15,13 +15,14 @@ export default function JoinQueue() {
   /* =========================
      STATE MANAGEMENT
      ========================= */
-  const [step, setStep] = useState(1); // 1: Identity, 2: Type, 3: Details/Pay, 4: Success
+  const [step, setStep] = useState(1); // 1: Identity, 2: Category, 3: Type, 4: Details/Pay, 5: Success
   const [bookingType, setBookingType] = useState(null); // 'walkin' | 'slot'
 
   const [form, setForm] = useState({
     name: "",
     counterIndex: "",
-    slotDateTime: ""
+    slotDateTime: "",
+    categoryId: "general"
   });
 
   const [queueStats, setQueueStats] = useState(null);
@@ -42,7 +43,7 @@ export default function JoinQueue() {
 
     const fetchStats = async () => {
       try {
-        const res = await fetch(`${API_BASE}/api/queue/stats?placeId=${placeId}&counterIndex=${form.counterIndex}`);
+        const res = await fetch(`${API_BASE}/api/queue/stats?placeId=${placeId}&counterIndex=${form.counterIndex}&categoryId=${form.categoryId}`);
         if (res.ok) {
           const data = await res.json();
           setQueueStats(data);
@@ -59,7 +60,7 @@ export default function JoinQueue() {
       }
       setLoadingSlots(true);
       try {
-        const res = await fetch(`${API_BASE}/api/queue/available-slots?placeId=${placeId}&counterIndex=${form.counterIndex}&date=${selectedDate}`);
+        const res = await fetch(`${API_BASE}/api/queue/available-slots?placeId=${placeId}&counterIndex=${form.counterIndex}&date=${selectedDate}&categoryId=${form.categoryId}`);
         if (res.ok) {
           const data = await res.json();
           setAvailableSlots(data.slots || []);
@@ -76,7 +77,7 @@ export default function JoinQueue() {
 
     fetchStats();
     fetchSlots();
-  }, [form.counterIndex, placeId, selectedDate]);
+  }, [form.counterIndex, placeId, selectedDate, form.categoryId]);
 
   /* =========================
      FETCH PLACE BY ID
@@ -142,7 +143,8 @@ export default function JoinQueue() {
       const payload = {
         placeId,
         counterIndex: form.counterIndex,
-        userName: form.name
+        userName: form.name,
+        categoryId: form.categoryId
       };
 
       if (bookingType === 'slot' && form.slotDateTime) {
@@ -175,7 +177,7 @@ export default function JoinQueue() {
       localStorage.setItem("waitly_token_id", data.tokenId);
       setGeneratedToken(data.tokenCode);
 
-      setStep(4);
+      setStep(5);
     } catch (err) {
       console.error(err);
       alert(err.message || "Unable to create ticket");
@@ -229,8 +231,35 @@ export default function JoinQueue() {
         </div>
       )}
 
-      {/* STEP 2: BOOKING TYPE */}
+      {/* STEP 2: CATEGORY SELECTION */}
       {step === 2 && (
+        <div className="join-card fade-in">
+          <button className="back-link-btn" onClick={prevStep}>← Back</button>
+          <h2>Type of Work</h2>
+          <p className="modal-sub">Tell us what you need help with</p>
+
+          <div className="category-selection-grid">
+            {(counters[form.counterIndex]?.services?.length > 0
+              ? counters[form.counterIndex].services
+              : [{ name: "General Service", categoryId: "general" }]
+            ).map((cat) => (
+              <button
+                key={cat.categoryId}
+                className={`category-chip ${form.categoryId === cat.categoryId ? 'selected' : ''}`}
+                onClick={() => { setForm({ ...form, categoryId: cat.categoryId }); nextStep(); }}
+              >
+                <div className="chip-content">
+                  <span className="cat-name">{cat.name}</span>
+                </div>
+                <div className="cat-arrow">→</div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* STEP 3: BOOKING TYPE */}
+      {step === 3 && (
         <div className="join-card fade-in">
           <button className="back-link-btn" onClick={prevStep}>← Back</button>
           <h2>Choose Option</h2>
@@ -270,8 +299,8 @@ export default function JoinQueue() {
         </div>
       )}
 
-      {/* STEP 3: DETAILS & PAYMENT */}
-      {step === 3 && (
+      {/* STEP 4: DETAILS & PAYMENT */}
+      {step === 4 && (
         <div className="join-card fade-in">
           <button className="back-link-btn" onClick={prevStep}>← Back</button>
 
@@ -373,8 +402,8 @@ export default function JoinQueue() {
         </div>
       )}
 
-      {/* STEP 4: SUCCESS */}
-      {step === 4 && (
+      {/* STEP 5: SUCCESS */}
+      {step === 5 && (
         <div className="join-card fade-in">
           <div className="success-animation">
             <svg viewBox="0 0 24 24" fill="none" class="checkmark">

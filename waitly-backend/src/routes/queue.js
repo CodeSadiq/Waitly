@@ -4,17 +4,17 @@ import Place from "../models/Place.js";
 import { generateTokenCode } from "../utils/generateToken.js";
 import { verifyUser } from "../middleware/authMiddleware.js";
 import { io } from "../server.js";
-import { getRealAverageTime, getQueueMetrics } from "../utils/queueLogic.js";
+import { getRealAverageTime, getQueueMetrics, getCrowdMetrics } from "../utils/queueLogic.js";
 
 const router = express.Router();
 
 
 /* =====================================================
-   AVAILABLE SLOTS
+   AVAILABLE SLOTS (HYBRID 70/30 SPLIT)
    ===================================================== */
 router.get("/available-slots", async (req, res) => {
   try {
-    const { placeId, counterIndex, date } = req.query; // date in YYYY-MM-DD
+    const { placeId, counterIndex, date, categoryId = "general" } = req.query; // date in YYYY-MM-DD
 
     if (!placeId || counterIndex === undefined || !date) {
       return res.status(400).json({ message: "placeId, counterIndex, and date required" });
@@ -29,92 +29,94 @@ router.get("/available-slots", async (req, res) => {
     // 1. Get Operating Hours
     const openingTime = counter.openingTime || "09:00";
     const closingTime = counter.closingTime || "17:00";
+    const lunchStart = counter.lunchStart || "13:00";
+    const lunchEnd = counter.lunchEnd || "14:00";
 
-    // 2. Calculate Dynamic Average Service Time (Real-time data)
-    const realAvgTime = await getRealAverageTime(placeId, counter.name, counter.queueWait.avgTime || 5);
+    // 2. Calculate Avg Time (Hybrid)
+    const avgTime = await getRealAverageTime(placeId, counter.name, categoryId);
 
-    // 3. Calculate Walk-in Backlog
-    const walkInCount = await Token.countDocuments({
-      place: placeId,
-      counterName: counter.name,
-      status: "Waiting",
-      scheduledTime: null
-    });
+    // 3. Define Timings
+    const startOfDay = new Date(date);
+    const [openH, openM] = openingTime.split(":").map(Number);
+    startOfDay.setHours(openH, openM, 0, 0);
 
-    const backlogMinutes = walkInCount * realAvgTime;
+    const endOfDay = new Date(date);
+    const [closeH, closeM] = closingTime.split(":").map(Number);
+    endOfDay.setHours(closeH, closeM, 0, 0);
 
-    // 4. Determine Start Time (Earliest possible slot)
-    const [openHour, openMin] = openingTime.split(":").map(Number);
+    // Lunch Window
+    const lunchS = new Date(date);
+    const [lsH, lsM] = lunchStart.split(":").map(Number);
+    lunchS.setHours(lsH, lsM, 0, 0);
 
-    let baseStart = new Date(date);
-    baseStart.setHours(openHour, openMin + backlogMinutes, 0, 0);
+    const lunchE = new Date(date);
+    const [leH, leM] = lunchEnd.split(":").map(Number);
+    lunchE.setHours(leH, leM, 0, 0);
 
-    const now = new Date();
-    if (new Date(date).toDateString() === now.toDateString()) {
-      baseStart = baseStart > now ? baseStart : now;
-    }
-
-    // Round up to next 5 minutes
-    const remainder = 5 - (baseStart.getMinutes() % 5);
-    baseStart.setMinutes(baseStart.getMinutes() + remainder);
-
-    // 5. Fetch Existing Booked Slots for this Date
-    const startOfDay = new Date(date); startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(date); endOfDay.setHours(23, 59, 59, 999);
+    // 4. Fetch Existing Slots
+    const dayStart = new Date(date); dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(date); dayEnd.setHours(23, 59, 59, 999);
 
     const bookedTokens = await Token.find({
       place: placeId,
       counterName: counter.name,
-      scheduledTime: { $gte: startOfDay, $lte: endOfDay },
+      scheduledTime: { $gte: dayStart, $lte: dayEnd },
       status: { $nin: ["Cancelled", "Skipped"] }
     }).select("scheduledTime");
 
     const bookedTimes = bookedTokens.map(t => new Date(t.scheduledTime).getTime());
 
-    // 6. Generate Valid Slots
-    const [closeHour, closeMin] = closingTime.split(":").map(Number);
-    const closeDate = new Date(date);
-    closeDate.setHours(closeHour, closeMin, 0, 0);
+    // 5. Generate Slots (70% Expose Logic)
+    // We strictly generate time blocks based on avgTime.
+    // E.g. 9:00, 9:10, 9:20...
+    // But we only expose 70% of capacity? 
+    // Implementation: In this strict slot system, we can just expose ALL calculated slots,
+    // but reserving timestamps for walk-ins happens implicitly by the "Hybrid Serving Rule" 
+    // OR we explicitly skip some slots here.
+    //
+    // Let's go with EXPLICIT SKIPPING for true Hybrid feel.
+    // Every 3rd slot is hidden (reserved for walk-in catchup)?
 
     const slots = [];
-    // Candidate step is 5 mins (granular choice for users)
-    // But buffer protection is `realAvgTime`
-    let currentTime = new Date(baseStart);
+    let currentTime = new Date(startOfDay);
+    let slotCount = 0;
 
-    while (currentTime < closeDate) {
-      const candidateTime = currentTime.getTime();
-
-      // Prevent booking in the past
-      if (candidateTime <= Date.now()) {
-        currentTime.setMinutes(currentTime.getMinutes() + 5);
+    while (currentTime < endOfDay) {
+      // Skip Lunch
+      if (currentTime >= lunchS && currentTime < lunchE) {
+        currentTime.setMinutes(currentTime.getMinutes() + avgTime);
         continue;
       }
 
-      let isBlocked = false;
+      // Past check
+      if (currentTime.getTime() <= Date.now()) {
+        currentTime.setMinutes(currentTime.getMinutes() + avgTime);
+        continue;
+      }
 
-      // Collision Check: blocked if within +/- AvgTime of ANY booked slot
-      // Formula: |Candidate - Booked| < AvgTime
-      // Example: Booked 9:00, Avg 10. 
-      // 8:55 (Diff 5) -> Blocked. 9:05 (Diff 5) -> Blocked. 9:10 (Diff 10) -> OK.
+      slotCount++;
 
-      for (let booked of bookedTimes) {
-        const diffMins = Math.abs(candidateTime - booked) / 60000;
-        // Strict collision: we cannot overlap with the service window
-        if (diffMins < realAvgTime) {
-          isBlocked = true;
-          break;
+      // 🎯 70/30 Logic: Skip every 3rd slot to leave buffer?
+      // 1 (Show), 2 (Show), 3 (Hide/Walk-in), 4 (Show)...
+      const isWalkInBuffer = (slotCount % 3 === 0);
+
+      if (!isWalkInBuffer) {
+        const timeMs = currentTime.getTime();
+
+        // Check Booked
+        // Since we use strict blocks, exact match is enough?
+        // Or safer window check.
+        const isBooked = bookedTimes.some(bt => Math.abs(bt - timeMs) < (avgTime * 60000 / 2));
+
+        if (!isBooked) {
+          slots.push(currentTime.toISOString());
         }
       }
 
-      if (!isBlocked) {
-        slots.push(currentTime.toISOString());
-      }
-
-      // Next candidate in 5 mins
-      currentTime.setMinutes(currentTime.getMinutes() + 5);
+      currentTime.setMinutes(currentTime.getMinutes() + avgTime);
     }
 
-    res.json({ slots, openingTime, closingTime, backlogMinutes, avgTime: realAvgTime });
+    res.json({ slots, openingTime, closingTime, avgTime });
 
   } catch (err) {
     console.error("SLOTS ERROR:", err);
@@ -123,11 +125,11 @@ router.get("/available-slots", async (req, res) => {
 });
 
 /* =====================================================
-   JOIN QUEUE (LOGIN REQUIRED)
+   JOIN QUEUE (Walk-in or Slot)
    ===================================================== */
 router.post("/join", verifyUser, async (req, res) => {
   try {
-    const { placeId, counterIndex, userName, scheduledTime, timeSlotLabel } = req.body;
+    const { placeId, counterIndex, userName, scheduledTime, timeSlotLabel, categoryId = "general" } = req.body;
 
     if (!placeId || counterIndex === undefined || !userName) {
       return res.status(400).json({
@@ -145,13 +147,18 @@ router.post("/join", verifyUser, async (req, res) => {
       return res.status(400).json({ message: "Counter is currently closed for new tokens." });
     }
 
+    // Constraint removed: Users can now book multiple tickets for the same counter
+
     const tokenData = {
       place: place._id,
       counterName: counter.name,
       userName: userName,
       user: req.user._id,
       tokenCode: generateTokenCode(),
-      status: "Waiting"
+      status: "Waiting",
+      category: categoryId,
+      verifiedAt: new Date(), // Auto-verify on join for now
+      type: scheduledTime ? "Slot" : "Walk-in"
     };
 
     // Add optional scheduling details
@@ -172,10 +179,8 @@ router.post("/join", verifyUser, async (req, res) => {
   }
 });
 
-// Local helpers moved to ../utils/queueLogic.js for shared use.
-
 /* =====================================================
-   PRE-JOIN STATS (No Token Needed)
+   STATS (PRE-JOIN) + CROWD DENSITY
    ===================================================== */
 router.get("/stats", async (req, res) => {
   try {
@@ -191,24 +196,13 @@ router.get("/stats", async (req, res) => {
     const counter = place.counters[counterIndex];
     if (!counter) return res.status(400).json({ message: "Invalid counter" });
 
-    // Count people ahead (Waiting + Serving)
-    const peopleAhead = await Token.countDocuments({
-      place: place._id,
-      counterName: counter.name,
-      $or: [
-        { status: "Waiting" },
-        { status: "Serving" }
-      ]
-    });
-
     // Use SIMULATION for accurate stats
-    // For Stats (New Walk-in), we want to know how many people are ahead of the END of the line.
-    // So we assume the target is "The Last Walk-in".
     const metrics = await getQueueMetrics(placeId, counter.name, null);
 
     res.json({
       peopleAhead: metrics.peopleAhead,
-      estimatedWait: metrics.estimatedWait
+      estimatedWait: metrics.estimatedWait,
+      crowdLevel: metrics.crowdLevel // 🔥 SENT TO FRONTEND
     });
   } catch (err) {
     console.error(err);
@@ -236,11 +230,13 @@ router.get("/ticket/:tokenId", async (req, res) => {
 
     let peopleAhead = 0;
     let estimatedWait = 0;
+    let crowdLevel = "Unknown";
 
     if (token.status === "Waiting") {
       const metrics = await getQueueMetrics(token.place._id, token.counterName, token._id);
       peopleAhead = metrics.peopleAhead;
       estimatedWait = metrics.estimatedWait;
+      crowdLevel = metrics.crowdLevel;
     }
 
     res.json({
@@ -253,6 +249,7 @@ router.get("/ticket/:tokenId", async (req, res) => {
       place: token.place,
       peopleAhead,
       estimatedWait,
+      crowdLevel,
       timeSlotLabel: token.timeSlotLabel
     });
   } catch (err) {
@@ -281,13 +278,11 @@ router.get("/my-tickets", verifyUser, async (req, res) => {
 
     const enriched = await Promise.all(
       tokens.map(async (token) => {
-        // Auto-Check Expiration for Response (so user sees it immediately)
+        // Auto-Check Expiration
         if (token.status === "Waiting" && token.scheduledTime) {
           const thirtyMinsAgo = new Date(Date.now() - 30 * 60000);
           if (new Date(token.scheduledTime) < thirtyMinsAgo) {
             token.status = "Expired";
-            // DB will be updated by getQueueMetrics or next check, 
-            // but we assume it's effectively expired now.
           }
         }
 
@@ -298,9 +293,6 @@ router.get("/my-tickets", verifyUser, async (req, res) => {
           const metrics = await getQueueMetrics(token.place._id, token.counterName, token._id);
           peopleAhead = metrics.peopleAhead;
           estimatedWait = metrics.estimatedWait;
-        } else if (token.status === "Serving") {
-          peopleAhead = 0;
-          estimatedWait = 0;
         }
 
         return {
@@ -342,7 +334,7 @@ router.get("/ticket-history", verifyUser, async (req, res) => {
 });
 
 /* =====================================================
-   ❌ CANCEL TICKET (User cancels their own ticket)
+   ❌ CANCEL TICKET
    ===================================================== */
 router.put("/cancel/:id", verifyUser, async (req, res) => {
   try {
@@ -357,7 +349,7 @@ router.put("/cancel/:id", verifyUser, async (req, res) => {
     token.completedAt = new Date();
     await token.save();
 
-    io.emit("token-updated"); // Notify staff/others
+    io.emit("token-updated");
 
     res.json({ success: true, message: "Ticket cancelled" });
   } catch (err) {
@@ -367,7 +359,7 @@ router.put("/cancel/:id", verifyUser, async (req, res) => {
 });
 
 /* =====================================================
-   🗑 DELETE TICKET (Remove from dashboard/history)
+   🗑 DELETE TICKET
    ===================================================== */
 router.delete("/delete/:id", verifyUser, async (req, res) => {
   try {

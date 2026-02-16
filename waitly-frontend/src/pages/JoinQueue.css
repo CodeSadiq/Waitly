@@ -1,6 +1,6 @@
 /* PAGE BACKGROUND */
 .join-page {
-  min-height: calc(100vh - 72px);
+  min-height: calc(100vh - var(--nav-height));
   background: linear-gradient(135deg, #f9fafb, #eef2ff);
   display: flex;
   align-items: center;
@@ -213,6 +213,53 @@
   border-color: #4f46e5;
   box-shadow: 0 4px 12px rgba(79, 70, 229, 0.08);
   transform: translateY(-2px);
+}
+
+.category-selection-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.category-chip {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px 24px;
+  background: #fff;
+  border: 2px solid #f1f5f9;
+  border-radius: 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
+}
+
+.category-chip:hover {
+  border-color: #e2e8f0;
+  background: #f8fafc;
+}
+
+.category-chip.selected {
+  border-color: #2563eb;
+  background: #eff6ff;
+}
+
+.category-chip .cat-name {
+  font-weight: 700;
+  color: #1e293b;
+  font-size: 1rem;
+}
+
+.category-chip .cat-arrow {
+  color: #94a3b8;
+  font-weight: 800;
+  transition: transform 0.2s;
+}
+
+.category-chip:hover .cat-arrow {
+  transform: translateX(4px);
+  color: #2563eb;
 }
 
 .option-card .icon {

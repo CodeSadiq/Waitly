@@ -79,7 +79,12 @@ function TicketCard({ ticket, onPrint, onCancel, onDelete, isHistory }) {
                     </div>
                     <div className="meta-item right">
                         <span className="meta-label">Booking For</span>
-                        <span className="meta-value">{ticket.userName}</span>
+                        <div style={{ textAlign: 'right' }}>
+                            <span className="meta-value">{ticket.userName}</span>
+                            <div style={{ fontSize: '0.65rem', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', marginTop: '2px' }}>
+                                {ticket.category || "General Service"}
+                            </div>
+                        </div>
                     </div>
                 </div>
 

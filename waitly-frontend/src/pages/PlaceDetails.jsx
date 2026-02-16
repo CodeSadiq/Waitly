@@ -1,8 +1,8 @@
 import { useNavigate } from "react-router-dom";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
-import AutoWaitPopup from "../components/AutoWaitPopup";
-import { canShowPopup, hasGivenFeedback } from "../utils/waitStorage";
+// import AutoWaitPopup (Removed)
+// import wait storage utils (Removed)
 import { formatWaitTime } from "../utils/timeFormat";
 import { io } from "socket.io-client";
 import "./PlaceDetails.css";
@@ -30,9 +30,9 @@ const socket = io(import.meta.env.VITE_API_BASE || "http://localhost:5000", {
 export default function PlaceDetails({ place, onWaitUpdated, userLocation }) {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [showWaitPopup, setShowWaitPopup] = useState(false);
+  // removed auto popup state
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
-  const autoTimerRef = useRef(null);
+  const [crowdData, setCrowdData] = useState({}); // Mapping of counter -> crowdLevel
 
   const counters = Array.isArray(place?.counters)
     ? place.counters
@@ -60,55 +60,23 @@ export default function PlaceDetails({ place, onWaitUpdated, userLocation }) {
   }, [place?._id, onWaitUpdated]);
 
   /* =========================
-     ⏳ AUTO POPUP (LONG STAY)
-     ========================= */
-  /* =========================
-     ⏳ SMART AUTO POPUP
+     FETCH CROWD DENSITY (Initial Load)
      ========================= */
   useEffect(() => {
-    // Cleanup previous timer
-    if (autoTimerRef.current) {
-      clearTimeout(autoTimerRef.current);
-      autoTimerRef.current = null;
-    }
+    if (!place || !place._id) return;
 
-    // 1. Basic Checks
-    if (!place || !place.location || !userLocation) return;
-    if (place.isUserLocation || place._id === "my-location") return;
-    if (user && (user.role === 'staff' || user.role === 'admin')) return;
+    // Fetch crowd metrics for each counter
+    // (Optimization: Backend could send this in 'place' object directly later)
+    counters.forEach(counter => {
+      fetch(`${import.meta.env.VITE_API_BASE}/api/queue/stats?placeId=${place._id}&counterIndex=${counters.indexOf(counter)}`)
+        .then(res => res.json())
+        .then(data => {
+          setCrowdData(prev => ({ ...prev, [counter.name]: data.crowdLevel }));
+        })
+        .catch(err => console.error("Crowd fetch error", err));
+    });
+  }, [place]);
 
-    // 2. Check Local Storage (Cooldown & Already Submitted)
-    if (!canShowPopup(place._id)) return;
-    if (hasGivenFeedback(place._id)) return;
-
-    // 3. 🌍 Geo-Fence Check (Haversine)
-    const dist = calculateDistance(
-      userLocation.lat,
-      userLocation.lng,
-      place.location.lat,
-      place.location.lng
-    );
-
-    // 🌍 PROJECT SUBMISSION NOTE: 0.5 km (500m) is standard.
-    // Change `0.5` to `50.0` to test from far away.
-    if (dist > 0.5) {
-      console.log(`📍 User too far (${dist.toFixed(2)}km). Popup suppressed.`);
-      return;
-    }
-
-    // 4. Start Timer if all checks pass
-    // 🕒 PROJECT SUBMISSION NOTE: 20000ms (20s) is standard.
-    // Change to 5000 (5s) for quicker testing.
-    autoTimerRef.current = setTimeout(() => {
-      // 🛡️ Double check: User might have manually submitted while timer was running
-      if (hasGivenFeedback(place._id)) return;
-      setShowWaitPopup(true);
-    }, 20000);
-
-    return () => {
-      if (autoTimerRef.current) clearTimeout(autoTimerRef.current);
-    };
-  }, [place, userLocation, user]);
 
   if (!place) {
     return (
@@ -156,47 +124,62 @@ export default function PlaceDetails({ place, onWaitUpdated, userLocation }) {
         {place.address || "Address not available"}
       </p>
 
-      <h4 className="section-heading">Live Wait Times</h4>
+      {/* CHANGED SECTION TITLE */}
+      <h4 className="section-heading">Crowd & Wait Times</h4>
 
       <div className="wait-times">
         {counters.length > 0 ? (
           counters.map((counter, index) => {
-            const avg = counter.normalWait?.avgTime || 0;
+            // Using logic-based averages now, not user reported
+            const avg = counter.queueWait?.avgTime || 5;
+            const density = crowdData[counter.name] || "Unknown";
 
-            const waitClass =
-              avg <= 10
-                ? "wait-low"
-                : avg <= 30
-                  ? "wait-medium"
-                  : "wait-high";
+            let densityIcon = (
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                <circle cx="12" cy="12" r="10" />
+              </svg>
+            );
+            let densityColor = "gray";
+
+            if (density === "Low") { densityColor = "low"; }
+            if (density === "Moderate") { densityColor = "medium"; }
+            if (density === "High") { densityColor = "high"; }
+            if (density === "Critical") {
+              densityColor = "critical";
+              densityIcon = (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2L1 21h22L12 2zm1 14h-2v2h2v-2zm0-6h-2v4h2v-4z" />
+                </svg>
+              );
+            }
 
             return (
               <div key={index} className="wait-row">
-                <span className="wait-label">
+                <span className="wait-label top-aligned">
                   <span className="counter-icon">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                      <rect x="3" y="10" width="18" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.5" />
-                      <rect x="6" y="5" width="12" height="5" rx="1" stroke="currentColor" strokeWidth="1.5" />
-                      <circle cx="12" cy="8" r="1.2" fill="currentColor" />
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                      <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
                     </svg>
                   </span>
                   {counter.name}
                 </span>
 
-                <strong className={`wait-value ${waitClass}`}>
-                  {avg > 0 ? formatWaitTime(avg) : "No data"}
-                </strong>
+                <div className="crowd-info">
+                  <div className={`crowd-badge ${densityColor}`}>
+                    <span className="icon-wrapper">{densityIcon}</span>
+                    <span>{density} Crowd</span>
+                  </div>
+                  <span className="avg-service">
+                    ~{avg} min service
+                  </span>
+                </div>
               </div>
             );
           })
         ) : (
           <p>No counters available</p>
         )}
-      </div>
-
-      <div className="best-time">
-        <h4 className="section-heading">Best Time to Visit</h4>
-        <p className="muted">🚧 Future Enhancement</p>
       </div>
 
       {user && (user.role === 'staff' || user.role === 'admin') ? (
@@ -232,22 +215,11 @@ export default function PlaceDetails({ place, onWaitUpdated, userLocation }) {
             </button>
           )}
 
-          <button
-            className="join-queue-btn secondary"
-            onClick={() => setShowWaitPopup(true)}
-          >
-            Update Wait Time
-          </button>
+          {/* REMOVED UPDATE WAIT TIME BUTTON */}
         </>
       )}
 
-      {showWaitPopup && (
-        <AutoWaitPopup
-          place={place}
-          onClose={() => setShowWaitPopup(false)}
-          onWaitUpdated={onWaitUpdated}
-        />
-      )}
+      {/* REMOVED AutoWaitPopup COMPONENT */}
 
       {/* LOGIN PROMPT MODAL */}
       {showLoginPrompt && (

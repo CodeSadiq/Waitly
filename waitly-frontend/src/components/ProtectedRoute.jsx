@@ -12,7 +12,7 @@ export default function ProtectedRoute({ children, allowedRoles = [] }) {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                minHeight: "calc(100vh - 72px)",
+                minHeight: "calc(100vh - var(--nav-height))",
                 fontSize: "16px",
                 color: "#6b7280"
             }}>

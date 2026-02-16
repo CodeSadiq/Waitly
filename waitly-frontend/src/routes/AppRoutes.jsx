@@ -1,4 +1,5 @@
 import { Routes, Route } from "react-router-dom";
+import Landing from "../pages/Landing";
 import Home from "../pages/Home";
 import Login from "../pages/Login";
 import JoinQueue from "../pages/JoinQueue";
@@ -9,7 +10,8 @@ import ProtectedRoute from "./ProtectedRoute";
 export default function AppRoutes() {
   return (
     <Routes>
-      <Route path="/" element={<Home />} />
+      <Route path="/" element={<Landing />} />
+      <Route path="/map" element={<Home />} />
       <Route path="/login" element={<Login />} />
       <Route path="/join-queue/:placeId" element={<JoinQueue />} />
 
@@ -22,7 +24,7 @@ export default function AppRoutes() {
         }
       />
 
-       <Route path="/staff" element={<StaffDashboard />} />
+      <Route path="/staff" element={<StaffDashboard />} />
     </Routes>
   );
 }

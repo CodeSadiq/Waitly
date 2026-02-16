@@ -3,7 +3,7 @@ import Place from "../models/Place.js";
 import Staff from "../models/Staff.js";
 import Token from "../models/Token.js";
 import { verifyStaff } from "../middleware/authMiddleware.js";
-import { getNextTicket, getRealAverageTime } from "../utils/queueLogic.js";
+import { getNextTicket, getRealAverageTime, getCrowdMetrics, getDetailedAverageTime } from "../utils/queueLogic.js";
 import { io } from "../server.js";
 
 const router = express.Router();
@@ -229,13 +229,24 @@ router.get("/status", verifyStaff, async (req, res) => {
             .limit(3);
 
 
+        // 4. Intelligence Metrics
+        const crowd = await getCrowdMetrics(req.user.placeId, counterName);
+        const avgTimes = await getDetailedAverageTime(req.user.placeId, counterName);
+
+        // 5. Get Counter Details (Schedule + Categories)
+        const place = await Place.findById(req.user.placeId);
+        const counter = place?.counters.find(c => c.name === counterName);
+
         res.json({
             currentTicket,
             waiting: waitingCount,
             completed: completedCount,
             skipped: skippedCount,
             slotted: activeSlottedCount,
-            nextTickets
+            nextTickets,
+            crowd,
+            avgTimes,
+            counterConfig: counter // 🔥 Added
         });
 
     } catch (err) {
@@ -430,6 +441,70 @@ router.post("/counters/update-schedule", verifyStaff, async (req, res) => {
     } catch (err) {
         console.error("UPDATE SCHEDULE ERROR:", err);
         res.status(500).json({ message: "Failed to update schedule" });
+    }
+});
+
+/* =====================================================
+   UPDATE COUNTER METRICS (STAFF TARGET)
+   ===================================================== */
+router.post("/counters/update-metrics", verifyStaff, async (req, res) => {
+    try {
+        const { counterName, staffAvgTime, categoryId = "general" } = req.body;
+
+        if (!counterName) {
+            return res.status(400).json({ message: "counterName is required" });
+        }
+
+        const place = await Place.findById(req.user.placeId);
+        if (!place) return res.status(404).json({ message: "Place not found" });
+
+        const counter = place.counters.find(c => c.name === counterName);
+        if (!counter) return res.status(404).json({ message: "Counter not found" });
+
+        // Ensure services array exists
+        if (!counter.services) counter.services = [];
+
+        // Support for schedule updates in same call
+        if (req.body.openingTime !== undefined) counter.openingTime = req.body.openingTime;
+        if (req.body.closingTime !== undefined) counter.closingTime = req.body.closingTime;
+        if (req.body.isClosed !== undefined) counter.isClosed = req.body.isClosed;
+
+        // Ensure queue is enabled for the counter
+        if (counter.queueWait) {
+            counter.queueWait.enabled = true;
+        }
+
+        if (staffAvgTime !== undefined) {
+            // Find or create service category
+            let service = counter.services.find(s => s.categoryId === categoryId);
+            if (!service) {
+                service = {
+                    categoryId,
+                    name: categoryId.charAt(0).toUpperCase() + categoryId.slice(1),
+                    staffAvgTime: Number(staffAvgTime)
+                };
+                counter.services.push(service);
+            } else {
+                service.staffAvgTime = Number(staffAvgTime);
+            }
+        }
+
+        // Add support for "categories" array to bulk update
+        if (req.body.categories && Array.isArray(req.body.categories)) {
+            counter.services = req.body.categories.map(c => ({
+                categoryId: c.categoryId || c.name.toLowerCase().replace(/\s+/g, "_"),
+                name: c.name,
+                staffAvgTime: Number(c.staffAvgTime || 5)
+            }));
+        }
+
+        await place.save();
+        io.emit("token-updated");
+
+        res.json({ success: true, message: "Settings updated", counter });
+    } catch (err) {
+        console.error("UPDATE METRICS ERROR:", err);
+        res.status(500).json({ message: "Failed to update metrics" });
     }
 });
 
