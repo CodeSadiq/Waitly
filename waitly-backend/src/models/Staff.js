@@ -34,9 +34,13 @@ const staffSchema = new mongoose.Schema({
   },
   application: {
     placeId: { type: mongoose.Schema.Types.ObjectId, ref: "Place" },
-    appliedAt: Date
+    appliedAt: Date,
+    fullName: String,
+    staffId: String,
+    designation: String,
+    counterName: String
   },
-  requestDetails: { // Legacy: Keep for backward compatibility or direct creation
+  requestDetails: {
     placeName: String,
     address: String,
     counters: [String]

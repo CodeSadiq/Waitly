@@ -175,18 +175,6 @@ html {
     position: relative;
 }
 
-.highlight-text::after {
-    content: "";
-    position: absolute;
-    bottom: 2px;
-    left: 0;
-    right: 0;
-    height: 8px;
-    background: linear-gradient(90deg, rgba(37, 99, 235, 0.2), rgba(124, 58, 237, 0.2));
-    border-radius: 4px;
-    z-index: -1;
-}
-
 .cta-buttons {
     display: flex;
     gap: 16px;

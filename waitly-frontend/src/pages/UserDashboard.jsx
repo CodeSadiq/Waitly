@@ -114,8 +114,10 @@ function TicketCard({ ticket, onPrint, onCancel, onDelete, isHistory }) {
                     ) : (
                         <>
                             <div className="stat-brick">
-                                <span className="brick-val" style={{ fontSize: '15px', fontWeight: '800' }}>{ticket.peopleAhead}</span>
-                                <span className="brick-lbl">Ahead</span>
+                                <span className="brick-val" style={{ fontSize: '15px', fontWeight: '800' }}>
+                                    {ticket.queuePosition}{ticket.queuePosition === 1 ? 'st' : ticket.queuePosition === 2 ? 'nd' : ticket.queuePosition === 3 ? 'rd' : 'th'}
+                                </span>
+                                <span className="brick-lbl">Position</span>
                             </div>
                             <div className="brick-divider"></div>
                             <div className="stat-brick">
@@ -136,11 +138,17 @@ function TicketCard({ ticket, onPrint, onCancel, onDelete, isHistory }) {
                     {isWaiting ? (
                         ticket.timeSlotLabel ? (
                             <div className="info-msg walkin-msg">
-                                <strong>Note:</strong> Please reach the counter on time. You may experience a slight delay due to the ticket currently being served ahead of you.
+                                {new Date(ticket.scheduledTime).toLocaleDateString() === new Date().toLocaleDateString()
+                                    ? <span><strong>Tip:</strong> Please reach 5-10 mins early. Active queue may cause slight timing shifts.</span>
+                                    : <span><strong>Note:</strong> Please reach the counter by {ticket.timeSlotLabel?.split(', ')[1]} tomorrow.</span>
+                                }
                             </div>
                         ) : (
                             <div className="info-msg walkin-msg">
-                                <strong>Note:</strong> Wait: {formatWaitTime(ticket.estimatedWait)} from counter opening time.
+                                {ticket.estimatedWait > 0
+                                    ? <span><strong>Est. Arrival:</strong> Your turn is expected in about {formatWaitTime(ticket.estimatedWait)}.</span>
+                                    : <span><strong>Get Ready!</strong> You are next in line. Please stay near the counter.</span>
+                                }
                             </div>
                         )
                     ) : isServing ? (

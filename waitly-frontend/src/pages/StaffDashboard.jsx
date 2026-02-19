@@ -7,6 +7,8 @@ import QRCode from 'react-qr-code';
 import { Html5Qrcode } from "html5-qrcode";
 import { formatWaitTime, formatRelativeDate } from "../utils/timeFormat";
 import "./StaffDashboard.css";
+import "./StaffDashboard-mobile.css";
+import MapView from "../components/MapView";
 
 // Single socket instance
 const socket = io(API_BASE, {
@@ -37,11 +39,75 @@ export default function StaffDashboard() {
   const [avgTimes, setAvgTimes] = useState({ staff: 5, system: 5, final: 5 });
   const [activeCounterConfig, setActiveCounterConfig] = useState(null);
 
+  // Onboarding States
+  const [onboardingStep, setOnboardingStep] = useState(user?.status === "applied" ? "pending" : "find");
+  const [userLocation, setUserLocation] = useState(null);
+  const [places, setPlaces] = useState([]);
+  const [onboardingMapMode, setOnboardingMapMode] = useState(false);
+  const [newPlaceData, setNewPlaceData] = useState({ name: "", category: "bank", address: "", lat: "", lng: "" });
+  const [onboardingSearchMode, setOnboardingSearchMode] = useState(true); // Toggle between Map and Search
+  const [selectedPlaceForApp, setSelectedPlaceForApp] = useState(null);
+  const [appForm, setAppForm] = useState({
+    fullName: user?.username || "",
+    staffId: "",
+    designation: "",
+    counterName: ""
+  });
+
   const getAuthHeaders = () => {
     const token = localStorage.getItem('waitly_token');
     const headers = { "Content-Type": "application/json" };
     if (token) headers["Authorization"] = `Bearer ${token}`;
     return headers;
+  };
+
+  // Helper function to get category name from category ID
+  const getCategoryName = (categoryId) => {
+    if (!categoryId) return "General Service";
+    if (!activeCounterConfig || !activeCounterConfig.services) return categoryId;
+    const category = activeCounterConfig.services.find(s => s.categoryId === categoryId);
+    return category ? category.name : categoryId;
+  };
+
+  const renderCategoryIcon = (category) => {
+    const color = "currentColor";
+    const size = 22;
+    switch (category?.toLowerCase()) {
+      case "bank":
+        return (
+          <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 14v3M12 14v3M16 14v3" />
+          </svg>
+        );
+      case "hospital":
+        return (
+          <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2" />
+            <path d="M12 8v8M8 12h8" />
+          </svg>
+        );
+      case "government":
+        return (
+          <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 21h18M3 7l9-4 9 4M19 21v-7M5 21v-7M2 7h20M10 21v-7M14 21v-7" />
+          </svg>
+        );
+      case "restaurant":
+        return (
+          <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 2v7c0 1.1.9 2 2 2h4V2" />
+            <path d="M7 2v20" />
+            <path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3M21 15v7" />
+          </svg>
+        );
+      default:
+        return (
+          <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="4" y="2" width="16" height="20" rx="2" ry="2" />
+            <path d="M9 22v-4h6v4M8 6h.01M16 6h.01M8 10h.01M16 10h.01M8 14h.01M16 14h.01" />
+          </svg>
+        );
+    }
   };
 
 
@@ -87,6 +153,23 @@ export default function StaffDashboard() {
       // showNotification("Failed to fetch all tokens", "error");
     }
   };
+
+  // Onboarding Effects
+  useEffect(() => {
+    if (user && (user.status === "unassigned" || !user.placeId) && !userLocation) {
+      navigator.geolocation.getCurrentPosition(async (pos) => {
+        const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        setUserLocation(coords);
+        try {
+          const res = await fetch(`${API_BASE}/api/location/nearby-places?lat=${coords.lat}&lng=${coords.lng}`);
+          const data = await res.json();
+          setPlaces(Array.isArray(data) ? data : []);
+        } catch (e) {
+          console.error("Failed to load map places", e);
+        }
+      });
+    }
+  }, [user, userLocation]);
 
   // Redirect if not staff or not logged in
   useEffect(() => {
@@ -349,17 +432,39 @@ export default function StaffDashboard() {
     }
   };
 
-  const applyForPlace = async (placeId) => {
-    setApplying(placeId);
+  const applyForPlace = async (e, isNew = false) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (applying) return;
+
+    if (!selectedPlaceForApp && !isNew) return;
+
+    setApplying(true);
     try {
+      const payload = {
+        ...appForm
+      };
+
+      if (isNew) {
+        payload.newPlaceData = {
+          name: selectedPlaceForApp.name,
+          address: selectedPlaceForApp.address,
+          category: selectedPlaceForApp.category,
+          location: selectedPlaceForApp.location
+        };
+      } else {
+        payload.placeId = selectedPlaceForApp._id;
+      }
+
       const res = await fetch(`${API_BASE}/api/staff/places/apply`, {
         method: "POST",
         headers: getAuthHeaders(),
-        body: JSON.stringify({ placeId }),
+        body: JSON.stringify(payload),
         credentials: "include"
       });
       if (res.ok) {
-        showNotification("Application sent! Waiting for admin approval.", "success");
+        showNotification(isNew ? "New workplace proposed & application sent!" : "Application sent! Waiting for admin approval.", "success");
+        setSelectedPlaceForApp(null);
+        setOnboardingStep("pending");
         setTimeout(async () => await loadUser(), 1500);
       } else {
         const errData = await res.json().catch(() => ({}));
@@ -401,10 +506,10 @@ export default function StaffDashboard() {
     );
   }
 
-  // 1. Join Workplace / Pending Flow (Onboarding)
+  // 1. Join Workplace / Pending Flow (Onboarding Redesigned)
   if (user.status === "unassigned" || user.status === "applied" || user.status === "pending" || !user.placeId) {
     return (
-      <div className="staff-dashboard-container">
+      <div className="staff-dashboard-container onboarding-v2">
         <header className="staff-header-simple">
           <div className="brand-logo">
             <div className="logo-icon">
@@ -415,100 +520,300 @@ export default function StaffDashboard() {
           <button className="logout-text-btn" onClick={logout}>Logout</button>
         </header>
 
-        <div className="onboarding-content">
-          <div className="onboarding-hero">
-            <h1>Welcome to Waitly Staff Portal</h1>
-            <p>The professional way to manage customer queues, reduce wait times, and improve service efficiency.</p>
-          </div>
+        <div className="onboarding-content-v2">
+          {user.status === "applied" || user.status === "pending" ? (
+            <div className="status-card-v2 pending">
+              <div className="status-badge-v2">Pending Approval</div>
+              <div className="status-header">
+                <h2>Application Under Review</h2>
+                <div className="queue-mgmt-tag">Queue Management System</div>
+                <div className="pending-location-sub">
+                  <p>You've applied to join</p>
+                  <strong>{appliedPlace ? appliedPlace.name : "your workplace"}</strong>
+                </div>
+              </div>
 
-          <div className="onboarding-steps">
-            <div className="step-card">
-              <div className="step-icon">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-              </div>
-              <h3>Find Your Workplace</h3>
-              <p>Search for your organization or branch in our database using the search bar below.</p>
-            </div>
-            <div className="step-card">
-              <div className="step-icon">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>
-              </div>
-              <h3>Request Access</h3>
-              <p>Select your workplace and submit a request. Your admin will verify your identity.</p>
-            </div>
-            <div className="step-card">
-              <div className="step-icon">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
-              </div>
-              <h3>Manage Queues</h3>
-              <p>Once approved, you can call tokens, track wait times, and serve customers efficiently.</p>
-            </div>
-          </div>
+              {user.application && (
+                <div className="submitted-summary">
+                  <div className="summary-item">
+                    <div className="summary-icon">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                    </div>
+                    <div className="summary-text">
+                      <label>Identity</label>
+                      <span>{user.application.fullName} ({user.application.staffId})</span>
+                    </div>
+                  </div>
+                  <div className="summary-item">
+                    <div className="summary-icon">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+                    </div>
+                    <div className="summary-text">
+                      <label>Role & Counter</label>
+                      <span>{user.application.designation} — {user.application.counterName}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
 
-          <div className="workplace-action-area">
-            {(user.status === "applied" || user.status === "pending") ? (
-              <div className="status-card pending">
-                <div className="status-icon-pulse">
-                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
-                </div>
-                <div className="status-info">
-                  <h3>Application Pending</h3>
-                  <p>You have requested access to <strong>{appliedPlace ? appliedPlace.name : "your workplace"}</strong>.</p>
-                  <p className="status-sub">Please wait for an administrator to approve your request.</p>
-                </div>
-                <div className="status-actions">
-                  <button className="btn-refresh" onClick={() => loadUser()}>Check Status</button>
-                  <button className="btn-cancel" onClick={cancelApplication}>Cancel Request</button>
-                </div>
-              </div>
-            ) : (
-              <div className="search-section">
-                <h2>Join an Existing Workplace</h2>
-                <div className="search-bar-large">
-                  <input
-                    type="text"
-                    placeholder="Search by hospital, bank, or place name..."
-                    value={searchQuery}
-                    onChange={e => { setSearchQuery(e.target.value); setSearchError(""); }}
-                    onKeyDown={e => e.key === 'Enter' && searchPlaces()}
-                  />
-                  <button onClick={searchPlaces} disabled={searching}>
-                    {searching ? "Searching..." : "Search"}
+              <div className="pending-footer">
+                <p>Administrators have been notified. Please wait for verification.</p>
+                <div className="pending-actions">
+                  <button className="btn-refresh-v2" onClick={() => loadUser()}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '8px' }}><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+                    Refresh Status
+                  </button>
+                  <button className="btn-cancel-v2" onClick={cancelApplication}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '8px' }}><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="9" x2="15" y2="15"></line><line x1="15" y1="9" x2="9" y2="15"></line></svg>
+                    Cancel Request
                   </button>
                 </div>
+              </div>
+            </div>
+          ) : (
+            <div className="setup-flow">
+              {onboardingStep !== "details" && onboardingStep !== "new-place" ? (
+                <div className="find-workplace-step">
+                  <div className="onboarding-hero-v2">
+                    <div className="queue-mgmt-tag">Queue Management System</div>
+                    <h1>Where do you work?</h1>
+                    <p>Find or add your workplace to start managing queues.</p>
+                  </div>
 
-                {searchError && <div className="error-banner">{searchError}</div>}
+                  <div className="search-map-toggle">
+                    <button
+                      className={onboardingSearchMode ? "active" : ""}
+                      onClick={() => setOnboardingSearchMode(true)}
+                    >
+                      Search
+                    </button>
+                    <button
+                      className={!onboardingSearchMode ? "active" : ""}
+                      onClick={() => setOnboardingSearchMode(false)}
+                    >
+                      Map View
+                    </button>
+                  </div>
 
-                <div className="search-results-list">
-                  {searchResults.map(p => (
-                    <div key={p._id} className="result-item">
-                      <div className="result-info">
-                        <h4>{p.name}</h4>
-                        <p>{p.address}</p>
-                        <span className="category-tag">{p.category}</span>
+                  {onboardingSearchMode ? (
+                    <div className="search-pane">
+                      <div className="search-bar-modern">
+                        <input
+                          type="text"
+                          placeholder="Hospital, Bank, or Place Name..."
+                          value={searchQuery}
+                          onChange={e => { setSearchQuery(e.target.value); setSearchError(""); }}
+                          onKeyDown={e => e.key === 'Enter' && searchPlaces()}
+                        />
+                        <button onClick={searchPlaces} disabled={searching} className="btn-search-modern">
+                          {searching ? (
+                            <svg className="spin" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg>
+                          ) : (
+                            "Search"
+                          )}
+                        </button>
                       </div>
-                      <button
-                        className="btn-apply"
-                        disabled={applying === p._id || p.hasActiveStaff}
-                        onClick={() => applyForPlace(p._id)}
-                        style={p.hasActiveStaff ? { background: '#f1f5f9', color: '#94a3b8', borderColor: '#e2e8f0' } : {}}
-                      >
-                        {p.hasActiveStaff
-                          ? "Already Approved"
-                          : applying === p._id
-                            ? "Sending..."
-                            : "Request for Queue Management"
-                        }
-                      </button>
+
+                      {searchError && <div className="error-pill">{searchError}</div>}
+
+                      <div className="search-results-modern">
+                        {searchResults.map(p => (
+                          <div key={p._id} className="modern-result-item" onClick={() => { setSelectedPlaceForApp(p); setOnboardingStep("details"); }}>
+                            <div className="res-icon">
+                              {renderCategoryIcon(p.category)}
+                            </div>
+                            <div className="res-text">
+                              <div className="res-name-row">
+                                <h4>{p.name}</h4>
+                                <span className="cat-badge-mini">{p.category}</span>
+                              </div>
+                              <p>{p.address}</p>
+                            </div>
+                            <div className="res-arrow">
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                            </div>
+                          </div>
+                        ))}
+                        {searchResults.length === 0 && searchQuery && !searching && !searchError && (
+                          <p className="empty-results">No places found. Use the map to add a new one?</p>
+                        )}
+                      </div>
                     </div>
-                  ))}
-                  {searchResults.length === 0 && searchQuery && !searching && !searchError && (
-                    <p className="no-results-text">No places found. Try a different specific keyword.</p>
+                  ) : (
+                    <div className="map-pane-v2">
+                      <div className="onboarding-map-container">
+                        <MapView
+                          userLocation={userLocation}
+                          places={places}
+                          selectedPlace={selectedPlaceForApp}
+                          onSelectPlace={(p) => { setSelectedPlaceForApp(p); setOnboardingStep("details"); }}
+                          addMode={true}
+                          onMapSelect={(coords) => {
+                            setNewPlaceData({ ...newPlaceData, lat: coords.lat, lng: coords.lng });
+                            setOnboardingStep("new-place");
+                          }}
+                        />
+                      </div>
+                      <p className="map-instruction">Tap a pin to join, or tap anywhere else to <strong>Add New Workplace</strong>.</p>
+                    </div>
                   )}
                 </div>
-              </div>
-            )}
-          </div>
+              ) : onboardingStep === "details" ? (
+                <div className="application-details-step">
+                  <button className="back-link-v2" onClick={() => setOnboardingStep("find")}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '6px' }}><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                    Back
+                  </button>
+                  <div className="form-head-v2">
+                    <h2>Workplace Details</h2>
+                    <p>Joining: <strong>{selectedPlaceForApp?.name}</strong></p>
+                  </div>
+
+                  <form className="staff-app-form-v2" onSubmit={(e) => {
+                    e.preventDefault();
+                    if (selectedPlaceForApp.isNew) {
+                      applyForPlace(e, true); // Special flag for new place
+                    } else {
+                      applyForPlace(e);
+                    }
+                  }}>
+                    <div className="form-sections">
+                      <div className="sec-title">Personal Details</div>
+                      <div className="form-group-v2">
+                        <label>Full Name</label>
+                        <input
+                          type="text"
+                          required
+                          value={appForm.fullName}
+                          onChange={e => setAppForm({ ...appForm, fullName: e.target.value })}
+                        />
+                      </div>
+                      <div className="form-grid-v2">
+                        <div className="form-group-v2">
+                          <label>Staff/Employee ID</label>
+                          <input
+                            type="text"
+                            required
+                            placeholder="Ex: EMP-992"
+                            value={appForm.staffId}
+                            onChange={e => setAppForm({ ...appForm, staffId: e.target.value })}
+                          />
+                        </div>
+                        <div className="form-group-v2">
+                          <label>Designation</label>
+                          <input
+                            type="text"
+                            required
+                            placeholder="Ex: Customer Agent"
+                            value={appForm.designation}
+                            onChange={e => setAppForm({ ...appForm, designation: e.target.value })}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="sec-title mt-4">Workstation Assignment</div>
+                      <div className="form-group-v2">
+                        <label>Counter / Desk Name</label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="Ex: Counter 01, Reception Desk"
+                          value={appForm.counterName}
+                          onChange={e => setAppForm({ ...appForm, counterName: e.target.value })}
+                        />
+                        <span className="input-hint">Specify the specific desk or counter you will manage.</span>
+                      </div>
+                    </div>
+
+                    <button type="submit" className="btn-final-submit" disabled={applying}>
+                      {applying ? (
+                        <svg className="spin" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '10px' }}><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg>
+                      ) : (
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '10px' }}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                      )}
+                      {applying ? "Submitting Application..." : "Submit Join Request"}
+                    </button>
+                  </form>
+                </div>
+              ) : onboardingStep === "new-place" ? (
+                <div className="application-details-step">
+                  <button className="back-link-v2" onClick={() => setOnboardingStep("find")}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '6px' }}><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                    Back
+                  </button>
+                  <div className="form-head-v2">
+                    <h2>Add & Join New Workplace</h2>
+                    <p>Enter details for the new location you've selected on the map.</p>
+                  </div>
+
+                  <div className="new-place-form-v2">
+                    <div className="sec-title">Place Information</div>
+                    <div className="form-group-v2">
+                      <label>Place Name</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="Ex: City Hospital, Prime Bank"
+                        value={newPlaceData.name}
+                        onChange={e => setNewPlaceData({ ...newPlaceData, name: e.target.value })}
+                      />
+                    </div>
+                    <div className="form-grid-v2">
+                      <div className="form-group-v2">
+                        <label>Category</label>
+                        <select
+                          value={newPlaceData.category}
+                          onChange={e => setNewPlaceData({ ...newPlaceData, category: e.target.value })}
+                        >
+                          <option value="bank">Bank</option>
+                          <option value="hospital">Hospital</option>
+                          <option value="government">Government Office</option>
+                          <option value="restaurant">Restaurant</option>
+                          <option value="other">Other</option>
+                        </select>
+                      </div>
+                      <div className="form-group-v2">
+                        <label>Location (Lat, Lng)</label>
+                        <input type="text" disabled value={`${newPlaceData.lat?.toFixed(4)}, ${newPlaceData.lng?.toFixed(4)}`} />
+                      </div>
+                    </div>
+                    <div className="form-group-v2">
+                      <label>Address</label>
+                      <input
+                        type="text"
+                        placeholder="Street, Area, City"
+                        value={newPlaceData.address}
+                        onChange={e => setNewPlaceData({ ...newPlaceData, address: e.target.value })}
+                      />
+                    </div>
+
+                    <div className="sec-divider"></div>
+
+                    <button
+                      className="btn-final-submit"
+                      disabled={!newPlaceData.name}
+                      onClick={() => {
+                        setSelectedPlaceForApp({
+                          name: newPlaceData.name,
+                          address: newPlaceData.address,
+                          category: newPlaceData.category,
+                          location: {
+                            lat: newPlaceData.lat,
+                            lng: newPlaceData.lng
+                          },
+                          isNew: true
+                        });
+                        setOnboardingStep("details");
+                      }}
+                    >
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '10px' }}><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><line x1="19" y1="8" x2="19" y2="14"></line><line x1="22" y1="11" x2="16" y2="11"></line></svg>
+                      Next: Staff Details
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          )}
         </div>
       </div>
     );
@@ -521,11 +826,11 @@ export default function StaffDashboard() {
         <div className="setup-container">
           <div className="setup-header-section">
             <div className="glass-brand">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
               <span>Staff Portal</span>
             </div>
-            <h1>Welcome back, {user?.username}</h1>
-            <p>Initialize your session for <strong>{placeName}</strong></p>
+            <h1>Welcome back, <span className="highlight-blue">{user?.username}</span></h1>
+            <p className="subtitle">Initialize your session for <strong>{placeName}</strong></p>
           </div>
 
           <div className="setup-main-card">
@@ -533,55 +838,67 @@ export default function StaffDashboard() {
               <div className="protocol-section">
                 <div className="p-header">
                   <span className="p-badge">Service Protocol</span>
+                  <h3 className="p-title">Quality Standards</h3>
                 </div>
-                <h3>Quality Standards</h3>
-                <div className="protocol-steps">
-                  <div className="p-step">
-                    <div className="p-num">01</div>
-                    <div className="p-info">
+
+                <div className="protocol-grid">
+                  <div className="p-step-compact">
+                    <span className="p-num-pill">01</span>
+                    <div className="p-text">
                       <strong>Verify First</strong>
-                      <p>Scan QR or match code before starting any service.</p>
+                      <p>Scan QR or match code before service.</p>
                     </div>
                   </div>
-                  <div className="p-step">
-                    <div className="p-num">02</div>
-                    <div className="p-info">
+                  <div className="p-step-compact">
+                    <span className="p-num-pill">02</span>
+                    <div className="p-text">
                       <strong>Complete Last</strong>
-                      <p>Only mark 'Complete' after work is fully finished.</p>
+                      <p>Mark 'Complete' only after finishing.</p>
                     </div>
                   </div>
                 </div>
-                <div className="strict-warning">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+
+                <div className="strict-warning-compact">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
                   <span>Strict adherence to queue integrity is required.</span>
                 </div>
               </div>
             </div>
 
-            <div className="setup-content">
-              <div className="selection-area">
-                <div className="s-header">
+            <div className="setup-content-refined">
+              <div className="selection-area-compact">
+                <div className="s-header-compact">
                   <h2>Select Counter</h2>
                   <p>Choose your workspace for today</p>
                 </div>
 
-                <div className="counter-options-grid">
+                <div className="counter-list-compact">
                   {counters.length > 0 ? (
                     counters.map((counter, i) => (
-                      <button key={i} className="modern-counter-chip" onClick={() => setSelectedCounter(counter.name)}>
-                        <div className="chip-icon">
-                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+                      <button key={i} className="counter-row-chip" onClick={() => setSelectedCounter(counter.name)}>
+                        <div className="chip-left">
+                          <div className="chip-icon-small">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+                          </div>
+                          <div className="chip-info-compact">
+                            <span className="chip-name-bold">{counter.name}</span>
+                            <span className="chip-status-active">Ready for service</span>
+                          </div>
                         </div>
-                        <div className="chip-details">
-                          <span className="chip-name">{counter.name}</span>
-                          <span className="chip-status">Ready for service</span>
+                        <div className="chip-action">
+                          <span className="btn-label">Connect</span>
+                          <span className="chip-arrow-small">→</span>
                         </div>
-                        <div className="chip-arrow">→</div>
                       </button>
                     ))
                   ) : (
                     <div className="no-counters-setup">
-                      {loadingCounters ? "Loading workspace..." : "No active counters available."}
+                      {loadingCounters ? (
+                        <div className="loading-inline">
+                          <div className="spinner-mini"></div>
+                          <span>Loading workspace...</span>
+                        </div>
+                      ) : "No active counters available."}
                       {!loadingCounters && <button onClick={fetchCounters} className="refresh-link">Retry Connection</button>}
                     </div>
                   )}
@@ -590,9 +907,11 @@ export default function StaffDashboard() {
             </div>
           </div>
 
-          <div className="setup-footer">
-            <p>© 2026 Waitly Digital Systems. All terminal actions are logged.</p>
-          </div>
+          <footer className="setup-footer-slim">
+            <p>&copy; 2026 Waitly Digital Systems. All terminal actions are logged.</p>
+          </footer>
+
+
         </div>
       </div>
     );
@@ -608,14 +927,30 @@ export default function StaffDashboard() {
           <div className="vc-header-info">
             <div className="vc-header-main">
               <h1 className="vc-place-name">{placeName}</h1>
-              <div className="vc-session-controls" style={{ gap: '10px' }}>
+              <div className="vc-session-controls">
                 <span className={`crowd-badge ${crowdData.level.toLowerCase()}`} title={`Load: ${crowdData.activeCount}/${crowdData.dailyCapacity}`}>
                   {crowdData.level} Crowd
                 </span>
                 <span className="counter-tag">{selectedCounter}</span>
-                <button className="vc-text-btn" onClick={() => { fetchAllTokens(); setShowTokensModal(true); }}>History & All Tokens</button>
-                <button className="vc-text-btn" onClick={() => setShowScheduleModal(true)}>Settings</button>
-                <button className="vc-text-btn danger" onClick={() => window.location.reload()}>Leave Counter</button>
+                <button className="vc-action-btn" onClick={() => { fetchAllTokens(); setShowTokensModal(true); }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                  </svg>
+                  <span>History</span>
+                </button>
+                <button className="vc-action-btn" onClick={() => setShowScheduleModal(true)}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12.22 2h-.44a2 2 0 00-2 2v.18a2 2 0 01-1 1.73l-.43.25a2 2 0 01-2 0l-.15-.08a2 2 0 00-2.73.73l-.22.38a2 2 0 00.73 2.73l.15.1a2 2 0 011 1.72v.51a2 2 0 01-1 1.74l-.15.09a2 2 0 00-.73 2.73l.22.38a2 2 0 002.73.73l.15-.08a2 2 0 012 0l.43.25a2 2 0 011 1.73V20a2 2 0 002 2h.44a2 2 0 002-2v-.18a2 2 0 011-1.73l.43-.25a2 2 0 012 0l.15.08a2 2 0 002.73-.73l.22-.39a2 2 0 00-.73-2.73l-.15-.08a2 2 0 01-1-1.74v-.5a2 2 0 011-1.74l.15-.09a2 2 0 00.73-2.73l-.22-.38a2 2 0 00-2.73-.73l-.15.08a2 2 0 01-2 0l-.43-.25a2 2 0 01-1-1.73V4a2 2 0 00-2-2z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                  </svg>
+                  <span>Settings</span>
+                </button>
+                <button className="vc-action-btn danger" onClick={() => window.location.reload()}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4m7 14l5-5-5-5m5 5H9"></path>
+                  </svg>
+                  <span>Leave</span>
+                </button>
               </div>
             </div>
             <p className="vc-sub">{placeAddress}</p>
@@ -670,18 +1005,43 @@ export default function StaffDashboard() {
               </div>
 
               {!loading && displayTicket && (
-                <div style={{ textAlign: 'center', marginBottom: '20px', marginTop: '-10px' }}>
-                  <h2 style={{ fontSize: '1.6rem', fontWeight: '800', color: '#1e293b', margin: '0 0 2px 0' }}>
-                    {displayTicket.userName || "Guest User"}
-                  </h2>
-                  <div style={{ display: 'inline-block', background: '#f1f5f9', color: '#64748b', padding: '2px 10px', borderRadius: '6px', fontSize: '0.65rem', fontWeight: '800', textTransform: 'uppercase', marginBottom: '8px' }}>
-                    {displayTicket.category || "General Service"}
+                <div style={{
+                  background: 'linear-gradient(135deg, #f8fafc 0%, #ffffff 100%)',
+                  padding: '16px 20px',
+                  borderRadius: '10px',
+                  border: '1px solid #e2e8f0',
+                  marginTop: '16px',
+                  marginBottom: '20px'
+                }}>
+                  <div style={{ marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span style={{ fontSize: '0.85rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', minWidth: '50px' }}>
+                      Name:
+                    </span>
+                    <span style={{ fontSize: '1.2rem', fontWeight: '800', color: '#0f172a' }}>
+                      {displayTicket.userName || "Guest User"}
+                    </span>
                   </div>
-                  <p style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: '700', margin: 0, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-                    Customer Identity
-                  </p>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span style={{ fontSize: '0.85rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', minWidth: '50px' }}>
+                      Work:
+                    </span>
+                    <span style={{
+                      display: 'inline-block',
+                      background: '#eff6ff',
+                      color: '#2563eb',
+                      padding: '4px 12px',
+                      borderRadius: '6px',
+                      fontSize: '0.8rem',
+                      fontWeight: '700',
+                      border: '1px solid #dbeafe'
+                    }}>
+                      {getCategoryName(displayTicket.category)}
+                    </span>
+                  </div>
                 </div>
               )}
+
 
 
               <div className={`vc-qr-area ${isVerified ? "verified-border" : ""} ${!displayTicket ? "clean" : ""}`}>
@@ -709,7 +1069,7 @@ export default function StaffDashboard() {
             </div>
 
             <div className="vc-col-right">
-              <span className="vc-label">QUEUE STATUS</span>
+              <span className="vc-label" style={{ marginBottom: '20px', display: 'block' }}>TODAY'S QUEUE STATUS</span>
               <div className="vc-stat-row"><span>Waiting</span><span className="vc-val blue">{queueStats.waiting}</span></div>
 
               <div className="vc-stat-row"><span>Completed</span><span className="vc-val green">{queueStats.completed}</span></div>
@@ -748,11 +1108,11 @@ export default function StaffDashboard() {
       {
         showTokensModal && (
           <div className="profile-modal-overlay" onClick={() => setShowTokensModal(false)}>
-            <div className="profile-card tokens-list-modal">
+            <div className="profile-card tokens-list-modal" onClick={e => e.stopPropagation()}>
               <div className="modal-header-premium">
                 <div className="modal-title-row">
                   <h2 className="modal-title-premium">Queue Snapshot</h2>
-                  <button className="close-profile-btn" onClick={() => setShowTokensModal(false)} style={{ position: 'static' }}>&times;</button>
+                  <button className="close-profile-btn" onClick={() => setShowTokensModal(false)}>&times;</button>
                 </div>
                 <div className="modal-stats-grid">
                   <div className="stat-pill-premium">
@@ -778,7 +1138,7 @@ export default function StaffDashboard() {
                 </div>
               </div>
 
-              <div className="tokens-modal-scroll-area" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+              <div className="tokens-modal-scroll-area">
                 <div className="tokens-section">
                   <h3 className="section-title-modern">
                     <span className="dot pulse-blue"></span> Active Queue
@@ -795,7 +1155,7 @@ export default function StaffDashboard() {
                             <td data-label="Token"><span className="token-code-pill">{t.tokenCode}</span></td>
                             <td data-label="Customer" className="user-name-cell">
                               <div style={{ fontWeight: '700' }}>{t.userName || "Guest User"}</div>
-                              <div style={{ fontSize: '0.65rem', color: '#94a3b8', fontWeight: '800', textTransform: 'uppercase', marginTop: '2px' }}>{t.category || "General Service"}</div>
+                              <div style={{ fontSize: '0.65rem', color: '#94a3b8', fontWeight: '800', textTransform: 'uppercase', marginTop: '2px' }}>{getCategoryName(t.category)}</div>
                             </td>
                             <td data-label="Path">{t.timeSlotLabel ? <span className="type-slotted">Slotted</span> : <span className="type-walkin">Walk-in</span>}</td>
                             <td data-label="Expect Flow"><span className="live-badge">Live</span></td>
@@ -843,7 +1203,7 @@ export default function StaffDashboard() {
                             </td>
                             <td data-label="Customer">
                               <div style={{ fontWeight: '700', color: '#1e293b' }}>{t.userName || "Guest User"}</div>
-                              <div style={{ fontSize: '0.6rem', color: '#94a3b8', fontWeight: '700', textTransform: 'uppercase' }}>{t.category || "General Service"}</div>
+                              <div style={{ fontSize: '0.6rem', color: '#94a3b8', fontWeight: '700', textTransform: 'uppercase' }}>{getCategoryName(t.category)}</div>
                             </td>
                             <td data-label="Status">
                               <span className={`status-pill ${t.status.toLowerCase()}`}>{t.status}</span>

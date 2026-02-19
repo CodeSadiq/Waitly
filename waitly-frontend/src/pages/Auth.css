@@ -553,3 +553,89 @@
     transform: rotate(360deg);
   }
 }
+
+/* ================= GOOGLE AUTH V2 (BOTTOM OPTION) ================= */
+.google-auth-btn-v2 {
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1.5px solid #edf2f7;
+  background: #ffffff;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 700;
+  color: #475569;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.google-auth-btn-v2:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.google-auth-btn-v2:active {
+  transform: translateY(0);
+}
+
+.google-auth-btn-v2 svg {
+  width: 18px;
+  height: 18px;
+}
+
+.google-signup-hint {
+  text-align: center;
+  font-size: 13px;
+  color: #4b5563;
+  margin-bottom: 12px;
+  background: #f8fafc;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px dashed #e2e8f0;
+}
+
+.google-signup-hint strong {
+  color: #2563eb;
+  font-weight: 700;
+}
+
+/* ================= HELPERS ================= */
+.center-text {
+  text-align: center;
+}
+
+.success-text-inline {
+  color: #10b981;
+  font-size: 14px;
+  font-weight: 600;
+  margin: 12px auto;
+  background: #ecfdf5;
+  padding: 10px 16px;
+  border-radius: 10px;
+  display: inline-block;
+}
+
+.verified-badge {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 4px 10px;
+  border-radius: 99px;
+  background: #dcfce7;
+  color: #166534;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.verified-badge svg {
+  color: #16a34a;
+}

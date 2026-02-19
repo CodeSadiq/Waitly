@@ -224,21 +224,34 @@
 ====================================================== */
 
 .join-queue-btn {
-  margin-top: 10px;
-  padding: 12px;
-  border-radius: 14px;
-  font-size: 15px;
-  font-weight: 600;
+  width: 100%;
+  margin-top: 24px;
+  padding: 16px 32px;
+  border-radius: 50px;
+  /* Pill shape from image */
+  font-size: 16px;
+  font-weight: 700;
   border: none;
   cursor: pointer;
-  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%);
   color: #ffffff;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: 0 8px 25px rgba(79, 70, 229, 0.3);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
 }
 
 .join-queue-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 30px rgba(79, 70, 229, 0.45);
+  filter: brightness(1.1);
+}
+
+.join-queue-btn:active {
   transform: translateY(-1px);
-  box-shadow: 0 6px 14px rgba(37, 99, 235, 0.35);
 }
 
 .join-queue-btn.secondary {
@@ -389,6 +402,16 @@
   color: #64748b;
   letter-spacing: 0.2px;
   margin-right: 2px;
+}
+
+.now-serving-hint {
+  font-size: 11px;
+  font-weight: 700;
+  color: #2563eb;
+  background: #eff6ff;
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin-top: 2px;
 }
 
 /* Variants */

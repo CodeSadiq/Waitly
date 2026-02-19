@@ -11,7 +11,9 @@ import {
    resetPassword,
    changePassword,
    refreshToken,
-   unifiedLogin
+   unifiedLogin,
+   googleAuth,
+   googleCallback
 } from "../controllers/auth.controller.js";
 
 import { protect } from "../middleware/authMiddleware.js";
@@ -66,6 +68,15 @@ router.post("/refresh-token", refreshToken);
 /* =====================================================
    LOGOUT
    ===================================================== */
+/* =====================================================
+   LOGOUT
+   ===================================================== */
 router.post("/logout", logout);
+
+/* =====================================================
+   GOOGLE AUTH
+   ===================================================== */
+router.get("/google", googleAuth);
+router.get("/google/callback", googleCallback);
 
 export default router;

@@ -706,3 +706,65 @@ export const refreshToken = async (req, res) => {
     });
   }
 };
+/* =====================================================
+   GOOGLE AUTH (REAL OAUTH)
+===================================================== */
+import passport from "../config/passport.js";
+
+export const googleAuth = (req, res, next) => {
+  const { role } = req.query;
+  passport.authenticate("google", {
+    scope: ["profile", "email"],
+    state: role || "user",
+    prompt: "select_account"
+  })(req, res, next);
+};
+
+export const googleCallback = (req, res, next) => {
+  passport.authenticate("google", { session: false }, async (err, account, info) => {
+    if (err || !account) {
+      console.error("GOOGLE AUTH ERROR:", err);
+      const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+      return res.redirect(`${frontendUrl}/login?status=error&message=Authentication failed`);
+    }
+
+    try {
+      // Create Tokens
+      const payload = {
+        id: account._id.toString(),
+        role: account.role || (account.constructor.modelName === 'Staff' ? 'staff' : 'user'),
+        ...(account.placeId && { placeId: account.placeId })
+      };
+
+      const token = createAccessToken(payload);
+      const refreshToken = createRefreshToken(payload);
+
+      // Set Cookies
+      res.cookie("token", token, {
+        httpOnly: true,
+        sameSite: "none",
+        secure: true,
+        path: "/"
+      });
+
+      res.cookie("refreshToken", refreshToken, {
+        httpOnly: true,
+        sameSite: "none",
+        secure: true,
+        path: "/"
+      });
+
+      const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+      const userRole = account.role || (account.constructor.modelName === 'Staff' ? 'staff' : 'user');
+
+      res.redirect(`${frontendUrl}/login?status=success&role=${userRole}&verified=true`);
+
+    } catch (tokenErr) {
+      console.error("TOKEN GENERATION ERROR:", tokenErr);
+      const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+      res.redirect(`${frontendUrl}/login?status=error&message=Token generation failed`);
+    }
+  })(req, res, next);
+};
+
+

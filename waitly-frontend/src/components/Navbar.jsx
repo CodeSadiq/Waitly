@@ -2,6 +2,7 @@ import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useState, useContext, useEffect, useRef } from "react";
 import { AuthContext } from "../context/AuthContext";
 import "./Navbar.css";
+import logoImg from "../assets/icons/logo.png";
 
 export default function Navbar() {
   const navigate = useNavigate();
@@ -59,18 +60,16 @@ export default function Navbar() {
       <div className="landing-nav-content">
         {/* LEFT: Logo */}
         <div className="landing-nav-logo" onClick={() => navigate("/")}>
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <circle cx="12" cy="12" r="10"></circle>
-            <polyline points="12 6 12 12 16 14"></polyline>
-          </svg>
+          <img src={logoImg} alt="Waitly Logo" className="logo-img" />
           <span>WAITLY</span>
         </div>
 
         {/* CENTER: Navigation Links (Desktop) */}
         <div className="landing-nav-links desktop-only">
+          <NavLink to="/">Home</NavLink>
           <a href="/#features">Features</a>
           <a href="/#how-it-works">How It Works</a>
-          <NavLink to="/map">Explore</NavLink>
+          <NavLink to="/map">Explore Map</NavLink>
         </div>
 
         {/* RIGHT: Auth & Hamburger */}
@@ -143,6 +142,7 @@ export default function Navbar() {
       {/* MOBILE DRAWER */}
       <div className={`mobile-drawer ${menuOpen ? "open" : ""}`}>
         <div className="mobile-drawer-links">
+          <NavLink to="/" onClick={() => setMenuOpen(false)}>Home</NavLink>
           <a href="/#features" onClick={() => setMenuOpen(false)}>Features</a>
           <a href="/#how-it-works" onClick={() => setMenuOpen(false)}>How It Works</a>
           <NavLink to="/map" onClick={() => setMenuOpen(false)}>Explore Map</NavLink>

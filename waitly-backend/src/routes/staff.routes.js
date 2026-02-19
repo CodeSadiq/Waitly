@@ -68,20 +68,43 @@ router.get("/places/:id", verifyStaff, async (req, res) => {
    ===================================================== */
 router.post("/places/apply", verifyStaff, async (req, res) => {
     try {
-        const { placeId } = req.body;
-        if (!placeId) return res.status(400).json({ message: "Place ID required" });
+        const { placeId, fullName, staffId, designation, counterName, newPlaceData } = req.body;
+        let finalPlaceId = placeId;
+
+        // If a new place is being created by the staff
+        if (!placeId && newPlaceData) {
+            const newPlace = new Place({
+                ...newPlaceData,
+                status: 'pending', // Staff-created places need admin approval 
+                createdBy: req.user._id,
+                isStaffProposed: true
+            });
+            await newPlace.save();
+            finalPlaceId = newPlace._id;
+        }
+
+        if (!finalPlaceId) return res.status(400).json({ message: "Place or New Place Data required" });
 
         const staff = await Staff.findById(req.user._id);
         if (!staff) return res.status(404).json({ message: "Staff not found" });
 
+        // Check if already approved or has pending application
+        if (staff.status === "active" && staff.placeId) {
+            return res.status(400).json({ message: "You are already approved and assigned to a workplace." });
+        }
+        if (staff.status === "applied" || staff.status === "pending") {
+            return res.status(400).json({ message: "You already have a pending application. Please cancel it before applying again." });
+        }
+
         staff.application = {
-            placeId,
-            appliedAt: new Date()
+            placeId: finalPlaceId,
+            appliedAt: new Date(),
+            fullName,
+            staffId,
+            designation,
+            counterName
         };
         staff.status = "applied";
-
-        // Clear old request details if any
-        staff.requestDetails = undefined;
 
         await staff.save();
 
@@ -192,7 +215,12 @@ router.get("/status", verifyStaff, async (req, res) => {
             status: "Serving"
         });
 
-        // 2. Queue Metrics
+        // 2. Queue Metrics (TODAY ONLY)
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+
         const waitingCount = await Token.countDocuments({
             place: req.user.placeId,
             counterName: counterName,
@@ -202,13 +230,21 @@ router.get("/status", verifyStaff, async (req, res) => {
         const completedCount = await Token.countDocuments({
             place: req.user.placeId,
             counterName: counterName,
-            status: "Completed"
+            status: "Completed",
+            $or: [
+                { completedAt: { $gte: today, $lt: tomorrow } },
+                { completedAt: { $exists: false }, createdAt: { $gte: today, $lt: tomorrow } }
+            ]
         });
 
         const skippedCount = await Token.countDocuments({
             place: req.user.placeId,
             counterName: counterName,
-            status: "Skipped"
+            status: "Skipped",
+            $or: [
+                { completedAt: { $gte: today, $lt: tomorrow } },
+                { completedAt: { $exists: false }, createdAt: { $gte: today, $lt: tomorrow } }
+            ]
         });
 
         const activeSlottedCount = await Token.countDocuments({

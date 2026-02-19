@@ -16,27 +16,35 @@ export async function getRealAverageTime(placeId, counterName, categoryId = "gen
         // Find service category or default to first/default
         let service = counter.services?.find(s => s.categoryId === categoryId);
 
-        // Fallback to "default" metrics if specific service not found
-        // or just use 5 mins if nothing exists
         const staffAvg = service?.staffAvgTime || 5;
 
-        // Get recent system data (Rolling avg of last 30 completed txns)
+        // 🎯 FALLBACK: If counter is CLOSED, use Staff Input only
+        if (counter.isClosed) {
+            return Math.max(Math.round(staffAvg), 2);
+        }
+
+        // Get recent system data (Rolling avg of last 10 completed txns for responsiveness)
+        // 🎯 SHARP RULE: Only count "Completed" tickets. "Skipped" or "Cancelled" are ignored.
         const lastTokens = await Token.find({
             place: placeId,
             counterName: counterName,
-            // category: categoryId, // Optional: Filter by category only if strictly needed
             status: "Completed",
             serviceDuration: { $exists: true, $gt: 0 }
-        }).sort({ completedAt: -1 }).limit(30);
+        }).sort({ completedAt: -1 }).limit(10);
 
         let systemAvg = staffAvg;
         if (lastTokens.length >= 3) {
-            const sum = lastTokens.reduce((acc, t) => acc + t.serviceDuration, 0);
-            const rawAvg = sum / lastTokens.length;
+            // 🎯 Outlier Protection: Ignore logic errors (e.g. sessions left open for days)
+            // Rule: Only count durations between 0.2 mins and 3x staff avg (max 120 mins)
+            const upperLimit = Math.max(120, staffAvg * 4);
+            const validDurations = lastTokens
+                .map(t => t.serviceDuration)
+                .filter(d => d > 0.2 && d < upperLimit);
 
-            // Outlier protection: Ignore if > 2x staff avg? 
-            // For now, simple smoothing.
-            systemAvg = rawAvg;
+            if (validDurations.length > 0) {
+                const sum = validDurations.reduce((acc, d) => acc + d, 0);
+                systemAvg = sum / validDurations.length;
+            }
         }
 
         // Apply Hybrid Weighting
@@ -64,17 +72,29 @@ export async function getDetailedAverageTime(placeId, counterName, categoryId = 
         let service = counter.services?.find(s => s.categoryId === categoryId);
         const staffAvg = service?.staffAvgTime || 5;
 
+        if (counter.isClosed) {
+            return { staff: staffAvg, system: staffAvg, final: staffAvg };
+        }
+
+        // Only consider "Completed" tickets for accurate calculation (ignores Skipped/Expired)
         const lastTokens = await Token.find({
             place: placeId,
             counterName: counterName,
             status: "Completed",
             serviceDuration: { $exists: true, $gt: 0 }
-        }).sort({ completedAt: -1 }).limit(30);
+        }).sort({ completedAt: -1 }).limit(10);
 
         let systemAvg = staffAvg;
         if (lastTokens.length >= 3) {
-            const sum = lastTokens.reduce((acc, t) => acc + t.serviceDuration, 0);
-            systemAvg = sum / lastTokens.length;
+            const upperLimit = Math.max(120, staffAvg * 4);
+            const validDurations = lastTokens
+                .map(t => t.serviceDuration)
+                .filter(d => d > 0.2 && d < upperLimit);
+
+            if (validDurations.length > 0) {
+                const sum = validDurations.reduce((acc, d) => acc + d, 0);
+                systemAvg = sum / validDurations.length;
+            }
         }
 
         const finalAvg = (staffAvg * 0.3) + (systemAvg * 0.7);
@@ -94,7 +114,7 @@ export async function getDetailedAverageTime(placeId, counterName, categoryId = 
    CROWD DENSITY CALCULATOR
    Low / Moderate / High / Critical
    ===================================================== */
-export async function getCrowdMetrics(placeId, counterName) {
+export async function getCrowdMetrics(placeId, counterName, categoryId = "general") {
     try {
         const place = await Place.findById(placeId);
         if (!place) return { level: "Unknown", capacity: 0 };
@@ -110,15 +130,14 @@ export async function getCrowdMetrics(placeId, counterName) {
         });
 
         // 2. Estimate Capacity
-        // Cap = (Operating Mins / Avg Time)
-        // e.g., 8 hours = 480 mins. Avg 10 mins = 48 slots.
+        // Use the same Hybrid Avg Time for consistency
+        const pace = await getRealAverageTime(placeId, counterName, categoryId);
+
         const open = parseInt(counter.openingTime.split(":")[0]) * 60 + parseInt(counter.openingTime.split(":")[1]);
         const close = parseInt(counter.closingTime.split(":")[0]) * 60 + parseInt(counter.closingTime.split(":")[1]);
         const operatingMins = Math.max(0, close - open);
 
-        // Use a safe avg time for capacity planning
-        const safeAvg = 10;
-        const dailyCapacity = Math.floor(operatingMins / safeAvg) || 50;
+        const dailyCapacity = Math.floor(operatingMins / pace) || 50;
 
         // 3. Determine Level
         // Low: < 20% | Mod: < 50% | High: < 85% | Crit: > 85%
@@ -130,10 +149,10 @@ export async function getCrowdMetrics(placeId, counterName) {
         else if (loadFactor > 0.20) level = "Moderate"; // Yellow
         // else Low (Green)
 
-        return { level, activeCount, dailyCapacity };
+        return { level, activeCount, dailyCapacity, pace };
     } catch (e) {
         console.error("CROWD CALC ERROR:", e);
-        return { level: "Unknown", capacity: 0 };
+        return { level: "Unknown", capacity: 0, pace: 10 };
     }
 }
 
@@ -170,18 +189,34 @@ export async function getQueueMetrics(placeId, counterName, targetTokenId = null
         status: "Waiting"
     });
 
-    const servingCount = await Token.countDocuments({
+    // Get Serving Token
+    const servingToken = await Token.findOne({
         place: placeId,
         counterName: counterName,
         status: "Serving"
     });
 
+    const servingCount = servingToken ? 1 : 0;
+
+    let virtualClock = Date.now();
+
+    // 🎯 FIX: Account for the person currently being served
+    if (servingToken) {
+        const pace = await getRealAverageTime(placeId, counterName, servingToken.category);
+        const startTime = servingToken.servingStartedAt || servingToken.createdAt;
+        const elapsed = (Date.now() - new Date(startTime)) / 60000;
+        const remaining = Math.max(1, pace - elapsed);
+        virtualClock += (remaining * 60000);
+    }
+
     if (allCandidates.length === 0) {
         const crowd = await getCrowdMetrics(placeId, counterName);
         return {
             peopleAhead: servingCount,
-            estimatedWait: 0,
-            crowdLevel: crowd.level
+            estimatedWait: servingCount > 0 ? Math.round((virtualClock - Date.now()) / 60000) : 0,
+            crowdLevel: crowd.level,
+            currentPace: crowd.pace,
+            nowServing: servingToken?.tokenCode || "None"
         };
     }
 
@@ -203,7 +238,6 @@ export async function getQueueMetrics(placeId, counterName, targetTokenId = null
         return time;
     };
 
-    let virtualClock = Date.now();
     let peopleAhead = servingCount;
 
     // Simulation Loop
@@ -251,7 +285,6 @@ export async function getQueueMetrics(placeId, counterName, targetTokenId = null
         const taskTime = await getCachedTime(candidate.category || "general");
         virtualClock += (taskTime * 60000);
     }
-
     const estimatedWait = Math.max(0, Math.round((virtualClock - Date.now()) / 60000));
 
     // Get Crowd Level
@@ -260,7 +293,9 @@ export async function getQueueMetrics(placeId, counterName, targetTokenId = null
     return {
         peopleAhead,
         estimatedWait,
-        crowdLevel: crowd.level
+        crowdLevel: crowd.level,
+        currentPace: crowd.pace,
+        nowServing: servingToken?.tokenCode || "None"
     };
 }
 

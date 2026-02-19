@@ -53,7 +53,18 @@ router.get("/available-slots", async (req, res) => {
     const [leH, leM] = lunchEnd.split(":").map(Number);
     lunchE.setHours(leH, leM, 0, 0);
 
-    // 4. Fetch Existing Slots
+    // 4. PRE-OPENING CHECK: Slots only available before counter opens for that day
+    if (Date.now() >= startOfDay.getTime()) {
+      return res.json({
+        slots: [],
+        openingTime,
+        closingTime,
+        avgTime,
+        message: "Slot booking is only available before the counter opens."
+      });
+    }
+
+    // 5. Fetch Existing Slots
     const dayStart = new Date(date); dayStart.setHours(0, 0, 0, 0);
     const dayEnd = new Date(date); dayEnd.setHours(23, 59, 59, 999);
 
@@ -202,7 +213,9 @@ router.get("/stats", async (req, res) => {
     res.json({
       peopleAhead: metrics.peopleAhead,
       estimatedWait: metrics.estimatedWait,
-      crowdLevel: metrics.crowdLevel // 🔥 SENT TO FRONTEND
+      crowdLevel: metrics.crowdLevel,
+      currentPace: metrics.currentPace,
+      nowServing: metrics.nowServing
     });
   } catch (err) {
     console.error(err);
@@ -248,6 +261,7 @@ router.get("/ticket/:tokenId", async (req, res) => {
       createdAt: token.createdAt,
       place: token.place,
       peopleAhead,
+      queuePosition: peopleAhead + 1,
       estimatedWait,
       crowdLevel,
       timeSlotLabel: token.timeSlotLabel
@@ -304,6 +318,7 @@ router.get("/my-tickets", verifyUser, async (req, res) => {
           createdAt: token.createdAt,
           place: token.place,
           peopleAhead,
+          queuePosition: peopleAhead + 1,
           estimatedWait,
           timeSlotLabel: token.timeSlotLabel,
           scheduledTime: token.scheduledTime,

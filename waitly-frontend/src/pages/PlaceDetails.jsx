@@ -71,7 +71,7 @@ export default function PlaceDetails({ place, onWaitUpdated, userLocation }) {
       fetch(`${import.meta.env.VITE_API_BASE}/api/queue/stats?placeId=${place._id}&counterIndex=${counters.indexOf(counter)}`)
         .then(res => res.json())
         .then(data => {
-          setCrowdData(prev => ({ ...prev, [counter.name]: data.crowdLevel }));
+          setCrowdData(prev => ({ ...prev, [counter.name]: data }));
         })
         .catch(err => console.error("Crowd fetch error", err));
     });
@@ -131,8 +131,8 @@ export default function PlaceDetails({ place, onWaitUpdated, userLocation }) {
         {counters.length > 0 ? (
           counters.map((counter, index) => {
             // Using logic-based averages now, not user reported
-            const avg = counter.queueWait?.avgTime || 5;
-            const density = crowdData[counter.name] || "Unknown";
+            const stats = crowdData[counter.name];
+            const density = stats?.crowdLevel || "Unknown";
 
             let densityIcon = (
               <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
@@ -167,11 +167,10 @@ export default function PlaceDetails({ place, onWaitUpdated, userLocation }) {
 
                 <div className="crowd-info">
                   <div className={`crowd-badge ${densityColor}`}>
-                    <span className="icon-wrapper">{densityIcon}</span>
                     <span>{density} Crowd</span>
                   </div>
                   <span className="avg-service">
-                    ~{avg} min service
+                    avg speed {crowdData[counter.name]?.currentPace || 10}min/service
                   </span>
                 </div>
               </div>
@@ -203,6 +202,12 @@ export default function PlaceDetails({ place, onWaitUpdated, userLocation }) {
                 navigate(`/join-queue/${place._id}`);
               }}
             >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                <circle cx="9" cy="7" r="4" />
+                <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+              </svg>
               Join Virtual Queue
             </button>
           ) : (

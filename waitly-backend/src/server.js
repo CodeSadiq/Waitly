@@ -10,17 +10,17 @@ import http from "http";
 import { Server } from "socket.io";
 import cookieParser from "cookie-parser";        // ✅ ADD
 import authRoutes from "./routes/auth.routes.js"; // ✅ ADD
+import passport from "./config/passport.js";       // ✅ ADD
 
 import locationRoutes from "./routes/locationRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import queueRoutes from "./routes/queue.js";
 import staffRoutes from "./routes/staff.routes.js";
 
-
 console.log("JWT SECRET:", process.env.JWT_SECRET);
 
-
 const app = express();
+app.use(passport.initialize());
 
 /* ================= CORS ================= */
 app.use(

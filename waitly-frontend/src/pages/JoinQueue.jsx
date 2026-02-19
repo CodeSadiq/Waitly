@@ -64,7 +64,12 @@ export default function JoinQueue() {
         if (res.ok) {
           const data = await res.json();
           setAvailableSlots(data.slots || []);
-          setSlotInfo({ openingTime: data.openingTime, closingTime: data.closingTime, backlogMinutes: data.backlogMinutes });
+          setSlotInfo({
+            openingTime: data.openingTime,
+            closingTime: data.closingTime,
+            backlogMinutes: data.backlogMinutes,
+            message: data.message // Store the message
+          });
         } else {
           setAvailableSlots([]);
         }
@@ -369,7 +374,9 @@ export default function JoinQueue() {
                       </div>
                     ) : (
                       <div className="no-slots-msg">
-                        {!selectedDate ? "Choose a date to see available slots" : "No slots available for this date."}
+                        {!selectedDate
+                          ? "Choose a date to see available slots"
+                          : (slotInfo?.message || "No slots available for this date.")}
                       </div>
                     )}
                   </div>

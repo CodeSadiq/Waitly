@@ -112,7 +112,7 @@ export default function Landing() {
                         </div>
                         <h3 className="feature-title">Real-Time Updates</h3>
                         <p className="feature-description">
-                            Get live updates on queue status, crowd density, and estimated wait times for all locations.
+                            Join now or book a slot. See live wait times and crowd levels.
                         </p>
                     </div>
 
@@ -123,22 +123,9 @@ export default function Landing() {
                                 <circle cx="12" cy="10" r="3"></circle>
                             </svg>
                         </div>
-                        <h3 className="feature-title">Location-Based</h3>
+                        <h3 className="feature-title">Join Anywhere</h3>
                         <p className="feature-description">
-                            Discover nearby places, view them on an interactive map, and join queues from anywhere.
-                        </p>
-                    </div>
-
-                    <div className="feature-card">
-                        <div className="feature-icon purple-gradient">
-                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
-                                <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
-                            </svg>
-                        </div>
-                        <h3 className="feature-title">Smart Notifications</h3>
-                        <p className="feature-description">
-                            Receive timely alerts when you're approaching the venue or when it's almost your turn.
+                            Find nearby places on the map and join the line from your phone.
                         </p>
                     </div>
 
@@ -149,38 +136,13 @@ export default function Landing() {
                                 <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
                             </svg>
                         </div>
-                        <h3 className="feature-title">Secure & Private</h3>
+                        <h3 className="feature-title">Safe & Private</h3>
                         <p className="feature-description">
-                            Your data is protected with industry-standard security. Queue privately and safely.
+                            Your data is safe and your visits are always kept private.
                         </p>
                     </div>
 
-                    <div className="feature-card">
-                        <div className="feature-icon pink-gradient">
-                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                                <circle cx="9" cy="7" r="4"></circle>
-                                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                            </svg>
-                        </div>
-                        <h3 className="feature-title">Multi-Counter Support</h3>
-                        <p className="feature-description">
-                            View and join specific service counters based on your needs and their current wait times.
-                        </p>
-                    </div>
 
-                    <div className="feature-card">
-                        <div className="feature-icon teal-gradient">
-                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
-                            </svg>
-                        </div>
-                        <h3 className="feature-title">Crowd Analytics</h3>
-                        <p className="feature-description">
-                            Make informed decisions with crowd density indicators and average service time data.
-                        </p>
-                    </div>
                 </div>
             </section>
 
