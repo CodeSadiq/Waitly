@@ -1,0 +1,36 @@
+# Environment variables (NEVER commit these)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Node modules
+node_modules/
+
+# Build output
+dist/
+build/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+
+# Debug utilities (not for production)
+waitly-backend/src/utils/check-counters.js
+waitly-backend/src/utils/debug-user-status.js
+waitly-backend/src/utils/fix-counters.js
+waitly-backend/src/utils/reset-staff-status.js
+waitly-backend/src/utils/test-admin-query.js
+waitly-backend/src/utils/test-db-connect.js

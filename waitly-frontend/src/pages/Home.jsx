@@ -4,7 +4,6 @@ import { AuthContext } from "../context/AuthContext";
 import PlaceList from "../components/PlaceList";
 import MapView from "../components/MapView";
 import PlaceDetails from "./PlaceDetails";
-import AddPlaceModal from "../components/AddPlaceModal";
 import "./Home.css";
 import API_BASE from "../config/api";
 import { io } from "socket.io-client";
@@ -26,10 +25,6 @@ export default function Home() {
   const [search, setSearch] = useState("");
   const [selectedPlace, setSelectedPlace] = useState(null);
   const [userLocation, setUserLocation] = useState(null);
-
-  const [addMode, setAddMode] = useState(false);
-  const [newPlaceCoords, setNewPlaceCoords] = useState(null);
-  const [showLoginPrompt, setShowLoginPrompt] = useState(false);
 
   /* =========================
      ⚡ LIVE WAIT UPDATE (SOCKET)
@@ -88,17 +83,46 @@ export default function Home() {
   }, []);
 
   /* =========================
-     🔍 SEARCH FILTER
+     🔍 SEARCH FILTER (GLOBAL DEBOUNCED)
      ========================= */
   useEffect(() => {
     if (!search.trim()) {
       setFilteredPlaces(places);
-    } else {
-      const lower = search.toLowerCase();
-      setFilteredPlaces(
-        places.filter((p) => p.name?.toLowerCase().includes(lower))
-      );
+      return;
     }
+
+    // Debounce timer
+    const delayDebounceFn = setTimeout(async () => {
+      const lower = search.toLowerCase();
+
+      // 1. First filter local nearby places
+      const localMatches = places.filter((p) =>
+        p.name?.toLowerCase().includes(lower) ||
+        p.category?.toLowerCase().includes(lower)
+      );
+
+      // 2. If no local matches found, or we want to augment with global search
+      // (Fetching global anyway ensures we see places outside range)
+      try {
+        const res = await fetch(`${API_BASE}/api/location/search?q=${encodeURIComponent(search)}`);
+        const globalResults = await res.json();
+
+        // Merge & De-duplicate
+        const combined = [...localMatches];
+        globalResults.forEach(gp => {
+          if (!combined.some(p => p._id === gp._id)) {
+            combined.push(gp);
+          }
+        });
+
+        setFilteredPlaces(combined);
+      } catch (err) {
+        console.error("Global search failed", err);
+        setFilteredPlaces(localMatches);
+      }
+    }, 400); // 400ms debounce
+
+    return () => clearTimeout(delayDebounceFn);
   }, [search, places]);
 
   /* =========================
@@ -121,22 +145,6 @@ export default function Home() {
       document.body.classList.remove("details-open");
     }
   }, [selectedPlace]);
-
-  useEffect(() => {
-    if (newPlaceCoords) {
-      document.body.classList.add("add-place-open");
-    } else {
-      document.body.classList.remove("add-place-open");
-    }
-  }, [newPlaceCoords]);
-
-  useEffect(() => {
-    if (addMode) {
-      document.body.classList.add("add-mode");
-    } else {
-      document.body.classList.remove("add-mode");
-    }
-  }, [addMode]);
 
   /* =========================
      📱 SWIPE HANDLER
@@ -357,29 +365,6 @@ export default function Home() {
       </aside>
 
       <main className="home-center">
-        {(!user || (user.role !== "admin")) && (
-          <button
-            className={`add-place-btn ${addMode ? "active" : ""}`}
-            onClick={() => {
-              if (!user) {
-                setShowLoginPrompt(true);
-                return;
-              }
-              setAddMode(!addMode);
-              setSelectedPlace(null);
-            }}
-          >
-            {addMode ? "✖" : "+"}
-          </button>
-        )}
-
-        {addMode && (
-          <div className="add-place-hint">
-            <svg stroke="currentColor" fill="none" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
-            Tap on map to add a new place
-          </div>
-        )}
-
         {!userLocation && (
           <div className="map-loading">
             <div className="spinner"></div>
@@ -391,17 +376,11 @@ export default function Home() {
         {userLocation && (
           <MapView
             userLocation={userLocation}
-            places={places}
+            places={filteredPlaces}
             selectedPlace={selectedPlace}
             onSelectPlace={setSelectedPlace}
-            addMode={addMode}
-            onMapSelect={(coords) => {
-              setNewPlaceCoords(coords);
-              setAddMode(false);
-            }}
           />
         )}
-
       </main>
 
       {/* MOBILE SEARCH (Floating outside center to stay on top layer) */}
@@ -419,37 +398,6 @@ export default function Home() {
       <aside className="home-right">
         <PlaceDetails place={selectedPlace} userLocation={userLocation} />
       </aside>
-
-      {newPlaceCoords && (
-        <AddPlaceModal
-          coords={newPlaceCoords}
-          onClose={() => setNewPlaceCoords(null)}
-        />
-      )}
-
-      {/* LOGIN PROMPT MODAL */}
-      {showLoginPrompt && (
-        <div className="modal-backdrop">
-          <div className="modal-card">
-            <h3>Login Required</h3>
-            <p>You need to be logged in to add a place.</p>
-            <div className="actions">
-              <button
-                onClick={() => navigate("/login")}
-                className="submit-btn"
-              >
-                Login Now
-              </button>
-              <button
-                onClick={() => setShowLoginPrompt(false)}
-                className="secondary"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -11,11 +11,13 @@ import { Server } from "socket.io";
 import cookieParser from "cookie-parser";        // ✅ ADD
 import authRoutes from "./routes/auth.routes.js"; // ✅ ADD
 import passport from "./config/passport.js";       // ✅ ADD
+import { seedAdmin } from "./utils/seedAdmin.js";
 
 import locationRoutes from "./routes/locationRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import queueRoutes from "./routes/queue.js";
 import staffRoutes from "./routes/staff.routes.js";
+import reviewRoutes from "./routes/reviewRoutes.js";
 
 console.log("JWT SECRET:", process.env.JWT_SECRET);
 
@@ -51,6 +53,7 @@ app.use("/api/location", locationRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/queue", queueRoutes);
 app.use("/api/staff", staffRoutes);
+app.use("/api/reviews", reviewRoutes);
 
 /* ================= TEST ================= */
 app.get("/", (req, res) => {
@@ -60,7 +63,10 @@ app.get("/", (req, res) => {
 /* ================= DATABASE ================= */
 mongoose
   .connect(process.env.MONGO_URI)
-  .then(() => console.log("✅ MongoDB Connected"))
+  .then(() => {
+    console.log("✅ MongoDB Connected");
+    seedAdmin();  // Auto-run admin seeder
+  })
   .catch((err) => console.error(err));
 
 /* ================= SOCKET.IO ================= */

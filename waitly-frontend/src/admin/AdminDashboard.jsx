@@ -13,6 +13,13 @@ export default function AdminDashboard() {
   const [fetchMessage, setFetchMessage] = useState("");
   const [lastFetchSource, setLastFetchSource] = useState("");
   const [notification, setNotification] = useState({ message: "", type: "", visible: false });
+  const [confirmModal, setConfirmModal] = useState({
+    visible: false,
+    title: "Confirm Action",
+    message: "",
+    onConfirm: null,
+    onCancel: null
+  });
 
   const showNotification = (msg, type = "success") => {
     setNotification({ message: msg, type, visible: true });
@@ -23,14 +30,23 @@ export default function AdminDashboard() {
   const [loadingGoogle, setLoadingGoogle] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  /* ================= COUNTERS ================= */
-  const [counterInput, setCounterInput] = useState("");
-  const [counters, setCounters] = useState([]);
-
   /* ================= DB PLACES ================= */
   const [dbPlaces, setDbPlaces] = useState([]);
   const [loadingDb, setLoadingDb] = useState(false);
   const [dbError, setDbError] = useState("");
+  /* ================= USERS DATA ================= */
+  const [users_list, setUsersList] = useState([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [userSearch, setUserSearch] = useState("");
+  const [userRoleFilter, setUserRoleFilter] = useState("all");
+  const [stats, setStats] = useState({
+    users: 0,
+    activeStaff: 0,
+    places: 0,
+    pendingPlaces: 0,
+    staffRequests: 0
+  });
+
   /* ================= NAVIGATION ================= */
   const [activeTab, setActiveTab] = useState("dashboard"); // dashboard, staff, places, fetch
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -90,14 +106,6 @@ export default function AdminDashboard() {
     setEditFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const addEditCounter = (name) => {
-    if (!name.trim() || editFormData.counters.includes(name.trim())) return;
-    setEditFormData(prev => ({ ...prev, counters: [...prev.counters, name.trim()] }));
-  };
-
-  const removeEditCounter = (index) => {
-    setEditFormData(prev => ({ ...prev, counters: prev.counters.filter((_, i) => i !== index) }));
-  };
 
   const renderPlaceForm = () => (
     <div className="manual-form-stack">
@@ -162,70 +170,9 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      <div className="manual-counter-setup">
-        <label>Service Counters <span className="req">*</span></label>
-        <div className="active-counters-list">
-          {editFormData.counters.map((c, i) => (
-            <div key={i} className="active-counter-chip">
-              <span>{c}</span>
-              <button onClick={() => removeEditCounter(i)}>&times;</button>
-            </div>
-          ))}
-        </div>
-        <div className="preset-badges">
-          {presetCounters.map(c => (
-            <button
-              key={c}
-              className={`preset-badge ${editFormData.counters.includes(c) ? "active" : ""}`}
-              onClick={() => addEditCounter(c)}
-            >
-              {c}
-            </button>
-          ))}
-        </div>
-        <div className="custom-counter-box compact">
-          <input
-            placeholder="Add custom counter..."
-            value={counterInput}
-            onChange={(e) => setCounterInput(e.target.value)}
-          />
-          <button className="btn-add-counter" onClick={() => { addEditCounter(counterInput); setCounterInput(""); }}>Add</button>
-        </div>
-      </div>
     </div>
   );
 
-  /* ================= COUNTER HELPERS ================= */
-  const addCounter = () => {
-    if (!counterInput.trim()) return;
-    if (counters.includes(counterInput.trim())) return;
-    setCounters([...counters, counterInput.trim()]);
-    setCounterInput("");
-  };
-
-  const removeCounter = (i) => {
-    setCounters(counters.filter((_, idx) => idx !== i));
-  };
-
-  const presetCounters = [
-    "General",
-    "Token Counter",
-    "Enquiry",
-    "Cash",
-    "OPD",
-    "Registration",
-    "Billing",
-    "Help Desk",
-    "Customer Service",
-    "Reception",
-    "Information Desk",
-    "Payment Counter",
-  ];
-
-  const addPresetCounter = (name) => {
-    if (counters.includes(name)) return;
-    setCounters([...counters, name]);
-  };
 
   /* ================= LOGOUT ================= */
   const logout = async () => {
@@ -237,6 +184,16 @@ export default function AdminDashboard() {
   };
 
   /* ================= LOAD DATA ================= */
+  const loadStats = async () => {
+    try {
+      const res = await adminFetch("/api/admin/stats");
+      const data = await res.json();
+      setStats(data);
+    } catch (err) {
+      console.error("Stats load failed", err);
+    }
+  };
+
   const loadPending = async () => {
     try {
       const res = await adminFetch("/api/admin/pending");
@@ -247,85 +204,170 @@ export default function AdminDashboard() {
 
   const loadStaffRequests = async () => {
     try {
-      console.log("📂 [ADMIN] Fetching staff requests...");
       const res = await adminFetch("/api/admin/staff-requests");
-      console.log("📡 [ADMIN] Staff requests status:", res.status);
-
       if (!res.ok) {
-        const errText = await res.text();
-        console.error("❌ [ADMIN] Staff requests fetch failed:", res.status, errText);
         setStaffRequests([]);
         return;
       }
-
       const data = await res.json();
-      console.log("✅ [ADMIN] Staff requests data:", data);
       setStaffRequests(Array.isArray(data) ? data : []);
     } catch (e) {
-      console.error("🚨 [ADMIN] Staff requests network error:", e);
       setStaffRequests([]);
     }
   };
 
+  const loadUsers = async () => {
+    setLoadingUsers(true);
+    try {
+      const res = await adminFetch("/api/admin/users");
+      const data = await res.json();
+      setUsersList(Array.isArray(data) ? data : []);
+    } catch {
+      setUsersList([]);
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
+
+  /* ================= USER ACTIONS ================= */
+  const deleteUser = (id) => {
+    setConfirmModal({
+      visible: true,
+      title: "Delete User?",
+      message: "Are you sure you want to delete this user? This action cannot be undone and will remove all their associations.",
+      onConfirm: async () => {
+        try {
+          const res = await adminFetch(`/api/admin/user/${id}`, { method: "DELETE" });
+          if (res.ok) {
+            showNotification("User deleted successfully", "success");
+            loadUsers();
+            loadStats();
+          } else {
+            showNotification("Failed to delete user", "error");
+          }
+        } catch (err) {
+          showNotification("Error deleting user", "error");
+        }
+        setConfirmModal(prev => ({ ...prev, visible: false }));
+      },
+      onCancel: () => setConfirmModal(prev => ({ ...prev, visible: false }))
+    });
+  };
+
+  const updateUserRole = (id, newRole) => {
+    setConfirmModal({
+      visible: true,
+      title: "Change User Role?",
+      message: `Are you sure you want to change this user's role to ${newRole.toUpperCase()}? This will reset their specific access and they will behave as a new member in the new role.`,
+      onConfirm: async () => {
+        try {
+          const res = await adminFetch(`/api/admin/user/update/${id}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ role: newRole })
+          });
+          if (res.ok) {
+            showNotification(`User role updated to ${newRole}`, "success");
+            loadUsers();
+          } else {
+            showNotification("Failed to update user role", "error");
+            loadUsers();
+          }
+        } catch (err) {
+          showNotification("Error updating user role", "error");
+          loadUsers();
+        }
+        setConfirmModal(prev => ({ ...prev, visible: false }));
+      },
+      onCancel: () => {
+        loadUsers(); // Refresh to sync UI
+        setConfirmModal(prev => ({ ...prev, visible: false }));
+      }
+    });
+  };
+
+  const filteredUsers = users_list.filter(u => {
+    const matchesSearch = (u.username?.toLowerCase().includes(userSearch.toLowerCase()) ||
+      u.email?.toLowerCase().includes(userSearch.toLowerCase()));
+    const matchesRole = userRoleFilter === "all" || u.role === userRoleFilter;
+    return matchesSearch && matchesRole;
+  });
+
   useEffect(() => {
+    loadStats();
     loadPending();
     loadStaffRequests();
     loadDbPlaces();
+    loadUsers();
   }, []);
 
   const handleRefresh = async () => {
     setRefreshing(true);
     await Promise.all([
+      loadStats(),
       loadPending(),
       loadStaffRequests(),
-      loadDbPlaces()
+      loadDbPlaces(),
+      loadUsers()
     ]);
     setTimeout(() => setRefreshing(false), 800);
   };
 
   /* ================= STAFF REQUEST ACTIONS ================= */
   const approveStaff = async (id) => {
-    // if (!window.confirm("Approve this staff request?")) return; // Removed for better UX
     try {
-      console.log("📡 [ADMIN] Approving staff request:", id);
       const res = await adminFetch(`/api/admin/staff-requests/approve/${id}`, {
         method: "POST",
         body: JSON.stringify({})
       });
-
-      const data = await res.json();
-
       if (res.ok) {
         showNotification("Staff approved successfully!", "success");
         loadStaffRequests();
       } else {
+        const data = await res.json();
         showNotification(data.message || "Failed to approve staff", "error");
       }
     } catch (e) {
-      console.error(e);
       showNotification("Network or Server Error", "error");
     }
   };
 
+  const approveAllStaff = async () => {
+    if (staffRequests.length === 0) return;
+    if (!window.confirm(`Are you sure you want to approve all ${staffRequests.length} staff requests?`)) return;
+
+    setRefreshing(true);
+    let successCount = 0;
+    for (const s of staffRequests) {
+      try {
+        const res = await adminFetch(`/api/admin/staff-requests/approve/${s._id}`, {
+          method: "POST",
+          body: JSON.stringify({})
+        });
+        if (res.ok) successCount++;
+      } catch (err) {
+        console.error(`Failed to approve ${s.username}`, err);
+      }
+    }
+    showNotification(`Successfully approved ${successCount} staff requests.`, "success");
+    await loadStaffRequests();
+    setRefreshing(false);
+  };
+
   const rejectStaff = async (id) => {
-    // if (!window.confirm("Reject and reset this staff request?")) return; // Removed
     try {
-      console.log("🚫 [ADMIN] Rejecting staff request:", id);
       const res = await adminFetch(`/api/admin/staff-requests/reject/${id}`, {
         method: "POST",
         body: JSON.stringify({})
       });
-
-      const data = await res.json();
-
       if (res.ok) {
         showNotification("Staff request rejected.", "success");
         loadStaffRequests();
       } else {
+        const data = await res.json();
         showNotification(data.message || "Failed to reject staff", "error");
       }
     } catch (e) {
-      console.error(e);
       showNotification("Network or Server Error", "error");
     }
   };
@@ -333,7 +375,7 @@ export default function AdminDashboard() {
   /* ================= FETCH FROM OSM ================= */
   const fetchOSM = async () => {
     if (!osmForm.lat || !osmForm.lng) {
-      alert("Latitude & Longitude required");
+      showNotification("Latitude & Longitude required", "error");
       return;
     }
 
@@ -366,7 +408,7 @@ export default function AdminDashboard() {
   /* ================= FETCH FROM GOOGLE ================= */
   const fetchGoogle = async () => {
     if (!osmForm.lat || !osmForm.lng) {
-      alert("Latitude & Longitude required");
+      showNotification("Latitude & Longitude required", "error");
       return;
     }
 
@@ -404,32 +446,23 @@ export default function AdminDashboard() {
       lng: place.lng ?? "",
       address: place.address ?? ""
     });
-    setActiveTab("fetch"); // Stay or go to specialized view
+    setActiveTab("fetch");
   };
 
-  /* ================= CONFIRM ADD PLACE ================= */
   const confirmAddPlace = async () => {
     if (!pendingAddPlace) return;
-
-    if (counters.length === 0) {
-      alert("Add at least one counter");
-      return;
-    }
 
     const payload = {
       externalPlaceId:
         pendingAddPlace.externalPlaceId ||
         `${pendingAddPlace.source || "osm"}_${pendingAddPlace.lat}_${pendingAddPlace.lng}`,
-
       name: pendingAddPlace.name,
       category: pendingAddPlace.category || osmForm.category,
       address: pendingAddPlace.address || "",
-
       location: {
         lat: Number(pendingAddPlace.lat),
         lng: Number(pendingAddPlace.lng)
       },
-      counters: counters.map((c) => ({ name: c })),
       metadata: { source: pendingAddPlace.source || "osm" }
     };
 
@@ -440,52 +473,33 @@ export default function AdminDashboard() {
     });
 
     if (!res.ok) {
-      const err = await res.text();
-      console.error("SAVE ERROR:", err);
-      alert("Failed to save place");
+      showNotification("Failed to save place", "error");
       return;
     }
 
-    alert("Place added to database");
+    showNotification("Place added to database", "success");
     setPendingAddPlace(null);
-    setCounters([]);
+    loadDbPlaces();
   };
 
   /* ================= MANUAL ADD ================= */
   const addManual = async () => {
-    // 1. Validation for ALL fields
-    if (!manualForm.name.trim()) {
-      showNotification("Place Name is required", "error");
-      return;
-    }
-    if (!manualForm.category) {
-      showNotification("Please select a Category", "error");
-      return;
-    }
-    if (!manualForm.address.trim()) {
-      showNotification("Address is required", "error");
-      return;
-    }
-    if (!manualForm.lat || !manualForm.lng) {
-      showNotification("Coordinates (Lat/Lng) are required", "error");
-      return;
-    }
-    if (counters.length === 0) {
-      showNotification("Please add at least one Service Counter", "error");
-      return;
-    }
+    if (!manualForm.name.trim()) return showNotification("Place Name is required", "error");
+    if (!manualForm.category) return showNotification("Please select a Category", "error");
+    if (!manualForm.address.trim()) return showNotification("Address is required", "error");
+    if (!manualForm.lat || !manualForm.lng) return showNotification("Coordinates (Lat/Lng) are required", "error");
 
     try {
       const res = await adminFetch("/api/admin/place/manual", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...manualForm, counters })
+        body: JSON.stringify({ ...manualForm })
       });
 
       if (res.ok) {
         showNotification("Place registered successfully!", "success");
         setManualForm({ name: "", category: "bank", address: "", lat: "", lng: "" });
-        setCounters([]);
+        loadDbPlaces();
       } else {
         const data = await res.json();
         showNotification(data.message || "Failed to register place", "error");
@@ -497,23 +511,53 @@ export default function AdminDashboard() {
 
   /* ================= APPROVE / REJECT ================= */
   const approve = async (id) => {
-    await adminFetch(`/api/admin/pending/approve/${id}`, { method: "POST" });
-    loadPending();
+    try {
+      const res = await adminFetch(`/api/admin/pending/approve/${id}`, { method: "POST" });
+      if (res.ok) {
+        showNotification("Place approved!", "success");
+        loadPending();
+        loadDbPlaces();
+      }
+    } catch (err) {
+      showNotification("Approval failed", "error");
+    }
+  };
+
+  const approveAllPending = async () => {
+    if (pending.length === 0) return;
+    if (!window.confirm(`Are you sure you want to approve all ${pending.length} pending places?`)) return;
+
+    setRefreshing(true);
+    let count = 0;
+    for (const p of pending) {
+      try {
+        const res = await adminFetch(`/api/admin/pending/approve/${p._id}`, { method: "POST" });
+        if (res.ok) count++;
+      } catch (err) { }
+    }
+    showNotification(`Approved ${count} places.`, "success");
+    await loadPending();
+    await loadDbPlaces();
+    setRefreshing(false);
   };
 
   const reject = async (id) => {
-    await adminFetch(`/api/admin/pending/reject/${id}`, { method: "POST" });
-    loadPending();
+    try {
+      const res = await adminFetch(`/api/admin/pending/reject/${id}`, { method: "POST" });
+      if (res.ok) {
+        showNotification("Place rejected", "success");
+        loadPending();
+      }
+    } catch (err) {
+      showNotification("Rejection failed", "error");
+    }
   };
 
-  /* ================= APPROVE EDITED PENDING ================= */
   const approveEdited = async () => {
-    // 1. Validation
     if (!editFormData.name.trim()) return showNotification("Place Name is required", "error");
     if (!editFormData.category) return showNotification("Category is required", "error");
     if (!editFormData.address.trim()) return showNotification("Address is required", "error");
     if (!editFormData.lat || !editFormData.lng) return showNotification("Coordinates (Lat/Lng) are required", "error");
-    if (editFormData.counters.length === 0) return showNotification("At least one counter is required", "error");
 
     const payload = {
       ...editingPlace,
@@ -523,8 +567,7 @@ export default function AdminDashboard() {
       location: {
         lat: Number(editFormData.lat),
         lng: Number(editFormData.lng)
-      },
-      counters: editFormData.counters.map(c => ({ name: c }))
+      }
     };
 
     try {
@@ -538,6 +581,7 @@ export default function AdminDashboard() {
         showNotification("Place approved and saved!", "success");
         setEditingPlace(null);
         loadPending();
+        loadDbPlaces();
       } else {
         const data = await res.json();
         showNotification(data.message || "Failed to approve place", "error");
@@ -565,12 +609,10 @@ export default function AdminDashboard() {
 
   /* ================= SAVE DB EDIT ================= */
   const saveDbEdit = async () => {
-    // 1. Validation
     if (!editFormData.name.trim()) return showNotification("Place Name is required", "error");
     if (!editFormData.category) return showNotification("Category is required", "error");
     if (!editFormData.address.trim()) return showNotification("Address is required", "error");
     if (!editFormData.lat || !editFormData.lng) return showNotification("Coordinates (Lat/Lng) are required", "error");
-    if (editFormData.counters.length === 0) return showNotification("At least one counter is required", "error");
 
     const payload = {
       ...editingDbPlace,
@@ -580,8 +622,7 @@ export default function AdminDashboard() {
       location: {
         lat: Number(editFormData.lat),
         lng: Number(editFormData.lng)
-      },
-      counters: editFormData.counters.map(c => ({ name: c }))
+      }
     };
 
     try {
@@ -600,7 +641,6 @@ export default function AdminDashboard() {
         showNotification(data.message || "Failed to update place", "error");
       }
     } catch (error) {
-      console.error(error);
       showNotification("Update failed. Server error.", "error");
     }
   };
@@ -611,30 +651,23 @@ export default function AdminDashboard() {
       e.preventDefault();
       e.stopPropagation();
     }
-    console.log("🖱️ [FRONTEND] Delete clicked for ID:", id);
     if (!id) {
-      alert("Error: No Place ID found!");
+      showNotification("Error: No Place ID found!", "error");
       return;
     }
 
-    // Checking if bypass helps - typically window.confirm blocks or is suppressed
-    // if (!window.confirm("Delete this place permanently?")) return; 
-    console.log("⚠️ [FRONTEND] Bypassing confirm dialog for debugging");
+    if (!window.confirm("Delete this place permanently?")) return;
 
     try {
-      console.log("📡 [FRONTEND] Sending DELETE request...");
       const res = await adminFetch(`/api/admin/place/${id}`, { method: "DELETE" });
-
       if (res.ok) {
-        console.log("✅ [FRONTEND] Delete success!");
+        showNotification("Place deleted", "success");
         await loadDbPlaces();
       } else {
-        console.error("❌ [FRONTEND] Delete failed:", res.status);
-        alert(`Failed to delete place. Server responded with ${res.status}`);
+        showNotification("Failed to delete place", "error");
       }
     } catch (err) {
-      console.error("🚨 [FRONTEND] Delete error:", err);
-      alert("Error deleting place. Check console details.");
+      showNotification("Error deleting place.", "error");
     }
   };
 
@@ -684,17 +717,16 @@ export default function AdminDashboard() {
               </button>
               <button className={getNavClass("places")} onClick={() => setActiveTab("places")}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
-                <span>See all places in Database</span>
+                <span>Managed Places</span>
+              </button>
+              <button className={getNavClass("users")} onClick={() => setActiveTab("users")}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg>
+                <span>User Database</span>
               </button>
             </div>
 
             <div className="nav-group">
               <span className="group-label">Data</span>
-              <button className={getNavClass("pending")} onClick={() => setActiveTab("pending")}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-                <span>Pending Places</span>
-                {pending.length > 0 && <span className="badge warning">{pending.length}</span>}
-              </button>
               <button className={getNavClass("fetch")} onClick={() => setActiveTab("fetch")}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
                 <span> Add places using API </span>
@@ -733,22 +765,29 @@ export default function AdminDashboard() {
                   <div className="stat-card blue">
                     <div className="stat-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg></div>
                     <div className="stat-info">
-                      <h3>{staffRequests.length}</h3>
-                      <p>New Place Staff Requests</p>
+                      <h3>{stats.users || 0}</h3>
+                      <p>Total Registered Users</p>
                     </div>
                   </div>
                   <div className="stat-card green">
                     <div className="stat-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg></div>
                     <div className="stat-info">
-                      <h3>{dbPlaces.length || "--"}</h3>
-                      <p>Total Managed Places</p>
+                      <h3>{stats.places || 0}</h3>
+                      <p>Managed Workplaces</p>
                     </div>
                   </div>
                   <div className="stat-card orange">
-                    <div className="stat-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg></div>
+                    <div className="stat-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg></div>
                     <div className="stat-info">
-                      <h3>{pending.length}</h3>
-                      <p>Pending Place Approvals</p>
+                      <h3>{stats.activeStaff || 0}</h3>
+                      <p>Active Staff Members</p>
+                    </div>
+                  </div>
+                  <div className="stat-card purple">
+                    <div className="stat-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></div>
+                    <div className="stat-info">
+                      <h3>{stats.pendingPlaces + stats.staffRequests}</h3>
+                      <p>Outstanding Requests</p>
                     </div>
                   </div>
                 </div>
@@ -790,10 +829,15 @@ export default function AdminDashboard() {
                 <section className="management-card">
                   <div className="section-header-styled">
                     <div className="icon-box blue"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg></div>
-                    <div>
-                      <h2>Place Staff Onboarding</h2>
-                      <p>Manage applications from employees and places</p>
+                    <div className="header-text-main">
+                      <h2>Staff Applications</h2>
+                      <p>Review and verify employee requests</p>
                     </div>
+                    {staffRequests.length > 0 && (
+                      <button className="btn-approve-all" onClick={approveAllStaff}>
+                        Approve All ({staffRequests.length})
+                      </button>
+                    )}
                   </div>
 
                   <div className="staff-grid-large">
@@ -809,6 +853,28 @@ export default function AdminDashboard() {
                           </div>
                           <div className="staff-tag pending">Incoming Request</div>
                         </div>
+
+                        {/* APPLICANT DETAILS SECTION */}
+                        {s.application && (
+                          <div className="applicant-details-grid">
+                            <div className="detail-item">
+                              <label>Full Name</label>
+                              <span>{s.application.fullName || "N/A"}</span>
+                            </div>
+                            <div className="detail-item">
+                              <label>Employee ID</label>
+                              <span className="mono-badge">{s.application.staffId || "N/A"}</span>
+                            </div>
+                            <div className="detail-item">
+                              <label>Designation</label>
+                              <span>{s.application.designation || "Staff"}</span>
+                            </div>
+                            <div className="detail-item">
+                              <label>Assigned Counter</label>
+                              <span className="counter-badge">{s.application.counterName || "General"}</span>
+                            </div>
+                          </div>
+                        )}
 
                         <div className="staff-request-context">
                           {s.application?.placeId ? (
@@ -894,60 +960,6 @@ export default function AdminDashboard() {
               </div>
             )}
 
-            {activeTab === "pending" && (
-              <div className="tab-pane">
-                <section className="management-card">
-                  <div className="section-header-styled">
-                    <div className="icon-box orange"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></div>
-                    <div>
-                      <h2>Pending Places</h2>
-                      <p>Review places submitted by users</p>
-                    </div>
-                  </div>
-
-                  <div className="staff-grid-large">
-                    {pending.map(p => (
-                      <div key={p._id} className="staff-card-detailed">
-                        <div className="staff-card-top">
-                          <div className="staff-info-header">
-                            <div className="staff-avatar-large" style={{ background: '#f97316' }}>{p.name.charAt(0).toUpperCase()}</div>
-                            <div>
-                              <h3>{p.name}</h3>
-                              <p>{p.category} • {p.source || 'User Submission'}</p>
-                            </div>
-                          </div>
-                          <div className="staff-tag pending">Verification Needed</div>
-                        </div>
-
-                        <div className="staff-request-context">
-                          <div className="workplace-link-card new">
-                            <span className="context-label">Location Details:</span>
-                            <h4>{p.address || "No address provided"}</h4>
-                            <p>Lat: {p.location?.lat}, Lng: {p.location?.lng}</p>
-                          </div>
-                        </div>
-
-                        <div className="staff-card-actions">
-                          <button className="btn-approve-large" onClick={() => approve(p._id)}>Approve Place</button>
-                          <button className="btn-reject-icon" onClick={() => reject(p._id)}>
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                          </button>
-                          <button className="btn-reject-icon" title="Edit Place" onClick={() => openFormEditor(p, 'pending')}>
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                    {pending.length === 0 && (
-                      <div className="hero-empty">
-                        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
-                        <p>No pending place submissions.</p>
-                      </div>
-                    )}
-                  </div>
-                </section>
-              </div>
-            )}
 
             {activeTab === "fetch" && (
               <div className="tab-pane">
@@ -1072,28 +1084,6 @@ export default function AdminDashboard() {
                           <input value={pendingAddPlace.address} onChange={(e) => setPendingAddPlace({ ...pendingAddPlace, address: e.target.value })} placeholder="Edit address if needed" />
                         </div>
 
-                        <div className="counter-config-section">
-                          <label>Assign Service Counters</label>
-                          <div className="preset-badges">
-                            {presetCounters.map(c => (
-                              <button key={c} className={`preset-badge ${counters.includes(c) ? "active" : ""}`} onClick={() => addPresetCounter(c)}>{c}</button>
-                            ))}
-                          </div>
-
-                          <div className="custom-counter-box">
-                            <input placeholder="Add custom counter name..." value={counterInput} onChange={(e) => setCounterInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && addCounter()} />
-                            <button className="btn-add-counter" onClick={addCounter}>Add</button>
-                          </div>
-
-                          <div className="active-counters-list">
-                            {counters.map((c, i) => (
-                              <div key={i} className="active-counter-chip">
-                                <span>{c}</span>
-                                <button onClick={() => removeCounter(i)}>&times;</button>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
                       </div>
                     </div>
 
@@ -1103,6 +1093,86 @@ export default function AdminDashboard() {
                     </div>
                   </section>
                 )}
+              </div>
+            )}
+
+            {activeTab === "users" && (
+              <div className="tab-pane">
+                <section className="management-card">
+                  <div className="section-header-styled">
+                    <div className="icon-box blue"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg></div>
+                    <div className="header-text-main">
+                      <h2>User Database</h2>
+                      <p>View all registered users on the platform</p>
+                    </div>
+                  </div>
+
+                  <div className="table-filters-modern">
+                    <div className="search-box-modern">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                      <input
+                        placeholder="Search by username or email..."
+                        value={userSearch}
+                        onChange={(e) => setUserSearch(e.target.value)}
+                      />
+                    </div>
+                    <div className="filter-group-modern">
+                      <select value={userRoleFilter} onChange={(e) => setUserRoleFilter(e.target.value)}>
+                        <option value="all">All Roles</option>
+                        <option value="user">Users</option>
+                        <option value="staff">Staff</option>
+                        <option value="admin">Admins</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="users-table-container">
+                    <table className="admin-table">
+                      <thead>
+                        <tr>
+                          <th>User</th>
+                          <th>Email</th>
+                          <th>Role</th>
+                          <th>Joined</th>
+                          <th>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredUsers.map(u => (
+                          <tr key={u._id}>
+                            <td>
+                              <div className="table-user-info">
+                                <div className="user-avatar-small">{u.username ? u.username.charAt(0).toUpperCase() : "U"}</div>
+                                <span>{u.username}</span>
+                              </div>
+                            </td>
+                            <td>{u.email}</td>
+                            <td>
+                              <select
+                                className={`role-select-inline ${u.role}`}
+                                value={u.role}
+                                onChange={(e) => updateUserRole(u._id, e.target.value)}
+                              >
+                                <option value="user">User</option>
+                                <option value="staff">Staff</option>
+                                <option value="admin">Admin</option>
+                              </select>
+                            </td>
+                            <td>{new Date(u.createdAt).toLocaleDateString()}</td>
+                            <td>
+                              <div className="table-actions-inline">
+                                <button className="btn-table-delete" onClick={() => deleteUser(u._id)} title="Delete User">
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {filteredUsers.length === 0 && <p className="empty-msg">No users found.</p>}
+                  </div>
+                </section>
               </div>
             )}
 
@@ -1160,26 +1230,6 @@ export default function AdminDashboard() {
                       </div>
                     </div>
 
-                    <div className="manual-counter-setup">
-                      <label>Assigned Counters <span className="req">*</span></label>
-                      <div className="active-counters-list">
-                        {counters.map((c, i) => (
-                          <div key={i} className="active-counter-chip">
-                            <span>{c}</span>
-                            <button onClick={() => removeCounter(i)}>&times;</button>
-                          </div>
-                        ))}
-                      </div>
-                      <div className="preset-badges">
-                        {presetCounters.map(c => (
-                          <button key={c} className={`preset-badge ${counters.includes(c) ? "active" : ""}`} onClick={() => addPresetCounter(c)}>{c}</button>
-                        ))}
-                      </div>
-                      <div className="custom-counter-box compact">
-                        <input placeholder="e.g. Reception" value={counterInput} onChange={(e) => setCounterInput(e.target.value)} />
-                        <button className="btn-add-counter" onClick={addCounter}>Add</button>
-                      </div>
-                    </div>
 
                     <button className="btn-submit-manual" onClick={addManual}>Register Place</button>
                   </div>
@@ -1239,6 +1289,27 @@ export default function AdminDashboard() {
             )}
           </div>
           <span className="toast-message">{notification.message}</span>
+        </div>
+      )}
+
+      {/* ================= CONFIRMATION MODAL ================= */}
+      {confirmModal.visible && (
+        <div className="modal-overlay confirm-overlay" onClick={confirmModal.onCancel}>
+          <div className="modal-content confirm-modal" onClick={e => e.stopPropagation()}>
+            <div className="confirm-modal-header">
+              <div className="warn-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+              </div>
+              <h3>{confirmModal.title}</h3>
+            </div>
+            <div className="confirm-modal-body">
+              <p>{confirmModal.message}</p>
+            </div>
+            <div className="confirm-modal-footer">
+              <button className="btn-confirm-cancel" onClick={confirmModal.onCancel}>No, Cancel</button>
+              <button className="btn-confirm-proceed" onClick={confirmModal.onConfirm}>Yes, Proceed</button>
+            </div>
+          </div>
         </div>
       )}
     </>

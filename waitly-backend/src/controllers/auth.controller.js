@@ -311,8 +311,8 @@ export const unifiedLogin = async (req, res) => {
       if (account) {
         role = "staff";
       } else {
-        // 3. Try Admin (email only usually)
-        account = await Admin.findOne({ email: identifier });
+        // 3. Try Admin (email or username)
+        account = await Admin.findOne({ $or: [{ email: identifier }, { username: identifier }] });
         if (account) {
           role = "admin";
         }
@@ -383,9 +383,11 @@ export const unifiedLogin = async (req, res) => {
 ===================================================== */
 export const adminLogin = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { identifier, password } = req.body;
 
-    const admin = await Admin.findOne({ email });
+    const admin = await Admin.findOne({
+      $or: [{ email: identifier }, { username: identifier }]
+    });
 
     if (!admin) {
       return res.status(401).json({
@@ -438,6 +440,7 @@ export const adminLogin = async (req, res) => {
       refreshToken,
       user: {
         id: admin._id,
+        username: admin.username || "Admin",
         email: admin.email,
         role: "admin"
       }

@@ -176,6 +176,25 @@
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
 }
 
+/* ACTIVE TICKET BORDER */
+.dash-ticket-card:not(.is-history) {
+  border: 2px solid #2563eb;
+  position: relative;
+}
+
+.dash-ticket-card:not(.is-history)::after {
+  content: "";
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  border-radius: 20px;
+  box-shadow: 0 0 15px rgba(37, 99, 235, 0.15);
+  pointer-events: none;
+  z-index: 1;
+}
+
 .ticket-header-modern {
   padding: 16px 20px;
   background: #ffffff;

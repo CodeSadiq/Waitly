@@ -51,7 +51,7 @@ export default function StaffDashboard() {
     fullName: user?.username || "",
     staffId: "",
     designation: "",
-    counterName: ""
+    counters: [""]
   });
 
   const getAuthHeaders = () => {
@@ -444,6 +444,12 @@ export default function StaffDashboard() {
         ...appForm
       };
 
+      // Convert counters array to comma-separated string for backend compatibility
+      if (Array.isArray(appForm.counters)) {
+        payload.counterName = appForm.counters.filter(c => c.trim() !== "").join(", ");
+        delete payload.counters;
+      }
+
       if (isNew) {
         payload.newPlaceData = {
           name: selectedPlaceForApp.name,
@@ -507,7 +513,8 @@ export default function StaffDashboard() {
   }
 
   // 1. Join Workplace / Pending Flow (Onboarding Redesigned)
-  if (user.status === "unassigned" || user.status === "applied" || user.status === "pending" || !user.placeId) {
+  // Strictly require "active" status to bypass this screen
+  if (user.status !== "active" || !user.placeId) {
     return (
       <div className="staff-dashboard-container onboarding-v2">
         <header className="staff-header-simple">
@@ -521,7 +528,7 @@ export default function StaffDashboard() {
         </header>
 
         <div className="onboarding-content-v2">
-          {user.status === "applied" || user.status === "pending" ? (
+          {user.status !== "unassigned" ? (
             <div className="status-card-v2 pending">
               <div className="status-badge-v2">Pending Approval</div>
               <div className="status-header">
@@ -618,19 +625,31 @@ export default function StaffDashboard() {
 
                       <div className="search-results-modern">
                         {searchResults.map(p => (
-                          <div key={p._id} className="modern-result-item" onClick={() => { setSelectedPlaceForApp(p); setOnboardingStep("details"); }}>
+                          <div
+                            key={p._id}
+                            className={`modern-result-item ${p.hasActiveStaff ? "disabled-place" : ""}`}
+                            onClick={() => {
+                              if (p.hasActiveStaff) return;
+                              setSelectedPlaceForApp(p);
+                              setOnboardingStep("details");
+                            }}
+                          >
                             <div className="res-icon">
                               {renderCategoryIcon(p.category)}
                             </div>
                             <div className="res-text">
                               <div className="res-name-row">
-                                <h4>{p.name}</h4>
+                                <h4>{p.name} {p.hasActiveStaff && <span className="already-managed-tag">Already Managed</span>}</h4>
                                 <span className="cat-badge-mini">{p.category}</span>
                               </div>
                               <p>{p.address}</p>
                             </div>
                             <div className="res-arrow">
-                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                              {p.hasActiveStaff ? (
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.3 }}><circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></svg>
+                              ) : (
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                              )}
                             </div>
                           </div>
                         ))}
@@ -713,15 +732,47 @@ export default function StaffDashboard() {
 
                       <div className="sec-title mt-4">Workstation Assignment</div>
                       <div className="form-group-v2">
-                        <label>Counter / Desk Name</label>
-                        <input
-                          type="text"
-                          required
-                          placeholder="Ex: Counter 01, Reception Desk"
-                          value={appForm.counterName}
-                          onChange={e => setAppForm({ ...appForm, counterName: e.target.value })}
-                        />
-                        <span className="input-hint">Specify the specific desk or counter you will manage.</span>
+                        <label>Counter / Desk Name(s)</label>
+                        <div className="multi-counter-list">
+                          {appForm.counters.map((counter, index) => (
+                            <div key={index} className="counter-input-row">
+                              <input
+                                type="text"
+                                required
+                                placeholder={`Ex: Counter ${String(index + 1).padStart(2, '0')}`}
+                                value={counter}
+                                onChange={e => {
+                                  const newCounters = [...appForm.counters];
+                                  newCounters[index] = e.target.value;
+                                  setAppForm({ ...appForm, counters: newCounters });
+                                }}
+                              />
+                              {appForm.counters.length > 1 && (
+                                <button
+                                  type="button"
+                                  className="btn-remove-counter"
+                                  onClick={() => {
+                                    const newCounters = appForm.counters.filter((_, i) => i !== index);
+                                    setAppForm({ ...appForm, counters: newCounters });
+                                  }}
+                                >
+                                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                                </button>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+
+                        <button
+                          type="button"
+                          className="btn-add-counter-clean"
+                          onClick={() => setAppForm({ ...appForm, counters: [...appForm.counters, ""] })}
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                          Add Another Counter
+                        </button>
+
+                        <span className="input-hint">Specify the distinct desks or counters you will manage.</span>
                       </div>
                     </div>
 

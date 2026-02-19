@@ -115,13 +115,17 @@ function TicketCard({ ticket, onPrint, onCancel, onDelete, isHistory }) {
                         <>
                             <div className="stat-brick">
                                 <span className="brick-val" style={{ fontSize: '15px', fontWeight: '800' }}>
-                                    {ticket.queuePosition}{ticket.queuePosition === 1 ? 'st' : ticket.queuePosition === 2 ? 'nd' : ticket.queuePosition === 3 ? 'rd' : 'th'}
+                                    {isInactive ? (
+                                        ticket.status === "Completed" ? "Done" :
+                                            ticket.status === "Skipped" ? "Skipped" :
+                                                ticket.status === "Expired" ? "Expired" : "0"
+                                    ) : `${ticket.queuePosition}${ticket.queuePosition === 1 ? 'st' : ticket.queuePosition === 2 ? 'nd' : ticket.queuePosition === 3 ? 'rd' : 'th'}`}
                                 </span>
                                 <span className="brick-lbl">Position</span>
                             </div>
                             <div className="brick-divider"></div>
                             <div className="stat-brick">
-                                <span className="brick-val" style={{ fontSize: '15px', fontWeight: '800' }}>{formatWaitTime(ticket.estimatedWait)}</span>
+                                <span className="brick-val" style={{ fontSize: '15px', fontWeight: '800' }}>{isInactive ? "0m" : formatWaitTime(ticket.estimatedWait)}</span>
                                 <span className="brick-lbl">Wait</span>
                             </div>
                         </>
@@ -405,7 +409,6 @@ export default function UserDashboard() {
                 <section className="tickets-section">
                     {loadingTickets ? (
                         <div className="empty-state">
-                            <div className="pulse-dot" style={{ margin: '0 auto 16px' }}></div>
                             <h3>Loading your tickets...</h3>
                             <p>We're fetching your latest queue status.</p>
                         </div>
@@ -478,9 +481,6 @@ export default function UserDashboard() {
                                     </div>
                                     <h3>No tickets at the moment</h3>
                                     <p>Join a queue to see your ticket here.</p>
-                                    <button onClick={() => navigate("/")} className="primary-btn">
-                                        Browse Places
-                                    </button>
                                 </div>
                             )}
                         </>

@@ -1,7 +1,6 @@
 import Place from "../models/Place.js";
-
-
 import PendingPlace from "../models/PendingPlace.js";
+import Staff from "../models/Staff.js";
 
 export const submitPlaceByUser = async (req, res) => {
   try {
@@ -25,9 +24,6 @@ export const submitPlaceByUser = async (req, res) => {
     res.status(500).json({ error: "Submission failed" });
   }
 };
-
-
-
 
 /* ===========================
    POST /api/location/sync-places
@@ -79,9 +75,47 @@ export const getNearbyPlaces = async (req, res) => {
       return distance <= MAX_DISTANCE_KM;
     });
 
-    return res.json(nearbyPlaces);
+    // Check if any place already has an active staff
+    const placesWithStatus = await Promise.all(nearbyPlaces.map(async (p) => {
+      const activeStaff = await Staff.findOne({ placeId: p._id, status: 'active' });
+      return {
+        ...p.toObject(),
+        hasActiveStaff: !!activeStaff
+      };
+    }));
+
+    return res.json(placesWithStatus);
   } catch (err) {
     console.error("Nearby fetch error:", err);
     return res.status(500).json({ error: "Fetch failed" });
+  }
+};
+
+/* ===========================
+   GET /api/location/search
+   Purpose: Global search for places
+   =========================== */
+export const searchPlaces = async (req, res) => {
+  try {
+    const { q } = req.query;
+    if (!q) return res.json([]);
+
+    const places = await Place.find({
+      name: { $regex: q, $options: "i" }
+    }).limit(20);
+
+    // Also check for active staff for each found place
+    const placesWithStatus = await Promise.all(places.map(async (p) => {
+      const activeStaff = await Staff.findOne({ placeId: p._id, status: 'active' });
+      return {
+        ...p.toObject(),
+        hasActiveStaff: !!activeStaff
+      };
+    }));
+
+    res.json(placesWithStatus);
+  } catch (err) {
+    console.error("SEARCH ERROR:", err);
+    res.status(500).json({ error: "Search failed" });
   }
 };

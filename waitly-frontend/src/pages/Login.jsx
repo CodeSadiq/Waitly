@@ -170,49 +170,52 @@ export default function Login() {
       <div className="auth-page">
         <div className="auth-card profile-card modern">
           <div className="profile-header">
-            <div className="profile-avatar-modern">
-              {user.username?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase()}
-            </div>
-            <div className="profile-badge-row">
-              <span className={`role-pill ${user.role}`}>{user.role}</span>
+            {success && <div className="success-banner animate-slide-down">{success}</div>}
+
+            <div className="avatar-wrapper">
+              <div className="profile-avatar-modern">
+                {user.username?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase()}
+              </div>
               {(user.isVerified || user.role === "staff") && (
-                <span className="verified-badge">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <div className="verified-check" title="Verified Account">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="20 6 9 17 4 12"></polyline>
                   </svg>
-                  Verified
-                </span>
+                </div>
               )}
             </div>
-            {success && <p className="success-text-inline">{success}</p>}
-            <h2>Active Profile</h2>
-            <p className="profile-handle">@{user.username || user.email.split('@')[0]}</p>
-          </div>
 
-          <div className="profile-details-minimal">
-            <div className="detail-item">
-              <span className="label">Primary Email</span>
-              <span className="value">{user.email}</span>
+            <div className="profile-titles">
+              <span className={`role-tag ${user.role}`}>{user.role}</span>
+              <h2>{user.username || "Anonymous User"}</h2>
+              <p className="handle">@{user.username || user.email.split('@')[0]}</p>
             </div>
           </div>
 
-          <div className="profile-actions-group">
+          <div className="profile-info-grid">
+            <div className="info-cell">
+              <label>Primary Email</label>
+              <span>{user.email}</span>
+            </div>
+          </div>
+
+          <div className="profile-actions">
             <button
-              className="action-btn-primary"
+              className="btn-dashboard"
               onClick={() => {
                 if (user.role === "admin") navigate("/admin/dashboard");
                 else if (user.role === "staff") navigate("/staff/dashboard");
                 else navigate("/user/dashboard");
               }}
             >
-              {user.role === "user" ? "Go to Dashboard" : "Open Dashboard"}
+              Open Dashboard
             </button>
 
-            <div className="secondary-actions">
-              <button className="action-btn-sub" onClick={() => navigate("/")}>
+            <div className="btn-group-secondary">
+              <button className="btn-ghost" onClick={() => navigate("/")}>
                 Return Home
               </button>
-              <button className="action-btn-sub danger" onClick={handleLogout}>
+              <button className="btn-ghost danger" onClick={handleLogout}>
                 Sign Out
               </button>
             </div>

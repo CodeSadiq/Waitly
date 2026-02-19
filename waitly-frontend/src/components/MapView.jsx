@@ -3,6 +3,7 @@ import {
   TileLayer,
   Marker,
   Popup,
+  Tooltip,
   useMap,
   useMapEvents
 } from "react-leaflet";
@@ -30,23 +31,14 @@ const placeIcon = new L.DivIcon({
   iconAnchor: [7, 7]
 });
 
-/* =========================
-   🖱️ HANDLE MAP CLICK (ADD MODE)
-   ========================= */
-function MapClickHandler({ addMode, onMapSelect }) {
-  useMapEvents({
-    click(e) {
-      if (!addMode) return;
+const disabledPlaceIcon = new L.DivIcon({
+  className: "place-marker disabled",
+  html: `<div class="place-dot gray"></div>`,
+  iconSize: [14, 14],
+  iconAnchor: [7, 7]
+});
 
-      onMapSelect({
-        lat: e.latlng.lat,
-        lng: e.latlng.lng
-      });
-    }
-  });
 
-  return null;
-}
 
 /* =========================
    🔥 Fly to selected place
@@ -116,12 +108,26 @@ function ResizeHandler({ selectedPlace }) {
   return null;
 }
 
+/* =========================
+   🖱️ MAP EVENTS
+   ========================= */
+function MapEvents({ addMode, onMapSelect }) {
+  useMapEvents({
+    click(e) {
+      if (addMode && onMapSelect) {
+        onMapSelect({ lat: e.latlng.lat, lng: e.latlng.lng });
+      }
+    },
+  });
+  return null;
+}
+
 export default function MapView({
   userLocation,
   places,
   selectedPlace,
   onSelectPlace,
-  addMode,
+  addMode = false,
   onMapSelect
 }) {
   if (!userLocation) {
@@ -157,12 +163,7 @@ export default function MapView({
       />
 
       <ResizeHandler selectedPlace={selectedPlace} />
-
-      {/* 🔥 CLICK HANDLER */}
-      <MapClickHandler
-        addMode={addMode}
-        onMapSelect={onMapSelect}
-      />
+      <MapEvents addMode={addMode} onMapSelect={onMapSelect} />
 
       {/* 🔥 AUTO FLY */}
       <FlyToPlace place={selectedPlace} />
@@ -183,13 +184,28 @@ export default function MapView({
             place.location.lat,
             place.location.lng
           ]}
-          icon={placeIcon}
+          icon={place.hasActiveStaff ? disabledPlaceIcon : placeIcon}
           eventHandlers={{
-            click: () => onSelectPlace(place)
+            click: (e) => {
+              if (place.hasActiveStaff) return;
+              // Stop propagation to prevent map click event from firing
+              L.DomEvent.stopPropagation(e);
+              onSelectPlace(place);
+            }
           }}
+          opacity={place.hasActiveStaff ? 0.4 : 1}
         >
+          <Tooltip
+            permanent
+            direction="top"
+            offset={[0, -10]}
+            className="map-place-tooltip"
+          >
+            {place.name}
+          </Tooltip>
           <Popup>
             <strong>{place.name}</strong>
+            {place.hasActiveStaff && <div style={{ color: '#ef4444', fontWeight: '800', fontSize: '0.7rem', marginTop: '4px' }}>ALREADY MANAGED</div>}
             <br />
             {place.category}
           </Popup>

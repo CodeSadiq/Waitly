@@ -75,9 +75,11 @@ router.post("/places/apply", verifyStaff, async (req, res) => {
         if (!placeId && newPlaceData) {
             const newPlace = new Place({
                 ...newPlaceData,
+                externalPlaceId: `staff-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
                 status: 'pending', // Staff-created places need admin approval 
                 createdBy: req.user._id,
-                isStaffProposed: true
+                isStaffProposed: true,
+                metadata: { source: "staff-proposed" }
             });
             await newPlace.save();
             finalPlaceId = newPlace._id;
@@ -85,8 +87,17 @@ router.post("/places/apply", verifyStaff, async (req, res) => {
 
         if (!finalPlaceId) return res.status(400).json({ message: "Place or New Place Data required" });
 
-        const staff = await Staff.findById(req.user._id);
-        if (!staff) return res.status(404).json({ message: "Staff not found" });
+        let staff = await Staff.findById(req.user._id);
+
+        // 🔄 Fallback: If not found by ID, try matching by email/username 
+        // (Useful for users who had their role changed manually by admin)
+        if (!staff) {
+            staff = await Staff.findOne({
+                $or: [{ email: req.user.email }, { username: req.user.username }]
+            });
+        }
+
+        if (!staff) return res.status(404).json({ message: "Staff not found. Please logout and login again." });
 
         // Check if already approved or has pending application
         if (staff.status === "active" && staff.placeId) {
@@ -94,6 +105,14 @@ router.post("/places/apply", verifyStaff, async (req, res) => {
         }
         if (staff.status === "applied" || staff.status === "pending") {
             return res.status(400).json({ message: "You already have a pending application. Please cancel it before applying again." });
+        }
+
+        // 🛡️ NEW: Prevent applying to already managed places
+        if (!newPlaceData) {
+            const activeStaffAtPlace = await Staff.findOne({ placeId: finalPlaceId, status: 'active' });
+            if (activeStaffAtPlace) {
+                return res.status(400).json({ message: "This workplace is already managed by another staff member." });
+            }
         }
 
         staff.application = {
@@ -120,7 +139,12 @@ router.post("/places/apply", verifyStaff, async (req, res) => {
    ===================================================== */
 router.post("/places/cancel", verifyStaff, async (req, res) => {
     try {
-        const staff = await Staff.findById(req.user._id);
+        let staff = await Staff.findById(req.user._id);
+        if (!staff) {
+            staff = await Staff.findOne({
+                $or: [{ email: req.user.email }, { username: req.user.username }]
+            });
+        }
         if (!staff) return res.status(404).json({ message: "Staff not found" });
 
         if (staff.status !== "applied" && staff.status !== "pending") {
@@ -146,7 +170,13 @@ router.get("/counters", verifyStaff, async (req, res) => {
     try {
         if (!req.user?._id) return res.status(401).json({ message: "No user ID" });
 
-        const staff = await Staff.findById(req.user._id);
+        let staff = await Staff.findById(req.user._id);
+        if (!staff) {
+            staff = await Staff.findOne({
+                $or: [{ email: req.user.email }, { username: req.user.username }]
+            });
+        }
+
         if (!staff) {
             console.log("❌ [COUNTERS] Staff not found in DB:", req.user._id);
             return res.status(404).json({ message: "Staff account not found. Please relogin." });

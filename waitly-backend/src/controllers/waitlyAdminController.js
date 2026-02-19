@@ -1,7 +1,35 @@
 import Place from "../models/Place.js";
 import PendingPlace from "../models/PendingPlace.js";
 import Staff from "../models/Staff.js";
+import User from "../models/User.js";
+import Admin from "../models/Admin.js";
 import { io } from "../server.js";
+
+/* =====================================================
+   ADMIN: GET OVERVIEW STATS
+   ===================================================== */
+export const getAdminStats = async (req, res) => {
+  try {
+    const [userCount, staffCount, placeCount, pendingCount, staffRequestCount] = await Promise.all([
+      User.countDocuments(),
+      Staff.countDocuments({ status: 'active' }),
+      Place.countDocuments(),
+      PendingPlace.countDocuments(),
+      Staff.countDocuments({ status: { $in: ["pending", "applied"] } })
+    ]);
+
+    res.json({
+      users: userCount,
+      activeStaff: staffCount,
+      places: placeCount,
+      pendingPlaces: pendingCount,
+      staffRequests: staffRequestCount
+    });
+  } catch (err) {
+    console.error("STATS ERROR:", err);
+    res.status(500).json({ error: "Failed to fetch stats" });
+  }
+};
 
 /* =====================================================
    HELPER: BUILD COUNTERS (DB-SAFE FORMAT)
@@ -300,8 +328,32 @@ export const addPendingPlace = async (req, res) => {
    ADMIN: VIEW PENDING
    ===================================================== */
 export const getPendingPlaces = async (req, res) => {
-  const data = await PendingPlace.find().sort({ createdAt: -1 });
-  res.json(data);
+  try {
+    // 1. Fetch user-submitted pending places (Legacy PendingPlace model)
+    const legacyPending = await PendingPlace.find().lean();
+
+    // 2. Fetch staff-proposed pending places (Place model with status='pending')
+    const staffPending = await Place.find({ status: 'pending' })
+      .populate('createdBy', 'username email') // Get staff details
+      .lean();
+
+    // 3. Normalize structure for frontend
+    const merged = [
+      ...legacyPending.map(p => ({ ...p, type: 'user_submission' })),
+      ...staffPending.map(p => ({
+        ...p,
+        _id: p._id, // Keep original ID
+        source: p.metadata?.source || 'staff_proposed',
+        submittedBy: p.createdBy, // Attach staff info
+        type: 'staff_proposal'
+      }))
+    ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    res.json(merged);
+  } catch (err) {
+    console.error("GET PENDING ERROR:", err);
+    res.status(500).json({ message: "Failed to fetch pending places" });
+  }
 };
 
 /* =====================================================
@@ -338,29 +390,49 @@ export const updatePendingPlace = async (req, res) => {
    ADMIN: APPROVE (NORMAL)
    ===================================================== */
 export const approvePlace = async (req, res) => {
-  const pending = await PendingPlace.findById(req.params.id);
-  if (!pending) return res.status(404).json({ message: "Not found" });
+  const { id } = req.params;
 
-  await Place.create({
-    externalPlaceId: `pending-${pending._id}`,
-    name: pending.name,
-    category: pending.category,
-    address: pending.address,
-    location: pending.location,
-    counters: pending.counters,
-    metadata: { source: pending.source, approvedAt: new Date() }
-  });
+  // 1. Try finding in legacy PendingPlace
+  const legacyPending = await PendingPlace.findById(id);
+  if (legacyPending) {
+    await Place.create({
+      externalPlaceId: `pending-${legacyPending._id}`,
+      name: legacyPending.name,
+      category: legacyPending.category,
+      address: legacyPending.address,
+      location: legacyPending.location,
+      counters: legacyPending.counters,
+      metadata: { source: legacyPending.source, approvedAt: new Date() }
+    });
+    await PendingPlace.findByIdAndDelete(id);
+    return res.json({ success: true, type: 'legacy' });
+  }
 
-  await PendingPlace.findByIdAndDelete(req.params.id);
-  res.json({ success: true });
+  // 2. Try finding in Place (Staff Proposed)
+  const staffPending = await Place.findOne({ _id: id, status: 'pending' });
+  if (staffPending) {
+    staffPending.status = 'active';
+    if (staffPending.metadata) staffPending.metadata.approvedAt = new Date();
+    await staffPending.save();
+    return res.json({ success: true, type: 'staff_proposed' });
+  }
+
+  return res.status(404).json({ message: "Pending place not found" });
 };
 
 /* =====================================================
    ADMIN: REJECT
    ===================================================== */
 export const rejectPlace = async (req, res) => {
-  await PendingPlace.findByIdAndDelete(req.params.id);
-  res.json({ success: true });
+  const { id } = req.params;
+
+  const legacyPending = await PendingPlace.findByIdAndDelete(id);
+  if (legacyPending) return res.json({ success: true });
+
+  const staffPending = await Place.findOneAndDelete({ _id: id, status: 'pending' });
+  if (staffPending) return res.json({ success: true });
+
+  return res.status(404).json({ message: "Pending place not found" });
 };
 
 /* =====================================================
@@ -372,6 +444,118 @@ export const getAllPlaces = async (req, res) => {
     res.json(places);
   } catch {
     res.status(500).json({ message: "Failed to fetch places" });
+  }
+};
+
+/* =====================================================
+   DB USERS
+   ===================================================== */
+/* =====================================================
+   DB USERS (Unified View)
+   ===================================================== */
+export const getAllUsers = async (req, res) => {
+  try {
+    const [users, staff, admins] = await Promise.all([
+      User.find().select("-password -__v").lean(),
+      Staff.find().select("-password -__v").lean(),
+      Admin.find().select("-password -__v").lean()
+    ]);
+
+    const usersMap = new Map();
+
+    // 1. Add all Users (Master)
+    users.forEach(u => usersMap.set(u.email, { ...u, _source: 'User' }));
+
+    // 2. Merge Staff (if not present or if standalone)
+    staff.forEach(s => {
+      if (!usersMap.has(s.email)) {
+        usersMap.set(s.email, { ...s, role: 'staff', _source: 'Staff' });
+      } else {
+        // Enforce role consistency if User exists
+        usersMap.get(s.email).role = 'staff';
+      }
+    });
+
+    // 3. Merge Admins
+    admins.forEach(a => {
+      if (!usersMap.has(a.email)) {
+        usersMap.set(a.email, { ...a, role: 'admin', _source: 'Admin' });
+      } else {
+        usersMap.get(a.email).role = 'admin';
+      }
+    });
+
+    res.json(Array.from(usersMap.values()).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to fetch users" });
+  }
+};
+
+export const updateUserByAdmin = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { role, username, email } = req.body;
+
+    // Try finding in all collections
+    let user = await User.findById(id);
+    let collection = 'User';
+
+    if (!user) {
+      user = await Staff.findById(id);
+      collection = 'Staff';
+    }
+    if (!user) {
+      user = await Admin.findById(id);
+      collection = 'Admin';
+    }
+
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    // Handle Role Change (Migration)
+    // If collection matches target role, just update.
+    // If not, we might need to migrate (complex). 
+    // For now, simpler logic: Update fields if collection matches role logic.
+    // Or if role changed, simply update the 'User' record if it exists, or convert?
+
+    // Simplest approach for "working" state:
+    // If updating a 'Staff' source to 'User' role, we should create a User record.
+
+    if (collection === 'Staff' && role === 'user') {
+      // Migrate Staff -> User
+      await User.create({ username: username || user.username, email: email || user.email, password: user.password, role: 'user' });
+      await Staff.findByIdAndDelete(id);
+      return res.json({ success: true, message: "Migrated Staff to User" });
+    }
+
+    // Default: update fields in current collection
+    if (collection === 'User') {
+      await User.findByIdAndUpdate(id, { role, username, email });
+    } else if (collection === 'Staff') {
+      await Staff.findByIdAndUpdate(id, { username, email });
+    } else if (collection === 'Admin') {
+      await Admin.findByIdAndUpdate(id, { username, email });
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error("UPDATE USER ERROR:", err);
+    res.status(500).json({ message: "Failed to update user" });
+  }
+};
+
+export const deleteUserByAdmin = async (req, res) => {
+  try {
+    const { id } = req.params;
+    // Attempt delete on all
+    await Promise.all([
+      User.findByIdAndDelete(id),
+      Staff.findByIdAndDelete(id),
+      Admin.findByIdAndDelete(id)
+    ]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ message: "Failed to delete user" });
   }
 };
 
@@ -496,11 +680,35 @@ export const approveStaffRequest = async (req, res) => {
       try {
         const placeDoc = await Place.findById(targetPlaceId);
         if (placeDoc) {
+          // Get counters from application
+          const requestCounters = staff.application.counterName
+            ? staff.application.counterName.split(',').map(c => c.trim()).filter(c => c)
+            : ["General"];
+
           if (!placeDoc.counters || placeDoc.counters.length === 0) {
-            // Use helper to create default
-            placeDoc.counters = buildCounters(["General"], true);
+            // Use helper to create default from request
+            placeDoc.counters = buildCounters(requestCounters, true);
           } else {
-            // Enable existing
+            // 1. Remove default 'General' if we are adding specific counters
+            if (requestCounters.length > 0 && placeDoc.counters.length === 1 && placeDoc.counters[0].name === "General") {
+              placeDoc.counters = [];
+            }
+
+            // 2. Add requested counters if they don't exist
+            requestCounters.forEach(rc => {
+              const exists = placeDoc.counters.some(c => c.name.toLowerCase() === rc.toLowerCase());
+              if (!exists) {
+                placeDoc.counters.push({
+                  name: rc,
+                  queueWait: { enabled: true, estimatedWait: 10, manualOverride: false },
+                  currentCrowdLevel: "Low",
+                  status: "open",
+                  servedCount: 0
+                });
+              }
+            });
+
+            // 2. Enable all existing counters
             placeDoc.counters.forEach((c) => {
               if (c.queueWait) c.queueWait.enabled = true;
             });

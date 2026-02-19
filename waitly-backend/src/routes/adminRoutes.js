@@ -15,7 +15,11 @@ import {
   deletePlaceByAdmin,
   getPendingStaffRequests,
   approveStaffRequest,
-  rejectStaffRequest
+  rejectStaffRequest,
+  getAdminStats,
+  getAllUsers,
+  updateUserByAdmin,
+  deleteUserByAdmin
 } from "../controllers/waitlyAdminController.js";
 
 import { protect, requireRole } from "../middleware/authMiddleware.js";
@@ -28,6 +32,9 @@ router.post("/pending/add", protect(), addPendingPlace);
 
 // Apply protection to all admin routes
 router.use(protect(), requireRole("admin"));
+
+/* ================= ADMIN STATS ================= */
+router.get("/stats", getAdminStats);
 
 /* ================= ADMIN FETCH ================= */
 router.post("/fetch/osm", fetchFromOSM);
@@ -55,6 +62,11 @@ router.post(
 router.get("/places", getAllPlaces);
 router.post("/place/update/:id", updatePlaceByAdmin);
 router.delete("/place/:id", deletePlaceByAdmin);
+
+/* ================= DATABASE USERS ================= */
+router.get("/users", getAllUsers);
+router.post("/user/update/:id", updateUserByAdmin);
+router.delete("/user/:id", deleteUserByAdmin);
 
 /* ================= STAFF REQUESTS ================= */
 router.get("/staff-requests", getPendingStaffRequests);

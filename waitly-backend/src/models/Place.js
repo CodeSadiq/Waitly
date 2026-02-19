@@ -61,6 +61,9 @@ const PlaceSchema = new mongoose.Schema(
       lng: Number
     },
 
+    rating: { type: Number, default: 0 },
+    reviewCount: { type: Number, default: 0 },
+
     counters: [CounterSchema],
 
     analytics: {
@@ -77,6 +80,19 @@ const PlaceSchema = new mongoose.Schema(
 
     metadata: {
       source: String
+    },
+    status: {
+      type: String,
+      enum: ["active", "pending", "rejected"],
+      default: "active"
+    },
+    isStaffProposed: {
+      type: Boolean,
+      default: false
+    },
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User"
     }
   },
   { timestamps: true }

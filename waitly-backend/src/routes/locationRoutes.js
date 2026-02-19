@@ -1,7 +1,8 @@
 import express from "express";
 import {
   syncPlaces,
-  getNearbyPlaces
+  getNearbyPlaces,
+  searchPlaces
 } from "../controllers/locationController.js";
 
 import Place from "../models/Place.js";
@@ -27,6 +28,11 @@ router.post("/sync-places", syncPlaces);
    GET NEARBY PLACES (HOME)
    ========================= */
 router.get("/nearby-places", getNearbyPlaces);
+
+/* =========================
+   GLOBAL SEARCH
+   ========================= */
+router.get("/search", searchPlaces);
 
 /* =========================
    GET SINGLE PLACE BY ID
