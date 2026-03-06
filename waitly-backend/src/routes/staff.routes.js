@@ -456,7 +456,35 @@ router.post("/action", verifyStaff, async (req, res) => {
             ticket.completedAt = new Date();
             // Calc duration
             if (ticket.servingStartedAt) {
-                ticket.serviceDuration = (ticket.completedAt - ticket.servingStartedAt) / 60000; // minutes
+                const duration = (ticket.completedAt - ticket.servingStartedAt) / 60000;
+                ticket.serviceDuration = duration; // minutes
+
+                // 🔥 LEARN: Update category-wise stats in Place model
+                // Sanitize: Only learn from sessions under 4 hours (ignore forgotten/weekend tickets)
+                if (duration < 240) {
+                    try {
+                        const place = await Place.findById(ticket.place);
+                        const counter = place?.counters.find(c => c.name === ticket.counterName);
+                        const service = counter?.services?.find(s => s.categoryId === ticket.category);
+
+                        if (service) {
+                            if (!service.stats) {
+                                service.stats = { totalServiced: 0, totalTime: 0 };
+                            }
+                            service.stats.totalServiced += 1;
+                            service.stats.totalTime += duration;
+                            // Rolling average logic: SystemAvg = TotalTime / TotalServiced
+                            service.systemAvgTime = Math.round((service.stats.totalTime / service.stats.totalServiced) * 10) / 10;
+
+                            // Hybrid Calculate for finalAvgTime (30% Staff Goal, 70% System Reality)
+                            service.finalAvgTime = Math.round((service.staffAvgTime * 0.3) + (service.systemAvgTime * 0.7));
+
+                            await place.save();
+                        }
+                    } catch (e) {
+                        console.error("FAILED TO LEARN CATEGORY STATS:", e);
+                    }
+                }
             }
         }
 
@@ -493,6 +521,10 @@ router.post("/counters/update-schedule", verifyStaff, async (req, res) => {
         // Update fields
         if (openingTime !== undefined) counter.openingTime = openingTime;
         if (closingTime !== undefined) counter.closingTime = closingTime;
+        if (req.body.lunchStart !== undefined) counter.lunchStart = req.body.lunchStart;
+        if (req.body.lunchEnd !== undefined) counter.lunchEnd = req.body.lunchEnd;
+        if (req.body.walkinPercent !== undefined) counter.walkinPercent = Number(req.body.walkinPercent);
+        if (req.body.slotDuration !== undefined) counter.slotDuration = Number(req.body.slotDuration);
         if (isClosed !== undefined) counter.isClosed = isClosed;
 
         // 🔥 FIX: Ensure queue is ENABLED when staff configures it
@@ -502,6 +534,7 @@ router.post("/counters/update-schedule", verifyStaff, async (req, res) => {
         }
 
         await place.save();
+        io.emit("token-updated"); // Broadcast settings change so waiting queues recalculate limits
 
         res.json({ success: true, message: "Schedule updated", counter });
     } catch (err) {
@@ -533,6 +566,10 @@ router.post("/counters/update-metrics", verifyStaff, async (req, res) => {
         // Support for schedule updates in same call
         if (req.body.openingTime !== undefined) counter.openingTime = req.body.openingTime;
         if (req.body.closingTime !== undefined) counter.closingTime = req.body.closingTime;
+        if (req.body.lunchStart !== undefined) counter.lunchStart = req.body.lunchStart;
+        if (req.body.lunchEnd !== undefined) counter.lunchEnd = req.body.lunchEnd;
+        if (req.body.walkinPercent !== undefined) counter.walkinPercent = Number(req.body.walkinPercent);
+        if (req.body.slotDuration !== undefined) counter.slotDuration = Number(req.body.slotDuration);
         if (req.body.isClosed !== undefined) counter.isClosed = req.body.isClosed;
 
         // Ensure queue is enabled for the counter
@@ -557,11 +594,22 @@ router.post("/counters/update-metrics", verifyStaff, async (req, res) => {
 
         // Add support for "categories" array to bulk update
         if (req.body.categories && Array.isArray(req.body.categories)) {
-            counter.services = req.body.categories.map(c => ({
-                categoryId: c.categoryId || c.name.toLowerCase().replace(/\s+/g, "_"),
-                name: c.name,
-                staffAvgTime: Number(c.staffAvgTime || 5)
-            }));
+            const newServices = req.body.categories.map(c => {
+                const categoryId = c.categoryId || c.name.toLowerCase().replace(/\s+/g, "_");
+                const existing = counter.services.find(s => s.categoryId === categoryId);
+                const staffAvg = Number(c.staffAvgTime || 5);
+
+                return {
+                    categoryId,
+                    name: c.name,
+                    staffAvgTime: staffAvg,
+                    // Preserve learned stats if they exist, otherwise initialize with staffAvg
+                    systemAvgTime: (existing && existing.stats?.totalServiced > 0) ? existing.systemAvgTime : staffAvg,
+                    stats: existing ? existing.stats : { totalServiced: 0, totalTime: 0 },
+                    finalAvgTime: (existing && existing.stats?.totalServiced > 0) ? existing.finalAvgTime : staffAvg
+                };
+            });
+            counter.services = newServices;
         }
 
         await place.save();

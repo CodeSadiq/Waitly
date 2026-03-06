@@ -38,6 +38,7 @@ export default function StaffDashboard() {
   const [crowdData, setCrowdData] = useState({ level: "Unknown", activeCount: 0, dailyCapacity: 0 });
   const [avgTimes, setAvgTimes] = useState({ staff: 5, system: 5, final: 5 });
   const [activeCounterConfig, setActiveCounterConfig] = useState(null);
+  const [hasServedInSession, setHasServedInSession] = useState(false);
 
   // Onboarding States
   const [onboardingStep, setOnboardingStep] = useState(user?.status === "applied" ? "pending" : "find");
@@ -277,6 +278,7 @@ export default function StaffDashboard() {
         showNotification(err.message || "Failed to call next ticket", "error");
       } else {
         fetchStatus();
+        setHasServedInSession(true);
       }
     } catch (err) {
       console.error(err);
@@ -301,11 +303,12 @@ export default function StaffDashboard() {
       });
 
       if (res.ok) {
-        // Success! Now calling next immediately...
-        await handleNextTicket();
+        // Success! User wants manual call next, so just fetch updated status.
+        await fetchStatus();
       }
     } catch (err) {
       console.error(err);
+    } finally {
       setLoading(false);
     }
   };
@@ -1014,17 +1017,18 @@ export default function StaffDashboard() {
                 {inspectingTicket && <button className="return-queue-btn" onClick={() => setInspectingTicket(null)}>Back to Queue</button>}
               </div>
               <div className="vc-token-code">
-                {loading ? (
-                  <div className="clean-message" style={{ padding: '20px' }}>
-                    <span style={{ fontSize: '1.2rem', fontWeight: '800' }}>Calling Next...</span>
-                    <div className="spinner-small" style={{ margin: '8px auto 0', width: '20px', height: '20px', borderWidth: '2px' }}></div>
-                  </div>
-                ) : displayTicket ? (
-                  displayTicket.tokenCode
+                {displayTicket ? (
+                  <div className="animate-token-in">{displayTicket.tokenCode}</div>
                 ) : queueStats.waiting > 0 ? (
                   <div className="clean-message" style={{ padding: '20px' }}>
-                    <span style={{ fontSize: '1.2rem', fontWeight: '800', display: 'block', marginBottom: '8px' }}>Ready to Serve</span>
-                    <button className="vc-btn-call" onClick={handleNextTicket} style={{ width: 'auto', padding: '8px 24px', fontSize: '0.9rem' }}>Start Queue</button>
+                    <span style={{ fontSize: '1.2rem', fontWeight: '800', display: 'block', marginBottom: '8px', color: hasServedInSession ? '#64748b' : 'inherit', letterSpacing: hasServedInSession ? '1px' : 'normal' }}>
+                      {hasServedInSession ? "NEXT TICKET WAITING" : "Ready to Serve"}
+                    </span>
+                    {!hasServedInSession && (
+                      <button className="vc-btn-call" onClick={handleNextTicket} style={{ width: 'auto', padding: '8px 24px', fontSize: '0.9rem' }}>
+                        Start Queue
+                      </button>
+                    )}
                   </div>
                 ) : (
                   <div className="clean-message" style={{
@@ -1055,8 +1059,8 @@ export default function StaffDashboard() {
                 )}
               </div>
 
-              {!loading && displayTicket && (
-                <div style={{
+              {displayTicket && (
+                <div className="animate-token-in token-detail-card" style={{
                   background: 'linear-gradient(135deg, #f8fafc 0%, #ffffff 100%)',
                   padding: '16px 20px',
                   borderRadius: '10px',
@@ -1143,7 +1147,9 @@ export default function StaffDashboard() {
                   <button className="vc-btn-skip" onClick={() => handleUpdateStatus("Skipped")}>Skip</button>
                 </>
               ) : <div className="inspect-warning-msg">Queue actions disabled in inspect mode</div>
-            ) : null /* Hide buttons if no ticket, the main area shows 'Start Queue' or 'No Tokens' */}
+            ) : queueStats.waiting > 0 ? (
+              <button className="vc-btn-complete" onClick={handleNextTicket}>Call Next Token</button>
+            ) : null}
             <button
               className="vc-btn-scan"
               onClick={() => setShowScanner(true)}
@@ -1314,7 +1320,11 @@ export default function StaffDashboard() {
 function CounterSettingsModal({ onClose, counterName, getAuthHeaders, currentConfig, avgTimes, fetchStatus }) {
   const [openingTime, setOpeningTime] = useState(currentConfig?.openingTime || "09:00");
   const [closingTime, setClosingTime] = useState(currentConfig?.closingTime || "17:00");
+  const [lunchStart, setLunchStart] = useState(currentConfig?.lunchStart || "13:00");
+  const [lunchEnd, setLunchEnd] = useState(currentConfig?.lunchEnd || "14:00");
   const [isClosed, setIsClosed] = useState(currentConfig?.isClosed || false);
+  const [walkinPercent, setWalkinPercent] = useState(currentConfig?.walkinPercent ?? 60);
+  const [slotDuration, setSlotDuration] = useState(currentConfig?.slotDuration ?? 15);
   const [saving, setSaving] = useState(false);
 
   // Categories State
@@ -1348,12 +1358,16 @@ function CounterSettingsModal({ onClose, counterName, getAuthHeaders, currentCon
           counterName,
           openingTime,
           closingTime,
+          lunchStart,
+          lunchEnd,
           isClosed,
           categories: categories.map(c => ({
             name: c.name,
             staffAvgTime: c.staffAvgTime,
             categoryId: c.categoryId
-          }))
+          })),
+          walkinPercent: Number(walkinPercent),
+          slotDuration: Number(slotDuration)
         }),
         credentials: "include"
       });
@@ -1399,14 +1413,20 @@ function CounterSettingsModal({ onClose, counterName, getAuthHeaders, currentCon
                     />
                     <button onClick={() => removeCategory(cat.categoryId)} style={{ background: '#fee2e2', color: '#ef4444', border: 'none', width: '32px', borderRadius: '6px', cursor: 'pointer', fontWeight: '800' }}>×</button>
                   </div>
-                  <label style={{ display: 'block', fontSize: '11px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', marginBottom: '8px' }}>Goal: {cat.staffAvgTime} mins</label>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <label style={{ fontSize: '11px', color: '#64748b', fontWeight: '800', textTransform: 'uppercase' }}>
+                      Set approx service time: {cat.staffAvgTime >= 60
+                        ? Math.floor(cat.staffAvgTime / 60) + ' hr' + (cat.staffAvgTime % 60 > 0 ? ' ' + (cat.staffAvgTime % 60) + ' mins' : '')
+                        : cat.staffAvgTime + ' mins'}
+                    </label>
+                  </div>
                   <input
                     type="range"
                     min="1"
-                    max="60"
-                    value={cat.staffAvgTime}
+                    max={slotDuration}
+                    value={cat.staffAvgTime > slotDuration ? slotDuration : cat.staffAvgTime}
                     onChange={e => updateCategory(cat.categoryId, 'staffAvgTime', e.target.value)}
-                    style={{ width: '100%' }}
+                    style={{ width: '100%', accentColor: '#2563eb' }}
                   />
                 </div>
               ))}
@@ -1428,6 +1448,17 @@ function CounterSettingsModal({ onClose, counterName, getAuthHeaders, currentCon
                 </div>
               </div>
 
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '11px', color: '#64748b', marginBottom: '6px', fontWeight: '700' }}>LUNCH START</label>
+                  <input type="time" value={lunchStart} onChange={e => setLunchStart(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '11px', color: '#64748b', marginBottom: '6px', fontWeight: '700' }}>LUNCH END</label>
+                  <input type="time" value={lunchEnd} onChange={e => setLunchEnd(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }} />
+                </div>
+              </div>
+
               <div style={{ background: isClosed ? '#fff1f2' : '#f0fdf4', padding: '12px 16px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '12px', border: `1px solid ${isClosed ? '#fecaca' : '#bbf7d0'}` }}>
                 <input type="checkbox" id="isClosed" checked={isClosed} onChange={e => setIsClosed(e.target.checked)} style={{ width: '18px', height: '18px' }} />
                 <label htmlFor="isClosed" style={{ fontSize: '0.85rem', fontWeight: '800', color: isClosed ? '#e11d48' : '#16a34a' }}>
@@ -1436,10 +1467,61 @@ function CounterSettingsModal({ onClose, counterName, getAuthHeaders, currentCon
               </div>
             </div>
 
-            <div style={{ background: '#f1f5f9', padding: '20px', borderRadius: '12px', textAlign: 'center' }}>
-              <span style={{ fontSize: '0.65rem', color: '#64748b', fontWeight: '800', display: 'block', marginBottom: '8px' }}>SYSTEM PULSE</span>
-              <div style={{ fontSize: '2rem', fontWeight: '900', color: '#0f172a', lineHeight: '1' }}>{avgTimes.final}m</div>
-              <span style={{ fontSize: '0.65rem', color: '#3b82f6', fontWeight: '800' }}>SMART HYBRID AVERAGE</span>
+
+            {/* Slot Duration Slider */}
+            <div style={{ marginBottom: '24px' }}>
+              <h3 style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: '800', marginBottom: '14px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Slot Duration</h3>
+              <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                  <span style={{ fontSize: '0.78rem', fontWeight: '700', color: '#334155' }}>
+                    1 Slot = {slotDuration >= 60
+                      ? Math.floor(slotDuration / 60) + ' hr' + (slotDuration % 60 > 0 ? ' ' + (slotDuration % 60) + ' mins' : '')
+                      : slotDuration + ' mins'}
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min="5"
+                  max="120"
+                  step="5"
+                  value={slotDuration}
+                  onChange={e => setSlotDuration(Number(e.target.value))}
+                  style={{ width: '100%', accentColor: '#10b981', cursor: 'pointer' }}
+                />
+              </div>
+            </div>
+
+            {/* Booking Split Slider */}
+            <div style={{ marginBottom: '24px' }}>
+              <h3 style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: '800', marginBottom: '14px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Booking Split</h3>
+              <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                  <span style={{ fontSize: '0.78rem', fontWeight: '700', color: '#6366f1' }}>
+                    Tatkal {walkinPercent}%
+                  </span>
+                  <span style={{ fontSize: '0.78rem', fontWeight: '700', color: '#0284c7' }}>
+                    Slotted {100 - walkinPercent}%
+                  </span>
+                </div>
+                {/* Split bar */}
+                <div style={{ height: '10px', borderRadius: '99px', overflow: 'hidden', background: '#e2e8f0', marginBottom: '12px', display: 'flex' }}>
+                  <div style={{ width: `${walkinPercent}%`, background: 'linear-gradient(90deg,#6366f1,#818cf8)', transition: 'width 0.15s', borderRadius: '99px 0 0 99px' }} />
+                  <div style={{ flex: 1, background: 'linear-gradient(90deg,#38bdf8,#0284c7)', borderRadius: '0 99px 99px 0' }} />
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="10"
+                  value={walkinPercent}
+                  onChange={e => setWalkinPercent(Number(e.target.value))}
+                  style={{ width: '100%', accentColor: '#6366f1', cursor: 'pointer' }}
+                />
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', color: '#94a3b8', fontWeight: '600', marginTop: '4px' }}>
+                  <span>More Tatkal</span>
+                  <span>More Slotted</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>

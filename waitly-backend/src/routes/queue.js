@@ -44,6 +44,10 @@ router.get("/available-slots", async (req, res) => {
     const [closeH, closeM] = closingTime.split(":").map(Number);
     endOfDay.setHours(closeH, closeM, 0, 0);
 
+    if (endOfDay <= startOfDay) {
+      endOfDay.setDate(endOfDay.getDate() + 1);
+    }
+
     // Lunch Window
     const lunchS = new Date(date);
     const [lsH, lsM] = lunchStart.split(":").map(Number);
@@ -53,16 +57,10 @@ router.get("/available-slots", async (req, res) => {
     const [leH, leM] = lunchEnd.split(":").map(Number);
     lunchE.setHours(leH, leM, 0, 0);
 
-    // 4. PRE-OPENING CHECK: Slots only available before counter opens for that day
-    if (Date.now() >= startOfDay.getTime()) {
-      return res.json({
-        slots: [],
-        openingTime,
-        closingTime,
-        avgTime,
-        message: "Slot booking is only available before the counter opens."
-      });
-    }
+    // 4. Minimum booking window: 60 mins from now
+    // Slots must be at least 1 hour in the future so there's enough lead time.
+    const MIN_BOOKING_WINDOW_MS = 60 * 60 * 1000;
+    const earliestBookable = new Date(Date.now() + MIN_BOOKING_WINDOW_MS);
 
     // 5. Fetch Existing Slots
     const dayStart = new Date(date); dayStart.setHours(0, 0, 0, 0);
@@ -77,17 +75,7 @@ router.get("/available-slots", async (req, res) => {
 
     const bookedTimes = bookedTokens.map(t => new Date(t.scheduledTime).getTime());
 
-    // 5. Generate Slots (70% Expose Logic)
-    // We strictly generate time blocks based on avgTime.
-    // E.g. 9:00, 9:10, 9:20...
-    // But we only expose 70% of capacity? 
-    // Implementation: In this strict slot system, we can just expose ALL calculated slots,
-    // but reserving timestamps for walk-ins happens implicitly by the "Hybrid Serving Rule" 
-    // OR we explicitly skip some slots here.
-    //
-    // Let's go with EXPLICIT SKIPPING for true Hybrid feel.
-    // Every 3rd slot is hidden (reserved for walk-in catchup)?
-
+    // 6. Generate Slots
     const slots = [];
     let currentTime = new Date(startOfDay);
     let slotCount = 0;
@@ -95,39 +83,51 @@ router.get("/available-slots", async (req, res) => {
     while (currentTime < endOfDay) {
       // Skip Lunch
       if (currentTime >= lunchS && currentTime < lunchE) {
-        currentTime.setMinutes(currentTime.getMinutes() + avgTime);
+        currentTime.setMinutes(currentTime.getMinutes() + (counter.slotDuration || 15));
         continue;
       }
 
-      // Past check
-      if (currentTime.getTime() <= Date.now()) {
-        currentTime.setMinutes(currentTime.getMinutes() + avgTime);
+      // Skip slots too close to now (within 30 mins)
+      if (currentTime < earliestBookable) {
+        currentTime.setMinutes(currentTime.getMinutes() + (counter.slotDuration || 15));
         continue;
       }
+
+      const wp = counter.walkinPercent ?? 60;
+      const slotDuration = counter.slotDuration || 15;
+
+      // Mathematical interleaving
+      // Out of every 100 slots, 'wp' slots are for walk-ins, '100-wp' are available for slotted booking.
+      // We keep a running tally to evenly space out the slotted vs walk-in slots regardless of duration.
 
       slotCount++;
 
-      // 🎯 70/30 Logic: Skip every 3rd slot to leave buffer?
-      // 1 (Show), 2 (Show), 3 (Hide/Walk-in), 4 (Show)...
-      const isWalkInBuffer = (slotCount % 3 === 0);
+      // If we hypothetically generate 100 slots, wp are walk-in.
+      // E.g., if wp = 30 (30% tatkal), 70% slots.
+      // We want 7 out of 10 slots to be slotted, 3 out of 10 to be tatkal.
+      const isTatkalSlot = Math.floor((slotCount * wp) / 100) > Math.floor(((slotCount - 1) * wp) / 100);
 
-      if (!isWalkInBuffer) {
+      // We only consider it a slot if it is NOT designated for tatkal, UNLESS wp is 0 (all slots).
+      if (!isTatkalSlot || wp === 0) {
         const timeMs = currentTime.getTime();
 
-        // Check Booked
-        // Since we use strict blocks, exact match is enough?
-        // Or safer window check.
-        const isBooked = bookedTimes.some(bt => Math.abs(bt - timeMs) < (avgTime * 60000 / 2));
+        // Ensure this slot isn't already booked
+        const isBooked = bookedTimes.some(bt => Math.abs(bt - timeMs) < (slotDuration * 60000 / 2));
 
         if (!isBooked) {
           slots.push(currentTime.toISOString());
         }
       }
 
-      currentTime.setMinutes(currentTime.getMinutes() + avgTime);
+      // Always advance by exactly the slotDuration for the next iteration
+      currentTime.setMinutes(currentTime.getMinutes() + slotDuration);
     }
 
-    res.json({ slots, openingTime, closingTime, avgTime });
+    const message = slots.length === 0
+      ? "No slots available. All slots for today may be booked or the counter is closing soon."
+      : null;
+
+    res.json({ slots, openingTime, closingTime, avgTime, message });
 
   } catch (err) {
     console.error("SLOTS ERROR:", err);
@@ -204,17 +204,27 @@ router.get("/stats", async (req, res) => {
     const place = await Place.findById(placeId);
     if (!place) return res.status(404).json({ message: "Place not found" });
 
-    const counter = place.counters[counterIndex];
+    // Try name first if available, otherwise index
+    let counter;
+    if (req.query.counterName) {
+      counter = place.counters.find(c => c.name === req.query.counterName);
+    } else {
+      counter = place.counters[parseInt(counterIndex)];
+    }
+
     if (!counter) return res.status(400).json({ message: "Invalid counter" });
 
-    // Use SIMULATION for accurate stats
     const metrics = await getQueueMetrics(placeId, counter.name, null);
+    const crowd = await getCrowdMetrics(placeId, counter.name);
 
     res.json({
+      ...metrics,
+      ...crowd,
+      // Priority to metrics names but ensuring crowd fields exist
       peopleAhead: metrics.peopleAhead,
       estimatedWait: metrics.estimatedWait,
-      crowdLevel: metrics.crowdLevel,
-      currentPace: metrics.currentPace,
+      crowdLevel: crowd.level || metrics.crowdLevel,
+      currentPace: crowd.pace || metrics.currentPace,
       nowServing: metrics.nowServing
     });
   } catch (err) {

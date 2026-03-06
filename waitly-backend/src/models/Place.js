@@ -39,7 +39,9 @@ const CounterSchema = new mongoose.Schema(
     closingTime: { type: String, default: "17:00" }, // HH:MM
     lunchStart: { type: String, default: "13:00" },  // HH:MM
     lunchEnd: { type: String, default: "14:00" },    // HH:MM
-    isClosed: { type: Boolean, default: false }
+    isClosed: { type: Boolean, default: false },
+    walkinPercent: { type: Number, default: 60 },
+    slotDuration: { type: Number, default: 15 }
   },
   { _id: false }
 );

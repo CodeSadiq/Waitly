@@ -13,6 +13,7 @@ import AdminDashboard from "./admin/AdminDashboard";
 import AddPlace from "./admin/AdminPlace";
 import StaffDashboard from "./pages/StaffDashboard.jsx";
 import UserDashboard from "./pages/UserDashboard.jsx";
+import StaticPage from "./pages/StaticPage.jsx";
 
 export default function App() {
   return (
@@ -26,6 +27,7 @@ export default function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password/:token" element={<ResetPassword />} />
+        <Route path="/p/:pageId" element={<StaticPage />} />
 
         {/* Protected User Routes - Require login */}
         <Route

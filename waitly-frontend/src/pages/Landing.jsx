@@ -110,9 +110,9 @@ export default function Landing() {
                                 <polyline points="12 6 12 12 16 14"></polyline>
                             </svg>
                         </div>
-                        <h3 className="feature-title">Real-Time Updates</h3>
+                        <h3 className="feature-title">Live Queue Tracking</h3>
                         <p className="feature-description">
-                            Join now or book a slot. See live wait times and crowd levels.
+                            Skip the waiting room. See live wait times, track your queue position, and know exactly when it's your turn.
                         </p>
                     </div>
 
@@ -123,9 +123,9 @@ export default function Landing() {
                                 <circle cx="12" cy="10" r="3"></circle>
                             </svg>
                         </div>
-                        <h3 className="feature-title">Join Anywhere</h3>
+                        <h3 className="feature-title">Join From Anywhere</h3>
                         <p className="feature-description">
-                            Find nearby places on the map and join the line from your phone.
+                            No need to stand in line. Find nearby places on the map and instantly join the tatkal queue or book a time slot from your phone.
                         </p>
                     </div>
 
@@ -136,9 +136,9 @@ export default function Landing() {
                                 <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
                             </svg>
                         </div>
-                        <h3 className="feature-title">Safe & Private</h3>
+                        <h3 className="feature-title">Safe & Secure</h3>
                         <p className="feature-description">
-                            Your data is safe and your visits are always kept private.
+                            Your privacy matters. We keep your personal data completely secure and your visit history private.
                         </p>
                     </div>
 
@@ -240,20 +240,21 @@ export default function Landing() {
                             <div className="link-group">
                                 <h4>Product</h4>
                                 <a href="#features">Features</a>
-                                <a href="/map">Exploration</a>
-                                <a href="#">Business Portal</a>
+                                <a style={{ cursor: "pointer" }} onClick={() => navigate("/p/how-it-works")}>How It Works</a>
+                                <a style={{ cursor: "pointer" }} onClick={() => navigate("/map")}>Exploration</a>
+                                <a style={{ cursor: "pointer" }} onClick={() => navigate("/p/business")}>Business Portal</a>
                             </div>
                             <div className="link-group">
                                 <h4>Company</h4>
-                                <a href="#">About Us</a>
-                                <a href="#">Careers</a>
-                                <a href="#">Contact</a>
+                                <a style={{ cursor: "pointer" }} onClick={() => navigate("/p/about")}>About Us</a>
+                                <a style={{ cursor: "pointer" }} onClick={() => navigate("/p/careers")}>Careers</a>
+                                <a style={{ cursor: "pointer" }} onClick={() => navigate("/p/contact")}>Contact</a>
                             </div>
                             <div className="link-group">
                                 <h4>Legal</h4>
-                                <a href="#">Privacy</a>
-                                <a href="#">Terms</a>
-                                <a href="#">Security</a>
+                                <a style={{ cursor: "pointer" }} onClick={() => navigate("/p/privacy")}>Privacy</a>
+                                <a style={{ cursor: "pointer" }} onClick={() => navigate("/p/terms")}>Terms</a>
+                                <a style={{ cursor: "pointer" }} onClick={() => navigate("/p/security")}>Security</a>
                             </div>
                         </div>
                     </div>

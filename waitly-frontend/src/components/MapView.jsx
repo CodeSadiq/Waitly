@@ -54,7 +54,7 @@ function FlyToPlace({ place }) {
 
     const isMobile = window.innerWidth <= 1024;
     const isUserLoc = place.isUserLocation;
-    const targetZoom = 17;
+    const targetZoom = 20;
 
     if (isMobile && isUserLoc) {
       // 📱 MOBILE + USER LOCATION: Offset center to account for bottom sheet

@@ -109,24 +109,33 @@ export default function PlaceDetails({ place, onWaitUpdated, userLocation }) {
   }, [place?._id, onWaitUpdated]);
 
   /* =========================
-     FETCH CROWD DENSITY (Initial Load)
+     FETCH CROWD DENSITY (Initial Load & Live Update)
      ========================= */
+  const [lastUpdate, setLastUpdate] = useState(Date.now());
+
+  useEffect(() => {
+    const triggerUpdate = () => setLastUpdate(Date.now());
+    socket.on("token-updated", triggerUpdate);
+    const interval = setInterval(triggerUpdate, 15000);
+    return () => {
+      socket.off("token-updated", triggerUpdate);
+      clearInterval(interval);
+    };
+  }, []);
+
   useEffect(() => {
     if (!place || !place._id) return;
 
-    // Fetch crowd metrics for each counter
-    // (Optimization: Backend could send this in 'place' object directly later)
     counters.forEach(counter => {
-      fetch(`${import.meta.env.VITE_API_BASE}/api/queue/stats?placeId=${place._id}&counterIndex=${counters.indexOf(counter)}`)
+      if (!counter || !counter.name) return;
+      fetch(`${import.meta.env.VITE_API_BASE}/api/queue/stats?placeId=${place._id}&counterName=${encodeURIComponent(counter.name)}&counterIndex=${counters.indexOf(counter)}`)
         .then(res => res.json())
         .then(data => {
           setCrowdData(prev => ({ ...prev, [counter.name]: data }));
         })
         .catch(err => console.error("Crowd fetch error", err));
     });
-  }, [place]);
-
-
+  }, [place, lastUpdate]);
   if (!place) {
     return (
       <div className="place-details-empty">
@@ -213,32 +222,11 @@ export default function PlaceDetails({ place, onWaitUpdated, userLocation }) {
       <div className="wait-times">
         {counters.length > 0 ? (
           counters.map((counter, index) => {
-            // Using logic-based averages now, not user reported
+            if (!counter || !counter.name) return null;
             const stats = crowdData[counter.name];
-            const density = stats?.crowdLevel || "Unknown";
-
-            let densityIcon = (
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                <circle cx="12" cy="12" r="10" />
-              </svg>
-            );
-            let densityColor = "gray";
-
-            if (density === "Low") { densityColor = "low"; }
-            if (density === "Moderate") { densityColor = "medium"; }
-            if (density === "High") { densityColor = "high"; }
-            if (density === "Critical") {
-              densityColor = "critical";
-              densityIcon = (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 2L1 21h22L12 2zm1 14h-2v2h2v-2zm0-6h-2v4h2v-4z" />
-                </svg>
-              );
-            }
-
             return (
-              <div key={index} className="wait-row">
-                <div className="wait-info-left">
+              <div key={index} className="wait-row" style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: '16px' }}>
+                <div className="wait-info-left" style={{ width: '100%' }}>
                   <div className="counter-icon-box">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
@@ -246,20 +234,48 @@ export default function PlaceDetails({ place, onWaitUpdated, userLocation }) {
                     </svg>
                   </div>
                   <div className="wait-text-content">
-                    <div className="counter-name">{counter.name}</div>
-                    <div className="service-speed-row">
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="speed-icon">
-                        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
-                      </svg>
-                      <span><strong>{crowdData[counter.name]?.currentPace || 5} min</strong> / service</span>
+                    <div className="counter-header-group">
+                      <span className="counter-label-tag">Counter</span>
+                      <div className="counter-name">{counter.name}</div>
                     </div>
                   </div>
                 </div>
 
-                <div className="crowd-info">
-                  <div className={`crowd-badge-pill ${densityColor}`}>
-                    <span className="pulsing-dot"></span>
-                    <span>{density}</span>
+                <div className="crowd-info" style={{ display: 'flex', flexDirection: 'row', gap: '16px', marginLeft: '0', maxWidth: '100%', width: '100%' }}>
+                  {/* Tatkal Bar */}
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', fontWeight: '700', color: '#64748b', marginBottom: '4px' }}>
+                      <span>TATKAL</span>
+                      <span style={{ color: stats?.remainingTatkal > 0 ? '#10b981' : '#ef4444' }}>
+                        {stats?.remainingTatkal || 0} left
+                      </span>
+                    </div>
+                    <div style={{ height: '6px', background: '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}>
+                      <div style={{
+                        height: '100%',
+                        width: `${Math.min(100, ((stats?.remainingTatkal || 0) / (stats?.totalTatkalCapacity || 1)) * 100)}%`,
+                        background: stats?.remainingTatkal > 0 ? '#10b981' : '#ef4444',
+                        transition: 'width 0.3s'
+                      }} />
+                    </div>
+                  </div>
+
+                  {/* Slotted Bar */}
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', fontWeight: '700', color: '#64748b', marginBottom: '4px' }}>
+                      <span>SLOT</span>
+                      <span style={{ color: stats?.remainingSlotted > 0 ? '#3b82f6' : '#ef4444' }}>
+                        {stats?.remainingSlotted || 0} left
+                      </span>
+                    </div>
+                    <div style={{ height: '6px', background: '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}>
+                      <div style={{
+                        height: '100%',
+                        width: `${Math.min(100, ((stats?.remainingSlotted || 0) / (stats?.totalSlottedCapacity || 1)) * 100)}%`,
+                        background: stats?.remainingSlotted > 0 ? '#3b82f6' : '#ef4444',
+                        transition: 'width 0.3s'
+                      }} />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -270,131 +286,146 @@ export default function PlaceDetails({ place, onWaitUpdated, userLocation }) {
         )}
       </div>
 
-      {user && (user.role === 'staff' || user.role === 'admin') ? (
-        <button
-          className="join-queue-btn"
-          style={{ opacity: 0.6, cursor: 'not-allowed', background: '#94a3b8' }}
-          disabled
-        >
-          View Only Mode ({user.role})
-        </button>
-      ) : (
-        <>
-          {counters.some((c) => c.queueWait?.enabled) ? (
-            <button
-              className="join-queue-btn"
-              onClick={() => {
-                if (!user) {
-                  setShowLoginPrompt(true);
-                  return;
-                }
-                navigate(`/join-queue/${place._id}`);
-              }}
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-                <circle cx="9" cy="7" r="4" />
-                <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-              </svg>
-              Join Virtual Queue
-            </button>
-          ) : (
-            <button
-              className="join-queue-btn"
-              style={{ opacity: 0.6, cursor: "not-allowed", background: "#6b7280" }}
-              disabled
-            >
-              Queue Not Active
-            </button>
-          )}
+      {
+        user && (user.role === 'staff' || user.role === 'admin') ? (
+          <button
+            className="join-queue-btn"
+            style={{ opacity: 0.6, cursor: 'not-allowed', background: '#94a3b8' }}
+            disabled
+          >
+            View Only Mode ({user.role})
+          </button>
+        ) : (
+          <>
+            {counters.some((c) => c.queueWait?.enabled) ? (
+              <button
+                className="join-queue-btn"
+                onClick={() => {
+                  if (!user) {
+                    setShowLoginPrompt(true);
+                    return;
+                  }
+                  navigate(`/join-queue/${place._id}`);
+                }}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                  <circle cx="9" cy="7" r="4" />
+                  <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                </svg>
+                Join Virtual Queue
+              </button>
+            ) : (
+              <button
+                className="join-queue-btn"
+                style={{ opacity: 0.6, cursor: "not-allowed", background: "#6b7280" }}
+                disabled
+              >
+                Queue Not Active
+              </button>
+            )}
 
-          {/* REMOVED UPDATE WAIT TIME BUTTON */}
-        </>
-      )}
+            {/* REMOVED UPDATE WAIT TIME BUTTON */}
+          </>
+        )
+      }
 
       {/* REMOVED AutoWaitPopup COMPONENT */}
 
       {/* LOGIN PROMPT MODAL */}
-      {showLoginPrompt && (
-        <div className="modal-backdrop">
-          <div className="modal-card">
-            <h3>Login Required</h3>
-            <p>You need to be logged in to perform this action.</p>
-            <div className="actions">
-              <button
-                onClick={() => navigate("/login")}
-                className="submit-btn"
-              >
-                Login Now
-              </button>
-              <button
-                onClick={() => setShowLoginPrompt(false)}
-                className="secondary"
-              >
-                Cancel
-              </button>
+      {
+        showLoginPrompt && (
+          <div className="modal-backdrop">
+            <div className="modal-card">
+              <h3>Login Required</h3>
+              <p>You need to be logged in to perform this action.</p>
+              <div className="actions">
+                <button
+                  onClick={() => navigate("/login")}
+                  className="submit-btn"
+                >
+                  Login Now
+                </button>
+                <button
+                  onClick={() => setShowLoginPrompt(false)}
+                  className="secondary"
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
       {/* REVIEWS SECTION */}
-      {(showReviews || showReviewForm) && (
-        <div className="reviews-section">
-          <div className="reviews-header">
-            <h4 className="section-heading">Reviews ({reviews.length})</h4>
-            <button
-              className="write-review-btn"
-              onClick={() => {
-                if (!user) { setShowLoginPrompt(true); }
-                else { setShowReviewForm(!showReviewForm); }
-              }}
-            >
-              {showReviewForm ? "Cancel" : "Write a Review"}
-            </button>
-          </div>
-
-          {showReviewForm && (
-            <div className="review-form">
-              <div className="star-rating-input">
-                {[1, 2, 3, 4, 5].map(star => (
-                  <span
-                    key={star}
-                    onClick={() => setNewRating(star)}
-                    style={{ color: star <= newRating ? "#fbbf24" : "#e5e7eb", cursor: "pointer", fontSize: "24px" }}
-                  >
-                    ★
-                  </span>
-                ))}
-              </div>
-              <textarea
-                placeholder="Share your experience..."
-                value={newComment}
-                onChange={e => setNewComment(e.target.value)}
-              />
-              <button onClick={handleSubmitReview} className="submit-review-btn">Post Review</button>
+      {
+        (showReviews || showReviewForm) && (
+          <div className="reviews-section">
+            <div className="reviews-header">
+              <h4 className="section-heading">Reviews ({reviews.length})</h4>
+              <button
+                className="write-review-btn"
+                onClick={() => {
+                  if (!user) {
+                    setShowLoginPrompt(true);
+                  } else {
+                    if (showReviewForm) {
+                      setShowReviewForm(false);
+                      setShowReviews(false);
+                    } else {
+                      setShowReviewForm(true);
+                      setShowReviews(true);
+                    }
+                  }
+                }}
+              >
+                {showReviewForm ? "Cancel" : "Write a Review"}
+              </button>
             </div>
-          )}
 
-          <div className="reviews-list">
-            {reviews.length > 0 ? (
-              reviews.map(review => (
-                <div key={review._id} className="review-card">
-                  <div className="review-top">
-                    <span className="review-author">{review.username}</span>
-                    <span className="review-stars">{"★".repeat(review.rating)}<span style={{ color: "#e5e7eb" }}>{"★".repeat(5 - review.rating)}</span></span>
-                  </div>
-                  <p className="review-text">{review.comment}</p>
-                  <span className="review-date">{new Date(review.createdAt).toLocaleDateString()}</span>
+            {showReviewForm && (
+              <div className="review-form">
+                <div className="star-rating-input">
+                  {[1, 2, 3, 4, 5].map(star => (
+                    <span
+                      key={star}
+                      onClick={() => setNewRating(star)}
+                      style={{ color: star <= newRating ? "#fbbf24" : "#e5e7eb", cursor: "pointer", fontSize: "24px" }}
+                    >
+                      ★
+                    </span>
+                  ))}
                 </div>
-              ))
-            ) : (
-              <p className="no-reviews">No reviews yet. Be the first!</p>
+                <textarea
+                  placeholder="Share your experience..."
+                  value={newComment}
+                  onChange={e => setNewComment(e.target.value)}
+                />
+                <button onClick={handleSubmitReview} className="submit-review-btn">Post Review</button>
+              </div>
             )}
+
+            <div className="reviews-list">
+              {reviews.length > 0 ? (
+                reviews.map(review => (
+                  <div key={review._id} className="review-card">
+                    <div className="review-top">
+                      <span className="review-author">{review.username}</span>
+                      <span className="review-stars">{"★".repeat(review.rating)}<span style={{ color: "#e5e7eb" }}>{"★".repeat(5 - review.rating)}</span></span>
+                    </div>
+                    <p className="review-text">{review.comment}</p>
+                    <span className="review-date">{new Date(review.createdAt).toLocaleDateString()}</span>
+                  </div>
+                ))
+              ) : (
+                <p className="no-reviews">No reviews yet. Be the first!</p>
+              )}
+            </div>
           </div>
-        </div>
-      )}
-    </div>
+        )
+      }
+    </div >
   );
 }

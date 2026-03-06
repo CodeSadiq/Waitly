@@ -13,45 +13,14 @@ export async function getRealAverageTime(placeId, counterName, categoryId = "gen
         const counter = place.counters.find(c => c.name === counterName);
         if (!counter) return 5;
 
-        // Find service category or default to first/default
+        // Find service category
         let service = counter.services?.find(s => s.categoryId === categoryId);
 
-        const staffAvg = service?.staffAvgTime || 5;
+        // 🎯 ONE SOURCE OF TRUTH: Use the pre-calculated finalAvgTime stored in the DB
+        // If it hasn't been learned yet, fall back to staffAvgTime
+        const effectiveAvg = service?.finalAvgTime || service?.staffAvgTime || 5;
 
-        // 🎯 FALLBACK: If counter is CLOSED, use Staff Input only
-        if (counter.isClosed) {
-            return Math.max(Math.round(staffAvg), 2);
-        }
-
-        // Get recent system data (Rolling avg of last 10 completed txns for responsiveness)
-        // 🎯 SHARP RULE: Only count "Completed" tickets. "Skipped" or "Cancelled" are ignored.
-        const lastTokens = await Token.find({
-            place: placeId,
-            counterName: counterName,
-            status: "Completed",
-            serviceDuration: { $exists: true, $gt: 0 }
-        }).sort({ completedAt: -1 }).limit(10);
-
-        let systemAvg = staffAvg;
-        if (lastTokens.length >= 3) {
-            // 🎯 Outlier Protection: Ignore logic errors (e.g. sessions left open for days)
-            // Rule: Only count durations between 0.2 mins and 3x staff avg (max 120 mins)
-            const upperLimit = Math.max(120, staffAvg * 4);
-            const validDurations = lastTokens
-                .map(t => t.serviceDuration)
-                .filter(d => d > 0.2 && d < upperLimit);
-
-            if (validDurations.length > 0) {
-                const sum = validDurations.reduce((acc, d) => acc + d, 0);
-                systemAvg = sum / validDurations.length;
-            }
-        }
-
-        // Apply Hybrid Weighting
-        // 30% Staff Input (Stability) + 70% Real Data (Accuracy)
-        const finalAvg = (staffAvg * 0.3) + (systemAvg * 0.7);
-
-        return Math.max(Math.round(finalAvg), 2); // Min 2 mins
+        return Math.min(Math.max(Math.round(effectiveAvg), 2), 120); // Min 2 mins, Max 120 mins
     } catch (e) {
         console.error("AVG CALC ERROR:", e);
         return 5;
@@ -70,39 +39,15 @@ export async function getDetailedAverageTime(placeId, counterName, categoryId = 
         if (!counter) return { staff: 5, system: 5, final: 5 };
 
         let service = counter.services?.find(s => s.categoryId === categoryId);
-        const staffAvg = service?.staffAvgTime || 5;
 
-        if (counter.isClosed) {
-            return { staff: staffAvg, system: staffAvg, final: staffAvg };
-        }
-
-        // Only consider "Completed" tickets for accurate calculation (ignores Skipped/Expired)
-        const lastTokens = await Token.find({
-            place: placeId,
-            counterName: counterName,
-            status: "Completed",
-            serviceDuration: { $exists: true, $gt: 0 }
-        }).sort({ completedAt: -1 }).limit(10);
-
-        let systemAvg = staffAvg;
-        if (lastTokens.length >= 3) {
-            const upperLimit = Math.max(120, staffAvg * 4);
-            const validDurations = lastTokens
-                .map(t => t.serviceDuration)
-                .filter(d => d > 0.2 && d < upperLimit);
-
-            if (validDurations.length > 0) {
-                const sum = validDurations.reduce((acc, d) => acc + d, 0);
-                systemAvg = sum / validDurations.length;
-            }
-        }
-
-        const finalAvg = (staffAvg * 0.3) + (systemAvg * 0.7);
+        const staff = service?.staffAvgTime || 5;
+        const system = service?.systemAvgTime || staff;
+        const final = service?.finalAvgTime || staff;
 
         return {
-            staff: staffAvg,
-            system: Math.round(systemAvg * 10) / 10,
-            final: Math.max(Math.round(finalAvg), 2)
+            staff,
+            system: Math.round(system * 10) / 10,
+            final: Math.max(Math.round(final), 2)
         };
     } catch (e) {
         console.error("DETAILED AVG ERROR:", e);
@@ -115,44 +60,130 @@ export async function getDetailedAverageTime(placeId, counterName, categoryId = 
    Low / Moderate / High / Critical
    ===================================================== */
 export async function getCrowdMetrics(placeId, counterName, categoryId = "general") {
+    const fallback = {
+        level: "Unknown",
+        activeCount: 0,
+        dailyCapacity: 0,
+        pace: 10,
+        totalSlottedCapacity: 0,
+        totalTatkalCapacity: 0,
+        usedSlotted: 0,
+        usedTatkal: 0,
+        remainingSlotted: 0,
+        remainingTatkal: 0
+    };
+
     try {
         const place = await Place.findById(placeId);
-        if (!place) return { level: "Unknown", capacity: 0 };
+        if (!place) return fallback;
 
         const counter = place.counters.find(c => c.name === counterName);
-        if (!counter) return { level: "Unknown", capacity: 0 };
+        if (!counter) return fallback;
 
         // 1. Calculate Active Load
-        const activeCount = await Token.countDocuments({
+        const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date(); endOfDay.setHours(23, 59, 59, 999);
+
+        // All tokens applicable for today
+        const todaysTokens = await Token.find({
             place: placeId,
             counterName: counterName,
-            status: { $in: ["Waiting", "Serving"] }
-        });
+            status: { $nin: ["Cancelled", "Skipped", "Expired"] },
+            $or: [
+                { scheduledTime: { $type: "date", $gte: startOfDay, $lte: endOfDay } },
+                { scheduledTime: null, createdAt: { $gte: startOfDay, $lte: endOfDay } }
+            ]
+        }).select("scheduledTime status");
+
+        const activeCount = todaysTokens.filter(t => t.status === "Waiting" || t.status === "Serving").length;
 
         // 2. Estimate Capacity
-        // Use the same Hybrid Avg Time for consistency
+        // 'pace' is the learned categorical average (or general fallback)
         const pace = await getRealAverageTime(placeId, counterName, categoryId);
+        const slotDuration = counter.slotDuration || 15;
+        const wp = counter.walkinPercent ?? 60;
 
-        const open = parseInt(counter.openingTime.split(":")[0]) * 60 + parseInt(counter.openingTime.split(":")[1]);
-        const close = parseInt(counter.closingTime.split(":")[0]) * 60 + parseInt(counter.closingTime.split(":")[1]);
-        const operatingMins = Math.max(0, close - open);
+        const parseTime = (t) => {
+            if (!t || typeof t !== 'string' || !t.includes(':')) return null;
+            const parts = t.split(':');
+            const h = parseInt(parts[0]);
+            const m = parseInt(parts[1]);
+            if (isNaN(h) || isNaN(m)) return null;
+            return h * 60 + m;
+        };
 
-        const dailyCapacity = Math.floor(operatingMins / pace) || 50;
+        const openMins = parseTime(counter.openingTime) ?? 540; // 09:00 default
+        const closeMins = parseTime(counter.closingTime) ?? 1020; // 17:00 default
 
-        // 3. Determine Level
-        // Low: < 20% | Mod: < 50% | High: < 85% | Crit: > 85%
-        const loadFactor = activeCount / dailyCapacity;
+        let lunchMins = 0;
+        if (counter.lunchStart && counter.lunchEnd) {
+            const lStart = parseTime(counter.lunchStart);
+            const lEnd = parseTime(counter.lunchEnd);
+            if (lStart !== null && lEnd !== null) {
+                lunchMins = Math.max(0, lEnd - lStart);
+            }
+        }
 
+        const operatingMins = Math.max(0, (closeMins - openMins) - lunchMins);
+        const totalPhysicalSlots = Math.floor(operatingMins / slotDuration) || 28;
+
+        // Mathematical distribution of TIME
+        let totalSlottedCapacity = 0;
+        let reservedTatkalMins = 0;
+
+        for (let i = 1; i <= totalPhysicalSlots; i++) {
+            const isTatkalSlot = Math.floor((i * wp) / 100) > Math.floor(((i - 1) * wp) / 100);
+            if (isTatkalSlot) {
+                reservedTatkalMins += slotDuration;
+            } else {
+                totalSlottedCapacity++;
+            }
+        }
+
+        // 🎯 REAL CAPACITY CALCULATION:
+        // Slotted capacity is strict (one booking per slot duration)
+        // Tatkal capacity is dynamically calculated based on the average time of all categories
+        let avgCategoryTime = pace; // fallback
+        if (counter.services && counter.services.length > 0) {
+            const sumTime = counter.services.reduce((acc, s) => {
+                const time = s.finalAvgTime || s.staffAvgTime || pace || 5;
+                return acc + time;
+            }, 0);
+            avgCategoryTime = sumTime / counter.services.length;
+        } else {
+            avgCategoryTime = pace || 15;
+        }
+
+        const totalTatkalCapacity = Math.round(reservedTatkalMins / avgCategoryTime);
+
+        // 3. Current Usage
+        const usedSlotted = todaysTokens.filter(t => t.scheduledTime).length;
+        const usedTatkal = todaysTokens.filter(t => !t.status.includes("Cancelled") && !t.scheduledTime).length;
+
+        const remainingSlotted = Math.max(0, totalSlottedCapacity - usedSlotted);
+        const remainingTatkal = Math.max(0, totalTatkalCapacity - usedTatkal);
+
+        const loadFactor = activeCount / (totalPhysicalSlots || 1);
         let level = "Low";
-        if (loadFactor > 0.85) level = "Critical"; // Red
-        else if (loadFactor > 0.50) level = "High"; // Orange
-        else if (loadFactor > 0.20) level = "Moderate"; // Yellow
-        // else Low (Green)
+        if (loadFactor > 0.85) level = "Critical";
+        else if (loadFactor > 0.50) level = "High";
+        else if (loadFactor > 0.20) level = "Moderate";
 
-        return { level, activeCount, dailyCapacity, pace };
+        return {
+            level,
+            activeCount,
+            dailyCapacity: totalPhysicalSlots,
+            pace,
+            totalSlottedCapacity,
+            totalTatkalCapacity,
+            usedSlotted,
+            usedTatkal,
+            remainingSlotted,
+            remainingTatkal
+        };
     } catch (e) {
         console.error("CROWD CALC ERROR:", e);
-        return { level: "Unknown", capacity: 0, pace: 10 };
+        return fallback;
     }
 }
 
@@ -333,15 +364,53 @@ export const getNextTicket = async (placeId, counterName, io = null) => {
         }
     }
 
-    // Rule 2: If no urgent slot, take Walk-in
+    // Rule 2: If no urgent slot, check if Walk-in fits before next slot
     if (walkin.length > 0) {
+        const nextSlot = slotted[0];
+
+        if (nextSlot) {
+            const nextSlotTime = new Date(nextSlot.scheduledTime);
+            // remainingTime in minutes
+            const remainingTime = (nextSlotTime.getTime() - now.getTime()) / 60000;
+            const safetyBuffer = 0.5; // 30 seconds safety
+
+            // Find all walk-ins that FIT inside the remaining time
+            // We need to fetch their specific category average times
+            const walkinsWithTime = await Promise.all(walkin.map(async (w) => {
+                const time = await getRealAverageTime(placeId, counterName, w.category);
+                return { token: w, time };
+            }));
+
+            const fittingWalkins = walkinsWithTime.filter(w => w.time <= (remainingTime - safetyBuffer));
+
+            if (fittingWalkins.length > 0) {
+                // FIRST FIT: Pick the earliest walk-in in the queue that fits the gap to maintain fairness
+                return fittingWalkins[0].token;
+            } else {
+                // STARVATION PROTECTION
+                // If the first walkin has been waiting for more than 40 minutes (starving), 
+                // we force-serve them even if it eats into the slot time to prevent infinite wait loops.
+                const firstWalkin = walkin[0];
+                const waitTime = (now.getTime() - new Date(firstWalkin.createdAt).getTime()) / 60000;
+
+                if (waitTime >= 40) {
+                    return firstWalkin;
+                }
+                // No walk-in fits safely, so we check if the slot is "close enough" 
+                // to just start it now (within 5 mins of schedule)
+                if (remainingTime <= 5) {
+                    return nextSlot;
+                }
+                // Otherwise, staff might have a small forced idle or we wait for a very short task
+                return null;
+            }
+        }
+
+        // No slots at all? Just serve the next walk-in by creation time
         return walkin[0];
     }
 
-    // Rule 3: If only future slots exist, are they too far?
-    // If we are here, walkin is empty.
-    // Return next slot even if early, or wait?
-    // Let's return the next slot to avoid idle staff.
+    // Rule 3: If only future slots exist
     if (slotted.length > 0) {
         return slotted[0];
     }

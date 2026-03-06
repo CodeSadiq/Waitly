@@ -212,11 +212,8 @@ export default function Login() {
             </button>
 
             <div className="btn-group-secondary">
-              <button className="btn-ghost" onClick={() => navigate("/")}>
-                Return Home
-              </button>
-              <button className="btn-ghost danger" onClick={handleLogout}>
-                Sign Out
+              <button className="btn-ghost" onClick={() => navigate("/map")}>
+                Return to Map
               </button>
             </div>
           </div>
@@ -236,8 +233,8 @@ export default function Login() {
       <div className="auth-card">
 
         <div className="auth-header">
-          <h2>{mode === "login" ? "Welcome to WAITLY" : "Create Your Account"}</h2>
-          <p>{mode === "login" ? "Sign in to continue" : "Join us today"}</p>
+          <h2>{mode === "login" ? "Sign in to continue" : "Create Your Account"}</h2>
+          <p>{mode === "login" ? "" : "Join us today"}</p>
         </div>
 
         <form onSubmit={mode === "login" ? handleLogin : handleRegister}>
@@ -405,7 +402,7 @@ export default function Login() {
         )}
         <button
           type="button"
-          className="google-auth-btn-v2"
+          className="google-auth-btn"
           onClick={() => {
             window.location.href = `${API_BASE}/api/auth/google?role=${role}`;
           }}
