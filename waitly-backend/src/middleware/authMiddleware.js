@@ -10,11 +10,17 @@ export const protect = () => async (req, res, next) => {
 
     if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
       token = req.headers.authorization.substring(7);
+      // console.log("DEBUG: Token from Auth Header");
     } else {
       token = req.cookies?.token;
+      // console.log("DEBUG: Token from Cookie");
     }
 
     if (!token) {
+      // Quietly log for debugging on localhost
+      if (process.env.NODE_ENV !== 'production') {
+        // console.log("DEBUG: No token found in request to", req.originalUrl);
+      }
       return res.status(401).json({
         success: false,
         message: "Authentication required. Please login."

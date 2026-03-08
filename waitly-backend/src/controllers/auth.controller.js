@@ -3,6 +3,7 @@ import Admin from "../models/Admin.js";
 import Staff from "../models/Staff.js";
 import { createAccessToken, createRefreshToken } from "../utils/jwt.js";
 import crypto from "crypto";
+import sendEmail from "../utils/email.js";
 
 /* =====================================================
    USER REGISTER
@@ -511,19 +512,48 @@ export const forgotPassword = async (req, res) => {
     const resetToken = user.generatePasswordResetToken();
     await user.save();
 
-    // In production, send email here
-    // For now, return the token (REMOVE IN PRODUCTION)
     const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password/${resetToken}`;
 
-    console.log("Password Reset URL:", resetUrl);
+    const html = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e1e1e1; border-radius: 10px;">
+            <h2 style="color: #4f46e5; text-align: center;">Waitly Password Reset</h2>
+            <p>Hello,</p>
+            <p>You requested a password reset for your Waitly account. Please click the button below to set a new password:</p>
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="${resetUrl}" style="background-color: #4f46e5; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">Reset Password</a>
+            </div>
+            <p>If you did not request this, please ignore this email. This link will expire in 1 hour.</p>
+            <hr style="border: none; border-top: 1px solid #eeeeee; margin: 20px 0;">
+            <p style="font-size: 12px; color: #666;">If the button above doesn't work, copy and paste this link into your browser:</p>
+            <p style="font-size: 12px; color: #4f46e5; word-break: break-all;">${resetUrl}</p>
+        </div>
+    `;
 
-    res.json({
-      success: true,
-      message: "Password reset link sent to your email",
-      // REMOVE IN PRODUCTION:
-      resetToken,
-      resetUrl
-    });
+    try {
+      await sendEmail({
+        email: user.email,
+        subject: "Waitly - Password Reset",
+        html
+      });
+
+      res.json({
+        success: true,
+        message: "Password reset link sent to your email",
+        // Keep resetUrl for local development testing convenience
+        ...(process.env.NODE_ENV !== 'production' && { resetUrl, resetToken })
+      });
+    } catch (emailErr) {
+      console.error("FORGOT PASSWORD EMAIL ERROR:", emailErr);
+      // Optionally revert token if email fails
+      user.resetPasswordToken = undefined;
+      user.resetPasswordExpires = undefined;
+      await user.save();
+
+      return res.status(500).json({
+        success: false,
+        message: "Failed to send reset email. Please try again later."
+      });
+    }
 
   } catch (err) {
     console.error("FORGOT PASSWORD ERROR:", err);
@@ -742,25 +772,28 @@ export const googleCallback = (req, res, next) => {
       const token = createAccessToken(payload);
       const refreshToken = createRefreshToken(payload);
 
+      const isProduction = process.env.NODE_ENV === "production";
+
       // Set Cookies
       res.cookie("token", token, {
         httpOnly: true,
-        sameSite: "none",
-        secure: true,
+        sameSite: isProduction ? "none" : "lax",
+        secure: isProduction, // Only secure in production
         path: "/"
       });
 
       res.cookie("refreshToken", refreshToken, {
         httpOnly: true,
-        sameSite: "none",
-        secure: true,
+        sameSite: isProduction ? "none" : "lax",
+        secure: isProduction,
         path: "/"
       });
 
       const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
       const userRole = account.role || (account.constructor.modelName === 'Staff' ? 'staff' : 'user');
 
-      res.redirect(`${frontendUrl}/login?status=success&role=${userRole}&verified=true`);
+      // 🔐 Pass tokens in URL for SPA storage as fallback
+      res.redirect(`${frontendUrl}/login?status=success&role=${userRole}&verified=true&token=${token}&refreshToken=${refreshToken}`);
 
     } catch (tokenErr) {
       console.error("TOKEN GENERATION ERROR:", tokenErr);

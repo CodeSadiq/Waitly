@@ -32,7 +32,8 @@ app.use(
       "https://waitly-frontend.onrender.com"
     ],
     methods: ["GET", "POST", "PUT", "DELETE"],
-    credentials: true
+    credentials: true,
+    allowedHeaders: ["Content-Type", "Authorization"]
   })
 );
 

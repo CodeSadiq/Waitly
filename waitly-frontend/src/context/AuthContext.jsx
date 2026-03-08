@@ -17,14 +17,19 @@ export function AuthProvider({ children }) {
       const data = await authAPI.getUser();
 
       if (data.success && data.user) {
+        // console.log("DEBUG: User loaded successfully");
         setUser(data.user);
       } else {
         setUser(null);
       }
     } catch (err) {
-      // Quietly set user to null if unauthorized - this is normal on first load
-      // console.error("Auth load error:", err); 
-      setUser(null);
+      if (err.message.includes("401")) {
+        // This is expected if not logged in
+        setUser(null);
+      } else {
+        // console.warn("Auth load info:", err.message);
+        setUser(null);
+      }
     } finally {
       setLoading(false);
     }

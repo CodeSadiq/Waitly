@@ -42,6 +42,17 @@ export default function Login() {
       const isNew = queryParams.get("isNew") === "true";
       const userRole = queryParams.get("role");
       const isVerified = queryParams.get("verified") === "true";
+      const token = queryParams.get("token");
+      const refreshTokenValue = queryParams.get("refreshToken");
+
+      // 🔐 Store tokens in localStorage for persistence
+      if (token) {
+        // console.log("DEBUG: Captured token from Google");
+        localStorage.setItem('waitly_token', token);
+      }
+      if (refreshTokenValue) {
+        localStorage.setItem('waitly_refresh_token', refreshTokenValue);
+      }
 
       if (isNew) {
         setSuccess(`Welcome! You've successfully signed up as ${userRole.toUpperCase()}. ${isVerified ? "Your email has been verified via Google." : ""}`);
