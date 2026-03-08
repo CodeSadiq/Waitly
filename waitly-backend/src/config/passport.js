@@ -47,6 +47,7 @@ passport.use(
                         email,
                         password: Math.random().toString(36), // Random password for social login
                         status: "unassigned",
+                        hasSetUsername: false,
                         lastLogin: new Date(),
                     });
                 } else {
@@ -56,6 +57,7 @@ passport.use(
                         password: Math.random().toString(36),
                         role: role,
                         isVerified: true,
+                        hasSetUsername: false,
                         lastLogin: new Date(),
                     });
                 }

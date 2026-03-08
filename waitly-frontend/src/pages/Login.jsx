@@ -1,6 +1,7 @@
 import { useState, useContext, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import "./Auth.css";
+import "./Auth_extension.css";
 import { AuthContext } from "../context/AuthContext";
 import { validateLoginForm, validateRegisterForm, getPasswordStrength } from "../utils/validators";
 import API_BASE from "../config/api";
@@ -31,6 +32,9 @@ export default function Login() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
+  const [completingProfile, setCompletingProfile] = useState(false);
+  const [newUsername, setNewUsername] = useState("");
+  const [updateError, setUpdateError] = useState("");
 
   /* 🔥 Load user on mount */
   useEffect(() => {
@@ -54,10 +58,16 @@ export default function Login() {
         localStorage.setItem('waitly_refresh_token', refreshTokenValue);
       }
 
-      if (isNew) {
-        setSuccess(`Welcome! You've successfully signed up as ${userRole.toUpperCase()}. ${isVerified ? "Your email has been verified via Google." : ""}`);
+      const needsUsername = queryParams.get("needsUsername") === "true";
+      if (needsUsername) {
+        setCompletingProfile(true);
+        // Pre-fill with something if desired, or leave blank
       } else {
-        setSuccess(`Login successful! ${isVerified ? "Email verified via Google." : ""}`);
+        if (isNew) {
+          setSuccess(`Welcome! You've successfully signed up as ${userRole.toUpperCase()}. ${isVerified ? "Your email has been verified via Google." : ""}`);
+        } else {
+          setSuccess(`Login successful! ${isVerified ? "Email verified via Google." : ""}`);
+        }
       }
 
       // Re-load user to get the profile view
@@ -159,6 +169,38 @@ export default function Login() {
     window.location.reload();
   };
 
+  const handleUpdateUsername = async (e) => {
+    e.preventDefault();
+    setUpdateError("");
+    setLoading(true);
+
+    try {
+      const token = localStorage.getItem('waitly_token');
+      const res = await fetch(`${API_BASE}/api/auth/update-username`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({ username: newUsername }),
+        credentials: "include"
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        setSuccess("Username updated successfully!");
+        setCompletingProfile(false);
+        loadUser();
+      } else {
+        setUpdateError(data.message || "Failed to update username");
+      }
+    } catch (err) {
+      setUpdateError("Error updating username");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   /* =====================================================
      ✅ IF USER EXISTS — SHOW PROFILE CARD
   ===================================================== */
@@ -177,6 +219,67 @@ export default function Login() {
   }
 
   if (user) {
+    if (completingProfile) {
+      return (
+        <div className="auth-page">
+          <div className="auth-card modern completion-card animate-fade-in">
+            <div className="auth-header">
+              <h2 className="completion-title">Almost There!</h2>
+              <p className="completion-subtitle">Choose a unique username to complete your profile.</p>
+            </div>
+
+            {updateError && (
+              <div className="error-banner animate-shake">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+                </svg>
+                {updateError}
+              </div>
+            )}
+
+            <form onSubmit={handleUpdateUsername} className="completion-form">
+              <div className="input-group">
+                <label className="input-label-modern">CHOOSE YOUR USERNAME</label>
+                <div className="input-icon-wrap modern-input">
+                  <span className="input-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="7" r="4" /><path d="M6 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2" />
+                    </svg>
+                  </span>
+                  <input
+                    placeholder="e.g. dragon_knight"
+                    value={newUsername}
+                    onChange={(e) => setNewUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+                    required
+                    minLength={3}
+                    maxLength={30}
+                    autoFocus
+                  />
+                </div>
+                <div className="input-tip">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" />
+                  </svg>
+                  Only lowercase letters, numbers, and underscores.
+                </div>
+              </div>
+
+              <button type="submit" className="login-btn modern primary-btn" disabled={loading}>
+                {loading ? (
+                  <span className="btn-loading">
+                    <span className="spinner-tiny"></span>
+                    Saving Profile...
+                  </span>
+                ) : (
+                  <>Complete Setup <SvgChevron /></>
+                )}
+              </button>
+            </form>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="auth-page">
         <div className="auth-card profile-card modern">
@@ -431,3 +534,11 @@ export default function Login() {
     </div>
   );
 }
+
+// ── SVG HELPERS ──
+const SvgChevron = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="9 18 15 12 9 6" />
+  </svg>
+);
+

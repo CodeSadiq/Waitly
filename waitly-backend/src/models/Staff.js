@@ -45,6 +45,10 @@ const staffSchema = new mongoose.Schema({
     address: String,
     counters: [String]
   },
+  hasSetUsername: {
+    type: Boolean,
+    default: true
+  },
   lastLogin: Date
 }, { timestamps: true });
 

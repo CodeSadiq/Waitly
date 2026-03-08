@@ -32,6 +32,10 @@ const tokenSchema = new mongoose.Schema(
       enum: ["Slot", "Walk-in"],
       default: "Walk-in"
     },
+    price: {
+      type: Number,
+      default: 0
+    },
 
     /* =====================
        USER (OWNER)

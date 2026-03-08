@@ -756,7 +756,7 @@ export const googleAuth = (req, res, next) => {
 export const googleCallback = (req, res, next) => {
   passport.authenticate("google", { session: false }, async (err, account, info) => {
     if (err || !account) {
-      console.error("GOOGLE AUTH ERROR:", err);
+      console.error("GOOGLE AUTH ERROR:", err || info);
       const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
       return res.redirect(`${frontendUrl}/login?status=error&message=Authentication failed`);
     }
@@ -791,9 +791,10 @@ export const googleCallback = (req, res, next) => {
 
       const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
       const userRole = account.role || (account.constructor.modelName === 'Staff' ? 'staff' : 'user');
+      const needsUsername = account.hasSetUsername === false;
 
       // 🔐 Pass tokens in URL for SPA storage as fallback
-      res.redirect(`${frontendUrl}/login?status=success&role=${userRole}&verified=true&token=${token}&refreshToken=${refreshToken}`);
+      res.redirect(`${frontendUrl}/login?status=success&role=${userRole}&verified=true&token=${token}&refreshToken=${refreshToken}${needsUsername ? '&needsUsername=true' : ''}`);
 
     } catch (tokenErr) {
       console.error("TOKEN GENERATION ERROR:", tokenErr);
@@ -801,6 +802,51 @@ export const googleCallback = (req, res, next) => {
       res.redirect(`${frontendUrl}/login?status=error&message=Token generation failed`);
     }
   })(req, res, next);
+};
+
+/* =====================================================
+   UPDATE USERNAME
+===================================================== */
+export const updateUsername = async (req, res) => {
+  try {
+    const { username } = req.body;
+
+    if (!username || username.length < 3) {
+      return res.status(400).json({ success: false, message: "Username must be at least 3 characters" });
+    }
+
+    // Check if username is already taken
+    const existingUser = await User.findOne({ username });
+    const existingStaff = await Staff.findOne({ username });
+    const existingAdmin = await Admin.findOne({ username });
+
+    if (existingUser || existingStaff || existingAdmin) {
+      return res.status(400).json({ success: false, message: "Username is already taken" });
+    }
+
+    // Find user in any collection
+    let account = await User.findById(req.user._id);
+    if (!account) account = await Staff.findById(req.user._id);
+    if (!account) account = await Admin.findById(req.user._id);
+
+    if (!account) {
+      return res.status(404).json({ success: false, message: "Account not found" });
+    }
+
+    account.username = username;
+    account.hasSetUsername = true;
+    await account.save();
+
+    res.json({
+      success: true,
+      message: "Username updated successfully",
+      username: account.username
+    });
+
+  } catch (err) {
+    console.error("UPDATE USERNAME ERROR:", err);
+    res.status(500).json({ success: false, message: "Failed to update username" });
+  }
 };
 
 

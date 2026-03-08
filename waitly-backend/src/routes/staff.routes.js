@@ -281,7 +281,7 @@ router.get("/status", verifyStaff, async (req, res) => {
             place: req.user.placeId,
             counterName: counterName,
             status: "Waiting",
-            scheduledTime: { $exists: true }
+            type: "Slot"
         });
 
         // 3. Upcoming List (Next 3)
@@ -525,6 +525,8 @@ router.post("/counters/update-schedule", verifyStaff, async (req, res) => {
         if (req.body.lunchEnd !== undefined) counter.lunchEnd = req.body.lunchEnd;
         if (req.body.walkinPercent !== undefined) counter.walkinPercent = Number(req.body.walkinPercent);
         if (req.body.slotDuration !== undefined) counter.slotDuration = Number(req.body.slotDuration);
+        if (req.body.tatkalPrice !== undefined) counter.tatkalPrice = Number(req.body.tatkalPrice);
+        if (req.body.slottedPrice !== undefined) counter.slottedPrice = Number(req.body.slottedPrice);
         if (isClosed !== undefined) counter.isClosed = isClosed;
 
         // 🔥 FIX: Ensure queue is ENABLED when staff configures it
@@ -570,6 +572,8 @@ router.post("/counters/update-metrics", verifyStaff, async (req, res) => {
         if (req.body.lunchEnd !== undefined) counter.lunchEnd = req.body.lunchEnd;
         if (req.body.walkinPercent !== undefined) counter.walkinPercent = Number(req.body.walkinPercent);
         if (req.body.slotDuration !== undefined) counter.slotDuration = Number(req.body.slotDuration);
+        if (req.body.tatkalPrice !== undefined) counter.tatkalPrice = Number(req.body.tatkalPrice);
+        if (req.body.slottedPrice !== undefined) counter.slottedPrice = Number(req.body.slottedPrice);
         if (req.body.isClosed !== undefined) counter.isClosed = req.body.isClosed;
 
         // Ensure queue is enabled for the counter

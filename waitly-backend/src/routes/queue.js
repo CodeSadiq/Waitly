@@ -169,7 +169,8 @@ router.post("/join", verifyUser, async (req, res) => {
       status: "Waiting",
       category: categoryId,
       verifiedAt: new Date(), // Auto-verify on join for now
-      type: scheduledTime ? "Slot" : "Walk-in"
+      type: scheduledTime ? "Slot" : "Walk-in",
+      price: (scheduledTime ? counter.slottedPrice : counter.tatkalPrice) || 0
     };
 
     // Add optional scheduling details

@@ -187,6 +187,55 @@ export default function StaffDashboard() {
   }, [user, navigate]);
 
   const [loadingCounters, setLoadingCounters] = useState(false);
+  const [showQRSection, setShowQRSection] = useState(false);
+
+  const downloadQR = () => {
+    const svg = document.getElementById("place-qr-code");
+    if (!svg) return;
+    const svgData = new XMLSerializer().serializeToString(svg);
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    const img = new Image();
+    img.onload = () => {
+      const padding = 50;
+      const headerSpace = 80;
+      const footerSpace = 60;
+      // Increased width to 400 to prevent instruction overflow
+      canvas.width = 400;
+      canvas.height = img.height + padding * 2 + headerSpace + footerSpace;
+
+      // Draw background
+      ctx.fillStyle = "white";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Draw Main Header on PNG (centered)
+      ctx.fillStyle = "#0f172a";
+      ctx.font = "bold 22px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("Scan QR to join the queue here", canvas.width / 2, padding + 20);
+
+      // Draw Sub-instruction on PNG
+      ctx.fillStyle = "#64748b";
+      ctx.font = "16px -apple-system, sans-serif";
+      ctx.fillText("Use your phone camera to scan", canvas.width / 2, padding + 50);
+
+      // Draw QR Code image (centered horizontally)
+      const qrX = (canvas.width - img.width) / 2;
+      ctx.drawImage(img, qrX, padding + headerSpace);
+
+      // Draw Footer on PNG
+      ctx.fillStyle = "#94a3b8";
+      ctx.font = "italic 14px -apple-system, sans-serif";
+      ctx.fillText(`Official QR for ${placeName}`, canvas.width / 2, canvas.height - 30);
+
+      const pngFile = canvas.toDataURL("image/png");
+      const downloadLink = document.createElement("a");
+      downloadLink.download = `${placeName.replace(/\s+/g, '_')}_QR.png`;
+      downloadLink.href = pngFile;
+      downloadLink.click();
+    };
+    img.src = "data:image/svg+xml;base64," + btoa(svgData);
+  };
 
   // Fetch Counters Logic
   const fetchCounters = async () => {
@@ -957,7 +1006,65 @@ export default function StaffDashboard() {
                     </div>
                   )}
                 </div>
+
+                <div className="section-divider-v">
+                  <button
+                    className={`toggle-qr-view-btn ${showQRSection ? 'active' : ''}`}
+                    onClick={() => setShowQRSection(!showQRSection)}
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                      <circle cx="12" cy="12" r="3" />
+                      <path d="M7 7h.01M17 7h.01M7 17h.01M17 17h.01" />
+                    </svg>
+                    {showQRSection ? "Hide QR Configuration" : "Show Queue QR Code"}
+                  </button>
+                </div>
               </div>
+
+              {showQRSection && (
+                <div className="qr-printable-area setup-mode animated-fade-in">
+                  <div className="qr-container-setup">
+                    <div className="qr-header-compact">
+                      <h3 className="qr-main-title">Scan QR to join the queue here</h3>
+                      <p className="qr-staff-instruction">
+                        <strong>Staff Note:</strong> Place this at the entrance. Customers can scan this to join the queue directly from their phones.
+                      </p>
+                    </div>
+
+                    <div className="qr-box-setup">
+                      {user?.placeId ? (
+                        <QRCode
+                          id="place-qr-code"
+                          value={`${window.location.origin}/join-queue/${user.placeId}`}
+                          size={160}
+                          level="H"
+                        />
+                      ) : (
+                        <div className="qr-placeholder">Waiting for Place ID...</div>
+                      )}
+                    </div>
+
+                    <div className="qr-user-instructions">
+                      <p className="instr-label">Customer Scan Guide:</p>
+                      <ul className="instr-list">
+                        <li>1. Open Phone Camera</li>
+                        <li>2. Scan the QR pattern</li>
+                        <li>3. Join queue & wait for your turn</li>
+                      </ul>
+                    </div>
+                    <button className="qr-download-btn" onClick={downloadQR}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <polyline points="7 10 12 15 17 10" />
+                        <line x1="12" y1="15" x2="12" y2="3" />
+                      </svg>
+                      Download PNG
+                    </button>
+                    <p className="qr-hint">High-resolution export for printed signage.</p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -967,7 +1074,7 @@ export default function StaffDashboard() {
 
 
         </div>
-      </div>
+      </div >
     );
   }
 
@@ -1325,6 +1432,8 @@ function CounterSettingsModal({ onClose, counterName, getAuthHeaders, currentCon
   const [isClosed, setIsClosed] = useState(currentConfig?.isClosed || false);
   const [walkinPercent, setWalkinPercent] = useState(currentConfig?.walkinPercent ?? 60);
   const [slotDuration, setSlotDuration] = useState(currentConfig?.slotDuration ?? 15);
+  const [tatkalPrice, setTatkalPrice] = useState(String(currentConfig?.tatkalPrice ?? 0));
+  const [slottedPrice, setSlottedPrice] = useState(String(currentConfig?.slottedPrice ?? 0));
   const [saving, setSaving] = useState(false);
 
   // Categories State
@@ -1367,7 +1476,9 @@ function CounterSettingsModal({ onClose, counterName, getAuthHeaders, currentCon
             categoryId: c.categoryId
           })),
           walkinPercent: Number(walkinPercent),
-          slotDuration: Number(slotDuration)
+          slotDuration: Number(slotDuration),
+          tatkalPrice: Number(tatkalPrice),
+          slottedPrice: Number(slottedPrice)
         }),
         credentials: "include"
       });
@@ -1488,6 +1599,47 @@ function CounterSettingsModal({ onClose, counterName, getAuthHeaders, currentCon
                   onChange={e => setSlotDuration(Number(e.target.value))}
                   style={{ width: '100%', accentColor: '#10b981', cursor: 'pointer' }}
                 />
+              </div>
+            </div>
+
+            {/* Ticket Price Configuration */}
+            <div style={{ marginBottom: '24px' }}>
+              <h3 style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: '800', marginBottom: '14px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Ticket Pricing</h3>
+              <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '11px', color: '#64748b', marginBottom: '6px', fontWeight: '700' }}>TATKAL PRICE</label>
+                    <div style={{ position: 'relative' }}>
+                      <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', fontSize: '1rem', color: '#64748b', fontWeight: '700' }}>₹</span>
+                      <input
+                        type="number"
+                        min="0"
+                        value={tatkalPrice}
+                        onChange={e => {
+                          const val = e.target.value;
+                          if (val === "" || Number(val) >= 0) setTatkalPrice(val);
+                        }}
+                        style={{ width: '100%', padding: '12px 12px 12px 28px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '1rem', fontWeight: '700', color: '#0f172a' }}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '11px', color: '#64748b', marginBottom: '6px', fontWeight: '700' }}>SLOTTED PRICE</label>
+                    <div style={{ position: 'relative' }}>
+                      <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', fontSize: '1rem', color: '#64748b', fontWeight: '700' }}>₹</span>
+                      <input
+                        type="number"
+                        min="0"
+                        value={slottedPrice}
+                        onChange={e => {
+                          const val = e.target.value;
+                          if (val === "" || Number(val) >= 0) setSlottedPrice(val);
+                        }}
+                        style={{ width: '100%', padding: '12px 12px 12px 28px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '1rem', fontWeight: '700', color: '#0f172a' }}
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 

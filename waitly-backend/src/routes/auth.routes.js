@@ -13,7 +13,8 @@ import {
    refreshToken,
    unifiedLogin,
    googleAuth,
-   googleCallback
+   googleCallback,
+   updateUsername
 } from "../controllers/auth.controller.js";
 
 import { protect } from "../middleware/authMiddleware.js";
@@ -59,6 +60,7 @@ router.get("/user", protect(), getMe);
 router.post("/forgot-password", passwordResetLimiter, validateEmail, forgotPassword);
 router.post("/reset-password/:token", validatePasswordReset, resetPassword);
 router.post("/change-password", protect(), validatePasswordChange, changePassword);
+router.put("/update-username", protect(), updateUsername);
 
 /* =====================================================
    TOKEN REFRESH

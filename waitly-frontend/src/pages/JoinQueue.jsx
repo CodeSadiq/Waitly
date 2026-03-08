@@ -521,7 +521,7 @@ export default function JoinQueue() {
           <div className="payment-footer">
             <div className="price-tag">
               <span>Total to Pay</span>
-              <strong>₹20</strong>
+              <strong>₹{bookingType === 'slot' ? (counters[form.counterIndex]?.slottedPrice || 0) : (counters[form.counterIndex]?.tatkalPrice || 0)}</strong>
             </div>
             <button
               className="pay-btn"
