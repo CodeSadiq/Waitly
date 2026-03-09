@@ -778,28 +778,30 @@ export const googleCallback = (req, res, next) => {
       res.cookie("token", token, {
         httpOnly: true,
         sameSite: isProduction ? "none" : "lax",
-        secure: isProduction, // Only secure in production
-        path: "/"
+        secure: isProduction,
+        path: "/",
+        maxAge: 24 * 60 * 60 * 1000 // 1 day
       });
 
       res.cookie("refreshToken", refreshToken, {
         httpOnly: true,
         sameSite: isProduction ? "none" : "lax",
         secure: isProduction,
-        path: "/"
+        path: "/",
+        maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
       });
 
       const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
       const userRole = account.role || (account.constructor.modelName === 'Staff' ? 'staff' : 'user');
       const needsUsername = account.hasSetUsername === false;
 
-      // 🔐 Pass tokens in URL for SPA storage as fallback
-      res.redirect(`${frontendUrl}/login?status=success&role=${userRole}&verified=true&token=${token}&refreshToken=${refreshToken}${needsUsername ? '&needsUsername=true' : ''}`);
+      // 🔐 Pass tokens in URL for SPA storage as fallback (essential for cross-domain redirects)
+      return res.redirect(`${frontendUrl}/login?status=success&role=${userRole}&verified=true&token=${token}&refreshToken=${refreshToken}${needsUsername ? '&needsUsername=true' : ''}`);
 
     } catch (tokenErr) {
       console.error("TOKEN GENERATION ERROR:", tokenErr);
       const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
-      res.redirect(`${frontendUrl}/login?status=error&message=Token generation failed`);
+      return res.redirect(`${frontendUrl}/login?status=error&message=Token generation failed`);
     }
   })(req, res, next);
 };

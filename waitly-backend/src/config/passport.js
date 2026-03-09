@@ -10,9 +10,9 @@ dotenv.config();
 passport.use(
     new GoogleStrategy(
         {
-            clientID: process.env.GOOGLE_CLIENT_ID || "MOCK_CLIENT_ID",
-            clientSecret: process.env.GOOGLE_CLIENT_SECRET || "MOCK_CLIENT_SECRET",
-            callbackURL: `${process.env.BACKEND_URL || "http://localhost:5000"}/api/auth/google/callback`,
+            clientID: process.env.GOOGLE_CLIENT_ID,
+            clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+            callbackURL: `${process.env.BACKEND_URL}/api/auth/google/callback`,
             passReqToCallback: true,
         },
         async (req, accessToken, refreshToken, profile, done) => {
