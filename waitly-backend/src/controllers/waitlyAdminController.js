@@ -10,8 +10,10 @@ import { io } from "../server.js";
    ===================================================== */
 export const getAdminStats = async (req, res) => {
   try {
-    const [userCount, staffCount, placeCount, pendingCount, staffRequestCount] = await Promise.all([
+    const [userCount, staffTotalCount, adminCount, activeStaffCount, placeCount, pendingCount, staffRequestCount] = await Promise.all([
       User.countDocuments(),
+      Staff.countDocuments(),
+      Admin.countDocuments(),
       Staff.countDocuments({ status: 'active' }),
       Place.countDocuments(),
       PendingPlace.countDocuments(),
@@ -19,8 +21,8 @@ export const getAdminStats = async (req, res) => {
     ]);
 
     res.json({
-      users: userCount,
-      activeStaff: staffCount,
+      users: userCount + staffTotalCount + adminCount,
+      activeStaff: activeStaffCount,
       places: placeCount,
       pendingPlaces: pendingCount,
       staffRequests: staffRequestCount
