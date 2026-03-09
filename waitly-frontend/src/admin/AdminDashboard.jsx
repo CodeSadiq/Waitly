@@ -3,6 +3,7 @@ import { AuthContext } from "../context/AuthContext";
 import "./AdminDashboard.css";
 import API_BASE from "../config/api";
 import { adminFetch } from "../utils/adminFetch";
+import ReportsInsights from "./ReportsInsights";
 
 export default function AdminDashboard() {
   const { user } = useContext(AuthContext);
@@ -736,6 +737,14 @@ export default function AdminDashboard() {
                 <span>Manual Add</span>
               </button>
             </div>
+
+            <div className="nav-group">
+              <span className="group-label">Intelligence</span>
+              <button className={getNavClass("reports")} onClick={() => setActiveTab("reports")}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path><path d="M22 12A10 10 0 0 0 12 2v10z"></path></svg>
+                <span>Reports & Insights</span>
+              </button>
+            </div>
           </nav>
 
 
@@ -1176,6 +1185,12 @@ export default function AdminDashboard() {
               </div>
             )}
 
+            {activeTab === "reports" && (
+              <div className="tab-pane reports-container">
+                <ReportsInsights />
+              </div>
+            )}
+
             {activeTab === "manual" && (
               <div className="tab-pane">
                 <section className="management-card narrow">
@@ -1238,80 +1253,88 @@ export default function AdminDashboard() {
             )}
           </div>
         </main>
-      </div>
+      </div >
 
       {/* ================= MODALS ================= */}
-      {editingPlace && (
-        <div className="modal-overlay" onClick={() => setEditingPlace(null)}>
-          <div className="modal-content large" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>Review & Edit Submission</h2>
-              <button className="btn-close-modal" onClick={() => setEditingPlace(null)}>&times;</button>
-            </div>
-            <div className="modal-body">
-              <p className="modal-hint">Review the details before approving. You can make manual corrections here.</p>
-              {renderPlaceForm()}
-            </div>
-            <div className="modal-footer">
-              <button className="btn-modal-cancel" onClick={() => setEditingPlace(null)}>Cancel</button>
-              <button className="btn-modal-save" onClick={approveEdited}>Approve & Save</button>
+      {
+        editingPlace && (
+          <div className="modal-overlay" onClick={() => setEditingPlace(null)}>
+            <div className="modal-content large" onClick={e => e.stopPropagation()}>
+              <div className="modal-header">
+                <h2>Review & Edit Submission</h2>
+                <button className="btn-close-modal" onClick={() => setEditingPlace(null)}>&times;</button>
+              </div>
+              <div className="modal-body">
+                <p className="modal-hint">Review the details before approving. You can make manual corrections here.</p>
+                {renderPlaceForm()}
+              </div>
+              <div className="modal-footer">
+                <button className="btn-modal-cancel" onClick={() => setEditingPlace(null)}>Cancel</button>
+                <button className="btn-modal-save" onClick={approveEdited}>Approve & Save</button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
-      {editingDbPlace && (
-        <div className="modal-overlay" onClick={() => setEditingDbPlace(null)}>
-          <div className="modal-content large" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>Edit Database Object</h2>
-              <button className="btn-close-modal" onClick={() => setEditingDbPlace(null)}>&times;</button>
-            </div>
-            <div className="modal-body">
-              <p className="modal-hint">Update the place details directly using the form below.</p>
-              {renderPlaceForm()}
-            </div>
-            <div className="modal-footer">
-              <button className="btn-modal-cancel" onClick={() => setEditingDbPlace(null)}>Cancel</button>
-              <button className="btn-modal-save" onClick={saveDbEdit}>Save Changes</button>
+      {
+        editingDbPlace && (
+          <div className="modal-overlay" onClick={() => setEditingDbPlace(null)}>
+            <div className="modal-content large" onClick={e => e.stopPropagation()}>
+              <div className="modal-header">
+                <h2>Edit Database Object</h2>
+                <button className="btn-close-modal" onClick={() => setEditingDbPlace(null)}>&times;</button>
+              </div>
+              <div className="modal-body">
+                <p className="modal-hint">Update the place details directly using the form below.</p>
+                {renderPlaceForm()}
+              </div>
+              <div className="modal-footer">
+                <button className="btn-modal-cancel" onClick={() => setEditingDbPlace(null)}>Cancel</button>
+                <button className="btn-modal-save" onClick={saveDbEdit}>Save Changes</button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
       {/* ================= NOTIFICATION TOAST ================= */}
-      {notification.visible && (
-        <div className={`notification-toast ${notification.type} admin-toast`}>
-          <div className="toast-icon">
-            {notification.type === "success" ? (
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-            ) : (
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
-            )}
+      {
+        notification.visible && (
+          <div className={`notification-toast ${notification.type} admin-toast`}>
+            <div className="toast-icon">
+              {notification.type === "success" ? (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              ) : (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+              )}
+            </div>
+            <span className="toast-message">{notification.message}</span>
           </div>
-          <span className="toast-message">{notification.message}</span>
-        </div>
-      )}
+        )
+      }
 
       {/* ================= CONFIRMATION MODAL ================= */}
-      {confirmModal.visible && (
-        <div className="modal-overlay confirm-overlay" onClick={confirmModal.onCancel}>
-          <div className="modal-content confirm-modal" onClick={e => e.stopPropagation()}>
-            <div className="confirm-modal-header">
-              <div className="warn-icon">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+      {
+        confirmModal.visible && (
+          <div className="modal-overlay confirm-overlay" onClick={confirmModal.onCancel}>
+            <div className="modal-content confirm-modal" onClick={e => e.stopPropagation()}>
+              <div className="confirm-modal-header">
+                <div className="warn-icon">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                </div>
+                <h3>{confirmModal.title}</h3>
               </div>
-              <h3>{confirmModal.title}</h3>
-            </div>
-            <div className="confirm-modal-body">
-              <p>{confirmModal.message}</p>
-            </div>
-            <div className="confirm-modal-footer">
-              <button className="btn-confirm-cancel" onClick={confirmModal.onCancel}>No, Cancel</button>
-              <button className="btn-confirm-proceed" onClick={confirmModal.onConfirm}>Yes, Proceed</button>
+              <div className="confirm-modal-body">
+                <p>{confirmModal.message}</p>
+              </div>
+              <div className="confirm-modal-footer">
+                <button className="btn-confirm-cancel" onClick={confirmModal.onCancel}>No, Cancel</button>
+                <button className="btn-confirm-proceed" onClick={confirmModal.onConfirm}>Yes, Proceed</button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
     </>
   );
 }

@@ -18,6 +18,7 @@ import adminRoutes from "./routes/adminRoutes.js";
 import queueRoutes from "./routes/queue.js";
 import staffRoutes from "./routes/staff.routes.js";
 import reviewRoutes from "./routes/reviewRoutes.js";
+import reportRoutes from "./routes/reportRoutes.js";
 
 console.log("JWT SECRET:", process.env.JWT_SECRET);
 
@@ -55,6 +56,7 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/queue", queueRoutes);
 app.use("/api/staff", staffRoutes);
 app.use("/api/reviews", reviewRoutes);
+app.use("/api/admin/reports", reportRoutes);
 
 /* ================= TEST ================= */
 app.get("/", (req, res) => {
