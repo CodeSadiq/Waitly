@@ -791,7 +791,7 @@ export const googleCallback = (req, res, next) => {
         maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
       });
 
-      const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+      const frontendUrl = (process.env.FRONTEND_URL || "http://localhost:5173").replace(/\/$/, "");
       const userRole = account.role || (account.constructor.modelName === 'Staff' ? 'staff' : 'user');
       const needsUsername = account.hasSetUsername === false;
 
